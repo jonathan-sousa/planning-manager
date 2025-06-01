@@ -24,6 +24,6 @@ export default function AmplifyProvider({ children }: AmplifyProviderProps) {
     }
   }, []);
 
-  // Pas d'authentification forcée pour le moment
+  // Backend minimal sans authentification UI pour le moment
   return <>{children}</>;
 }
