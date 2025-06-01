@@ -1,36 +1,127 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Planning Manager
 
-## Getting Started
+Application de gestion de planning d'équipes construite avec Next.js 15 et AWS Amplify Gen 2.
 
-First, run the development server:
+## Stack technologique
+
+- **Frontend**: Next.js 15, TypeScript, Tailwind CSS
+- **Backend**: AWS Amplify Gen 2 (code-first)
+- **Base de données**: AWS DynamoDB (via Amplify Data)
+- **Authentification**: AWS Cognito (via Amplify Auth)
+- **API**: GraphQL (générée automatiquement)
+
+## Démarrage rapide
+
+### Prérequis
+
+- Node.js 18+
+- AWS CLI configuré
+- Compte AWS
+
+### Installation
+
+1. Cloner le projet et installer les dépendances :
+
+```bash
+npm install
+```
+
+2. Démarrer le backend Amplify en mode sandbox :
+
+```bash
+npm run amplify:dev
+```
+
+3. Dans un autre terminal, démarrer l'application Next.js :
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+L'application sera accessible sur [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Structure du projet
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+planning-manager/
+├── amplify/                 # Configuration backend Amplify Gen 2
+│   ├── auth/               # Configuration authentification
+│   ├── data/               # Schéma GraphQL et modèles
+│   └── backend.ts          # Configuration principale backend
+├── src/
+│   ├── app/                # Pages Next.js (App Router)
+│   ├── components/         # Composants React
+│   └── lib/                # Utilitaires et configuration
+└── package.json
+```
 
-## Learn More
+## Commandes Amplify
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run amplify:dev` - Démarrer le backend en mode sandbox
+- `npm run amplify:deploy` - Déployer le backend en production
+- `npx ampx generate graphql-client-code` - Générer les types GraphQL
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Modèles de données
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### UserProfile
 
-## Deploy on Vercel
+- Profil utilisateur avec rôles (ADMIN, MANAGER, EMPLOYEE)
+- Liaison avec équipes et shifts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Team
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Équipes de travail
+- Gestion des membres et managers
+
+### Schedule
+
+- Plannings avec dates de début/fin
+- Associés à une équipe
+
+### Shift
+
+- Créneaux de travail individuels
+- Assignés à un employé et une position
+
+### Position
+
+- Postes de travail dans une équipe
+- Compétences requises
+
+## Fonctionnalités
+
+- ✅ Authentification utilisateur
+- ✅ Gestion des équipes
+- ✅ Création de plannings
+- ✅ Assignation de créneaux
+- ✅ Autorisation par rôles
+- 🚧 Interface calendrier
+- 🚧 Notifications
+- 🚧 Rapports
+
+## Développement
+
+Le projet utilise l'architecture Amplify Gen 2 qui permet de définir le backend avec du code TypeScript. Les modèles sont automatiquement synchronisés avec DynamoDB et l'API GraphQL est générée.
+
+### Authentification
+
+L'authentification est gérée par AWS Cognito et intégrée avec l'UI Amplify pour une expérience utilisateur fluide.
+
+### Autorisation
+
+Les modèles utilisent un système d'autorisation basé sur :
+
+- **Owner** : L'utilisateur peut accéder à ses propres données
+- **Groups** : Accès basé sur les rôles (ADMIN, MANAGER, EMPLOYEE)
+
+## Déploiement
+
+Pour déployer en production, configurer une pipeline CI/CD avec :
+
+```bash
+npm run amplify:deploy
+```
+
+## License
+
+MIT
