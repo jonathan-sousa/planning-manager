@@ -12,16 +12,20 @@ interface AmplifyProviderProps {
 
 export default function AmplifyProvider({ children }: AmplifyProviderProps) {
   useEffect(() => {
-    if (!isConfigured) {
-      try {
-        const outputs = require("../../../amplify_outputs.json");
-        Amplify.configure(outputs);
-        isConfigured = true;
-        console.log("✅ Amplify configuré avec succès");
-      } catch (error) {
-        console.warn("⚠️ Amplify configuration not found, running in dev mode without backend");
+    const configureAmplify = async () => {
+      if (!isConfigured) {
+        try {
+          const outputs = await import("../../../amplify_outputs.json");
+          Amplify.configure(outputs.default);
+          isConfigured = true;
+          console.log("✅ Amplify configuré avec succès");
+        } catch {
+          console.warn("⚠️ Amplify configuration not found, running in dev mode without backend");
+        }
       }
-    }
+    };
+    
+    configureAmplify();
   }, []);
 
   // Backend minimal sans authentification UI pour le moment

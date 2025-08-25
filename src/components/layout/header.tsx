@@ -2,23 +2,29 @@ import Link from "next/link";
 
 export default function Header() {
   return (
-    <header className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+    <header className="border-b bg-white shadow-sm">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="text-2xl font-bold text-gray-900">
               Planning Manager
             </Link>
           </div>
 
-          <nav className="hidden md:flex space-x-8">
-            <Link href="/dashboard" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+          <nav className="hidden space-x-8 md:flex">
+            <Link
+              href="/dashboard"
+              className="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+            >
               Dashboard
             </Link>
-            <Link href="/planning" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+            <Link
+              href="/planning"
+              className="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+            >
               Planning
             </Link>
-            <Link href="/teams" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+            <Link href="/teams" className="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
               Équipes
             </Link>
           </nav>

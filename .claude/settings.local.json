@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "context7",
+    "awslabs.aws-api-mcp-server"
+  ],
+  "statusLine": {
+    "type": "command",
+    "command": "input=$(cat); model=$(echo \"$input\" | jq -r '.model.display_name'); current_dir=$(echo \"$input\" | jq -r '.workspace.current_dir'); project_dir=$(echo \"$input\" | jq -r '.workspace.project_dir'); output_style=$(echo \"$input\" | jq -r '.output_style.name'); project_name=$(basename \"$project_dir\"); relative_path=$(echo \"${current_dir#$project_dir}\"); if [ \"$relative_path\" = \"$current_dir\" ]; then relative_path=\"\"; elif [ \"$relative_path\" != \"\" ]; then relative_path=\"${relative_path#/}\"; fi; git_branch=$(cd \"$current_dir\" 2>/dev/null && git branch --show-current 2>/dev/null || echo \"\"); git_info=\"\"; if [ \"$git_branch\" != \"\" ]; then git_info=\" $git_branch\"; fi; style_info=\"\"; if [ \"$output_style\" != \"default\" ] && [ \"$output_style\" != \"null\" ]; then style_info=\" [$output_style]\"; fi; printf \" %s%s %s%s%s%s\" \"$model\" \"$style_info\" \"$project_name\" \"$([ \"$relative_path\" != \"\" ] && echo \"/$relative_path\" || echo \"\")\" \"$git_info\""
+  }
+}
