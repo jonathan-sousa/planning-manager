@@ -39,3 +39,46 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# amplify
+.amplify
+amplify_outputs*
+amplifyconfiguration*
+amplify-backup*
+amplify-build-config.json
+amplify-gradle-config.json
+amplifytools.xcconfig
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Testing
+cypress/videos
+cypress/screenshots
+e2e-results/
+
+# Local env files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
