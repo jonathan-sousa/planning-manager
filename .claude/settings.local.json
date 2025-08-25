@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm install)",
-      "Bash(npm ci:*)"
+      "Bash(npm ci:*)",
+      "mcp__awslabs_aws-api-mcp-server__call_aws",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

@@ -35,7 +35,7 @@ export interface PlanningRule {
   type: 'min_rest' | 'max_hours' | 'required_positions' | 'custom';
   active: boolean;
   priority: number;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }
