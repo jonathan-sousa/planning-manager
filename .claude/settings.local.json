@@ -1,11 +1,6 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(npm install)",
-      "Bash(npm ci:*)",
-      "mcp__awslabs_aws-api-mcp-server__call_aws",
-      "Bash(npm run build:*)"
-    ],
+    "allow": ["Bash(npm install)", "Bash(npm ci:*)", "Bash(npm install:*)", "Bash(npm run build:*)", "Bash(git add:*)", "Bash(ls:*)", "mcp__awslabs_aws-api-mcp-server__call_aws", "mcp__context7__resolve-library-id", "mcp__context7__get-library-docs"],
     "deny": [],
     "ask": []
   }
