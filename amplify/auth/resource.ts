@@ -8,23 +8,5 @@ export const auth = defineAuth({
   loginWith: {
     email: true,
   },
-  userAttributes: {
-    email: {
-      required: true,
-      mutable: true
-    },
-    givenName: {
-      required: true,
-      mutable: true
-    },
-    familyName: {
-      required: true,
-      mutable: true
-    }
-  },
-  accountRecovery: 'EMAIL_ONLY',
-  multifactor: {
-    mode: 'OFF'
-  },
   groups: ['ADMINS', 'USERS']
 });
