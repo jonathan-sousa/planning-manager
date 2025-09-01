@@ -66,3 +66,40 @@ npm run lint         # Linting ESLint
 - 5-20 employés par planning
 - Desktop-first, responsive mobile
 - Authentification obligatoire via Cognito
+
+## Méthodologie de Résolution de Problèmes
+
+### Principe Fondamental
+**TOUJOURS** consulter la documentation officielle via MCP avant d'implémenter des solutions personnalisées.
+
+### Processus Obligatoire
+1. **Identifier le problème** clairement et précisément
+2. **Consulter la documentation officielle** via `mcp__context7__get-library-docs` avec des termes spécifiques
+3. **Rechercher des exemples officiels** dans la documentation
+4. **Appliquer la solution standard** trouvée dans la documentation
+5. **Éviter les solutions personnalisées** sauf si aucune solution officielle n'existe
+
+### Technologies Concernées
+- **AWS Amplify** : Toujours vérifier les patterns officiels pour l'authentification, les imports, la configuration
+- **Next.js** : Consulter la doc pour les patterns App Router, SSR, build issues
+- **TailwindCSS** : Vérifier les classes et configurations officielles
+- **TypeScript** : Types officiels et configurations recommandées
+- **Toute technologie** avec documentation MCP disponible
+
+### Questions à se Poser
+- "Cette problématique existe-t-elle dans la documentation officielle ?"
+- "Ai-je consulté MCP avant de développer une solution personnalisée ?"
+- "Cette approche est-elle standard ou inventée ?"
+- "Y a-t-il un exemple officiel qui traite ce cas d'usage ?"
+
+### Exemple Concret
+**Problème** : Import d'`amplify_outputs.json` qui échoue au build Next.js
+**❌ Approche incorrecte** : Créer des imports dynamiques personnalisés, hooks custom
+**✅ Approche correcte** : Consulter doc AWS → Trouver l'exemple officiel `ConfigureAmplifyClientSide` → Appliquer
+
+### Avantages de cette Méthodologie
+- Solutions éprouvées et maintenues
+- Compatibilité garantie avec les versions futures
+- Moins de bugs et d'effets de bord imprévisibles  
+- Code plus maintenable et conforme aux standards
+- Gain de temps significatif sur le long terme
