@@ -11,7 +11,10 @@ const schema = a.schema({
     .model({
       content: a.string(),
     })
-    .authorization((allow) => [allow.guest()]),
+    .authorization((allow) => [
+      allow.authenticated(),
+      allow.groups(['ADMINS'])
+    ]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
