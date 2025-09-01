@@ -20,11 +20,11 @@ export const auth = defineAuth({
     familyName: {
       required: true,
       mutable: true
-    },
-    phoneNumber: {
-      required: false,
-      mutable: true
     }
   },
-  accountRecovery: 'EMAIL_ONLY'
+  accountRecovery: 'EMAIL_ONLY',
+  multifactor: {
+    mode: 'OFF'
+  },
+  groups: ['ADMINS', 'USERS']
 });
