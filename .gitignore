@@ -59,6 +59,9 @@ amplifytools.xcconfig
 *.swo
 *~
 
+# Claude
+.claude/settings.local.json
+
 # OS
 Thumbs.db
 
