@@ -1,0 +1,7 @@
+{
+  "auth": {
+    "aws_region": "eu-west-3",
+    "user_pool_id": "placeholder",
+    "user_pool_client_id": "placeholder"
+  }
+}
