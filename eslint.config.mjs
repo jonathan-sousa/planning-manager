@@ -18,6 +18,9 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      ".amplify/**",
+      "amplify/**/*.js",
+      "amplify/**/*.d.ts",
     ],
   },
 ];

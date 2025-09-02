@@ -1,0 +1,13 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Vérification avant push..."
+npm run check:fast
+
+if [ $? -ne 0 ]; then
+  echo "❌ Erreurs détectées ! Corrigez-les avant de push."
+  echo "💡 Utilisez 'npm run lint:fix' pour corriger automatiquement certaines erreurs."
+  exit 1
+fi
+
+echo "✅ Toutes les vérifications sont passées !"

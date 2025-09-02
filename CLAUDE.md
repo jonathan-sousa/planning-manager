@@ -25,8 +25,24 @@ npx ampx generate    # Génère les types Amplify
 
 # Build & Deploy
 npm run build        # Build de production
-npm run lint         # Linting ESLint
+npm run lint         # Vérifier les erreurs ESLint
+npm run lint:fix     # Corriger automatiquement les erreurs ESLint
+npm run type-check   # Vérifier les types TypeScript
+npm run check        # Vérification complète (lint + types + build)
+npm run check:fast   # Vérification rapide (lint + types, sans build)
 ```
+
+## Vérification avant Push/Deploy
+
+**IMPORTANT**: Pour éviter les erreurs de déploiement, toujours exécuter avant de push :
+
+```bash
+npm run check:fast   # Vérification rapide recommandée
+# ou
+npm run check        # Vérification complète avec build
+```
+
+Un hook Git pre-push est configuré pour automatiser ces vérifications.
 
 ## Architecture
 
