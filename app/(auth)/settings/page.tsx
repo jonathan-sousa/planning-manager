@@ -7,7 +7,7 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
         <p className="text-muted-foreground">
-          Configurez les paramètres de l'application
+          Configurez les paramètres de l&apos;application
         </p>
       </div>
 
@@ -16,7 +16,7 @@ export default function SettingsPage() {
           <h2 className="text-xl font-semibold mb-4">Paramètres généraux</h2>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Nom de l'établissement</label>
+              <label className="text-sm font-medium">Nom de l&apos;établissement</label>
               <p className="text-sm text-muted-foreground mt-1">
                 Configuration à venir
               </p>

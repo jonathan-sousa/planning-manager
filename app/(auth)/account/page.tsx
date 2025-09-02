@@ -148,7 +148,7 @@ export default function AccountPage() {
         </div>
       </div>
 
-      {/* Historique d'activité */}
+      {/* Historique d&apos;activité */}
       <div className="rounded-lg border p-6">
         <h2 className="text-xl font-semibold mb-4">Activité récente</h2>
         <div className="space-y-3">

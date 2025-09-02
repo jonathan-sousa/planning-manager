@@ -7,7 +7,6 @@ import {
   Calendar, 
   Bell, 
   Palette, 
-  FileText, 
   Clock,
   Monitor,
   Moon,
@@ -55,7 +54,7 @@ export default function PreferencesPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Préférences</h1>
         <p className="text-muted-foreground">
-          Personnalisez votre expérience et configurez l'application selon vos besoins
+          Personnalisez votre expérience et configurez l&apos;application selon vos besoins
         </p>
       </div>
 
@@ -68,7 +67,7 @@ export default function PreferencesPage() {
         
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium mb-2 block">Thème de l'interface</label>
+            <label className="text-sm font-medium mb-2 block">Thème de l&apos;interface</label>
             <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={() => setPreferences({...preferences, theme: "light"})}
@@ -101,7 +100,7 @@ export default function PreferencesPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block">Densité d'affichage</label>
+            <label className="text-sm font-medium mb-2 block">Densité d&apos;affichage</label>
             <select className="w-full px-3 py-2 border rounded-lg">
               <option>Confortable</option>
               <option>Standard</option>
@@ -161,7 +160,7 @@ export default function PreferencesPage() {
           <div>
             <label className="text-sm font-medium mb-2 block flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              Format d'heure
+              Format d&apos;heure
             </label>
             <select 
               value={preferences.timeFormat}
