@@ -7,8 +7,6 @@ import {
   Settings,
   Home,
   BookOpen,
-  ChevronUp,
-  User2,
 } from "lucide-react"
 import {
   Sidebar,
@@ -22,17 +20,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { UserMenu } from "@/components/user-menu"
 
 const items = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/dashboard",
     icon: Home,
   },
   {
@@ -64,7 +57,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/">
+              <Link href="/dashboard">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Calendar className="size-4" />
                 </div>
@@ -99,41 +92,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                >
-                  <User2 className="size-4" />
-                  <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-semibold">Manager</span>
-                    <span className="text-xs text-muted-foreground">
-                      manager@example.com
-                    </span>
-                  </div>
-                  <ChevronUp className="ml-auto size-4" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side="top"
-                className="w-[--radix-popper-anchor-width]"
-              >
-                <DropdownMenuItem>
-                  <span>Mon compte</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <span>Préférences</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <span>Se déconnecter</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <UserMenu />
       </SidebarFooter>
     </Sidebar>
   )

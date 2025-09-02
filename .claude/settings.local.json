@@ -1,18 +1,6 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(npm install)",
-      "Bash(npm ci:*)",
-      "Bash(npm install:*)",
-      "Bash(npm run build:*)",
-      "Bash(git add:*)",
-      "Bash(ls:*)",
-      "mcp__awslabs_aws-api-mcp-server__call_aws",
-      "mcp__context7__resolve-library-id",
-      "mcp__context7__get-library-docs",
-      "Bash(git commit:*)",
-      "Bash(git push:*)"
-    ],
+    "allow": ["Bash(npm install)", "Bash(npm ci:*)", "Bash(npm install:*)", "Bash(npm run build:*)", "Bash(git add:*)", "Bash(git commit:*)", "Bash(git push:*)", "Bash(ls:*)", "mcp__awslabs_aws-api-mcp-server__call_aws", "mcp__context7__resolve-library-id", "mcp__context7__get-library-docs", "mcp__awslabs_aws-api-mcp-server__suggest_aws_commands"],
     "deny": [],
     "ask": []
   }
