@@ -8,9 +8,12 @@ Planning Manager - Application de gestion de plannings (shifts) pour managers av
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14+ (App Router), TypeScript, Tailwind CSS
+- **Frontend**: Next.js 15+ (App Router), React 19, TypeScript
 - **Backend**: AWS Amplify Gen 2, AWS Cognito (auth), DynamoDB
+- **UI Components**: shadcn/ui, Radix UI, Lucide React (icons)
+- **Styling**: Tailwind CSS v4
 - **Validation**: Zod
+- **State Management**: React Context API
 - **Node**: v22
 
 ## Commands
@@ -21,7 +24,7 @@ npm run dev          # Démarre le serveur de développement Next.js
 
 # AWS Amplify
 npx ampx sandbox     # Lance l'environnement Amplify sandbox local
-npx ampx generate    # Génère les types Amplify
+npx ampx generate outputs --branch main --app-id dky4b7m7ksc1p  # Génère les types Amplify depuis le backend déployé
 
 # Build & Deploy
 npm run build        # Build de production
@@ -49,17 +52,33 @@ Un hook Git pre-push est configuré pour automatiser ces vérifications.
 ```
 /app
   /(auth)           # Routes protégées par authentification
+    /dashboard      # Tableau de bord principal
     /planning       # Calendrier mensuel principal
-    /rules          # Gestion des règles de planning
+    /rules          # Gestion des règles de planning  
     /employees      # Gestion des employés
+    /preferences    # Préférences utilisateur
+    /account        # Profil utilisateur
+    /admin          # Section administration
+  /components       # Composants spécifiques à l'app
+    ConfigureAmplify.tsx  # Configuration Amplify côté client
+  /providers        # Providers React
+    AmplifyProvider.tsx   # Provider Amplify avec auth
 /lib
-  /db              # Modèles de données (à venir: ElectroDB)
+  /contexts         # Contextes React globaux
+    UserContext.tsx # Contexte utilisateur avec persistance
+  /hooks           # Custom hooks
+    useUserProfile.ts  # Hook pour profil et préférences
   /types           # Types TypeScript
   /validators      # Schémas Zod de validation
 /components
+  /ui              # Composants UI réutilisables (shadcn/ui)
   /calendar        # Composants du calendrier
-  /ui              # Composants UI réutilisables
+  user-menu.tsx    # Menu utilisateur avec déconnexion
+  app-sidebar.tsx  # Sidebar de navigation principale
 /amplify           # Configuration AWS Amplify Gen 2
+  /auth            # Configuration Cognito
+  /data            # Schéma DynamoDB (UserProfile, UserPreferences, ActivityLog)
+  /backend         # Configuration backend
 ```
 
 ## Fonctionnalités Principales
@@ -68,13 +87,21 @@ Un hook Git pre-push est configuré pour automatiser ces vérifications.
 2. **Gestion des Règles**: Système de règles configurables (repos min, heures max, etc.)
 3. **Optimisation Auto**: Remplissage automatique selon règles et contraintes
 4. **Verrouillage/Forçage**: Possibilité de verrouiller ou forcer des affectations
+5. **Persistance DynamoDB**: Synchronisation multi-appareils des données utilisateur
+6. **Interface Moderne**: Sidebar navigation, thème sombre/clair, composants shadcn/ui
 
 ## Types Principaux
 
+### Types Métier
 - `Employee`: Employé avec positions et restrictions
 - `Shift`: Affectation employé/poste sur une date
 - `Planning`: Planning mensuel contenant les shifts
 - `PlanningRule`: Règle de gestion configurable
+
+### Types Amplify Data (DynamoDB)
+- `UserProfile`: Profil utilisateur complet
+- `UserPreferences`: Préférences d'interface et notifications
+- `ActivityLog`: Historique des actions utilisateur
 
 ## Notes de Développement
 
@@ -82,6 +109,9 @@ Un hook Git pre-push est configuré pour automatiser ces vérifications.
 - 5-20 employés par planning
 - Desktop-first, responsive mobile
 - Authentification obligatoire via Cognito
+- Protection WAF activée sur CloudFront
+- Synchronisation temps réel avec DynamoDB
+- Hook pre-push Git pour validation automatique
 
 ## Méthodologie de Résolution de Problèmes
 
