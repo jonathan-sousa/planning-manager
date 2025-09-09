@@ -1,6 +1,4 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+# Dependencies
 /node_modules
 /.pnp
 .pnp.*
@@ -10,38 +8,54 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-
-# next.js
+# Build
+/build
 /.next/
 /out/
+*.tsbuildinfo
+next-env.d.ts
 
-# production
-/build
+# Environment
+.env*
+!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Testing
+/coverage
+cypress/videos
+cypress/screenshots
+e2e-results/
 
-# vercel
-.vercel
+# OS & Editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+*.swp
+*.swo
+*~
+*.pem
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Claude & Cursor
+.claude/settings.local.json
 
-# amplify
-.amplify
+# Amplify
+.amplify/
 amplify_outputs.json
 amplifyconfiguration*
 amplify-backup*
@@ -49,39 +63,11 @@ amplify-build-config.json
 amplify-gradle-config.json
 amplifytools.xcconfig
 
-# IDE
-.vscode/*
-!.vscode/settings.json
-!.vscode/extensions.json
-!.vscode/launch.json
-.idea
-*.swp
-*.swo
-*~
+# Vercel
+.vercel
 
-# Claude
-.claude/settings.local.json
-
-# OS
-Thumbs.db
-
-# Logs
-logs
-*.log
-
-# Runtime data
-pids
+# Misc
+pids/
 *.pid
 *.seed
 *.pid.lock
-
-# Testing
-cypress/videos
-cypress/screenshots
-e2e-results/
-
-# Local env files
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local

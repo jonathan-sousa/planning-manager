@@ -6,6 +6,7 @@
     "prisma.prisma",
     "ms-vscode.vscode-typescript-next",
     "christian-kohler.path-intellisense",
-    "formulahendry.auto-rename-tag"
+    "formulahendry.auto-rename-tag",
+    "amazonwebservices.aws-toolkit-vscode"
   ]
 }
