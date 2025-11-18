@@ -14,7 +14,7 @@ Planning Manager - Application de gestion de plannings (shifts) pour managers av
 - **Styling**: Tailwind CSS v4
 - **Validation**: Zod
 - **State Management**: React Context API
-- **Node**: v22
+- **Node**: v24.11+ (minimum requis: v20.9.0)
 
 ## Commands
 
