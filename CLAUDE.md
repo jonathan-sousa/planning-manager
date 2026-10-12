@@ -15,6 +15,7 @@ npm run test           # Vitest
 npm run solver:test    # pytest du solveur (uv)
 npm run infra:synth    # cdk synth : valide l'infra et bundle API + solveur sans déployer
 npm run db:generate    # migration Drizzle réécrite pour DSQL (à committer)
+npm run db:seed        # service fictif (scripts/seed/), jamais en prod ; -- --reset remplace les données
 pre-commit run --all-files
 ```
 
@@ -68,7 +69,7 @@ docs/                       architecture, modèle de domaine, règles de planifi
 - **Schéma** : toute modification de `api/db/schema.ts` passe par `npm run db:generate` et le SQL généré est committé. Clés primaires UUID, pas de `SERIAL`, un DDL par transaction (géré par le migrateur) ; chaque FK `NOT VALID` générée est suivie d'un `ALTER TABLE ASYNC … VALIDATE CONSTRAINT` ajouté à la main.
 - **DSQL** : collation `C` → trier les libellés côté application (`localeCompare('fr')`), jamais par `ORDER BY` sur du texte accentué. Écritures multi-lignes dans `db.transactionWithRetry` (OCC). Une transaction modifie au plus 3 000 lignes.
 - **Dates** : chaînes `YYYY-MM-DD`, heures `HH:mm`, durées en minutes calculées en heure de Paris. Pas d'aller-retour par un `Date` UTC.
-- **Données** : fictives uniquement tant que l'hôpital n'a pas validé l'hébergement. Aucun code d'absence qui révèle un motif médical.
+- **Données** : fictives uniquement tant que l'hôpital n'a pas validé l'hébergement (jeu de démonstration : `scripts/seed/data.ts`, validé par les schémas de l'API). Aucun code d'absence qui révèle un motif médical.
 - **Authentification** : Cognito Managed Login ; `aws-amplify` ne sert qu'à la redirection OAuth et aux jetons. Pas de formulaire de connexion dans l'app, pas d'Amplify UI.
 - **Formulaires** : TanStack Form validé par les schémas de `api/schemas.ts` (`onDynamic` + `revalidateLogic` : validation à la soumission, puis à chaque frappe), écriture dans `onSubmitAsync` via `submitToApi`. Pas de second schéma côté client.
 - **Autorisations** : le JWT est validé par API Gateway, l'appartenance au groupe `MANAGERS` par `api/auth.ts`. Pas d'autorisation par propriétaire : les données du service sont partagées.

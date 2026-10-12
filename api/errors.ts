@@ -1,15 +1,13 @@
-import { flattenError } from 'zod';
-
 /** JSON body of every API error response. `fields` maps a form field to its messages. */
 export type ApiError = { error: string; fields?: Record<string, string[]> };
 
-/** Thrown by the validator hook, rendered as 400 by `toErrorResponse`. */
+/** Invalid input, rendered as 400 with per-field messages by `toErrorResponse`. */
 export class ValidationError extends Error {
   readonly fields: Record<string, string[]>;
 
-  constructor(error: Parameters<typeof flattenError>[0]) {
+  constructor(fields: Record<string, string[]>) {
     super('Données invalides');
-    this.fields = flattenError(error).fieldErrors as Record<string, string[]>;
+    this.fields = fields;
   }
 }
 

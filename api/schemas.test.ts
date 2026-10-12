@@ -38,12 +38,17 @@ describe('agentRequestInput', () => {
     comment: null,
   };
 
-  it('requires a shift for a shift wish only', () => {
+  it('requires a shift except for a day-off wish', () => {
+    const shift = { shiftTypeId: agent.gradeId };
     expect(agentRequestInput.safeParse(request).success).toBe(true);
+    expect(agentRequestInput.safeParse({ ...request, ...shift }).success).toBe(false);
     expect(agentRequestInput.safeParse({ ...request, kind: 'WISH_SHIFT' }).success).toBe(false);
-    expect(agentRequestInput.safeParse({ ...request, shiftTypeId: agent.gradeId }).success).toBe(
-      false
+    expect(agentRequestInput.safeParse({ ...request, kind: 'WISH_SHIFT', ...shift }).success).toBe(
+      true
     );
+    expect(
+      agentRequestInput.safeParse({ ...request, kind: 'ABSENCE_APPROVED', ...shift }).success
+    ).toBe(true);
   });
 });
 
