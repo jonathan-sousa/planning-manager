@@ -77,13 +77,13 @@ Limite Lambda : 250 Mo décompressés. OR-Tools tire numpy, pandas (43 Mo) et pr
 
 ## Phases
 
-| Phase               | Contenu                                                                                                                                                           |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 — Fondations      | Scaffold, infra CDK, auth `MANAGERS` (premier manager créé au déploiement), table `grades`, santé base + solveur, dev-baseline, docs.                             |
-| 1 — Référentiels    | Grades, compétences, agents, postes (codes d'absence inclus), besoins de couverture, paramètres de règles, demandes d'agents, script de seed fictif.              |
-| 2 — Grille manuelle | Grille agents × jours, saisie clavier, verrouillage, compteurs, validation en temps réel, statuts et publication, continuité entre mois.                          |
-| 3 — Solveur         | `SolveRun`, proposition en diff, application transactionnelle protégée par version, diagnostic des trous de couverture.                                           |
-| 4 — Diffusion       | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations, hébergement S3 + CloudFront (+ WAF), emails Cognito via SES (défaut ~50/jour). |
+| Phase               | Contenu                                                                                                                                                                                                              |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 — Fondations      | Scaffold, infra CDK, auth `MANAGERS` (premier manager créé au déploiement), table `grades`, santé base + solveur, dev-baseline, docs.                                                                                |
+| 1 — Référentiels    | Grades, compétences, agents, postes (codes d'absence inclus), besoins de couverture, paramètres de règles, demandes d'agents, script de seed fictif, emails Cognito via SES (l'expéditeur par défaut finit en spam). |
+| 2 — Grille manuelle | Grille agents × jours, saisie clavier, verrouillage, compteurs, validation en temps réel, statuts et publication, continuité entre mois.                                                                             |
+| 3 — Solveur         | `SolveRun`, proposition en diff, application transactionnelle protégée par version, diagnostic des trous de couverture.                                                                                              |
+| 4 — Diffusion       | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations, hébergement S3 + CloudFront (+ WAF).                                                                                              |
 
 ## Points ouverts
 
