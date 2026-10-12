@@ -1,8 +1,74 @@
-/** SQLSTATE of a PostgreSQL error, also when Drizzle wrapped it in DrizzleQueryError. */
-export function pgErrorCode(error: unknown): string | undefined {
+import { flattenError } from 'zod';
+
+/** JSON body of every API error response. `fields` maps a form field to its messages. */
+export type ApiError = { error: string; fields?: Record<string, string[]> };
+
+/** Thrown by the validator hook, rendered as 400 by `toErrorResponse`. */
+export class ValidationError extends Error {
+  readonly fields: Record<string, string[]>;
+
+  constructor(error: Parameters<typeof flattenError>[0]) {
+    super('Données invalides');
+    this.fields = flattenError(error).fieldErrors as Record<string, string[]>;
+  }
+}
+
+type PgError = { code: string; constraint?: string };
+
+/** PostgreSQL error fields, also when Drizzle wrapped the error in DrizzleQueryError. */
+export function pgError(error: unknown): PgError | undefined {
   for (let current = error; current instanceof Error; current = current.cause) {
-    const { code } = current as { code?: unknown };
-    if (typeof code === 'string') return code;
+    const { code, constraint } = current as { code?: unknown; constraint?: unknown };
+    if (typeof code === 'string') {
+      return { code, constraint: typeof constraint === 'string' ? constraint : undefined };
+    }
   }
   return undefined;
 }
+
+const duplicateCode = { field: 'code', message: 'Code déjà utilisé' };
+
+/** Unique constraints of the schema, by name: the form field at fault and the message. */
+const uniqueViolations: Record<string, { field?: string; message: string }> = {
+  grades_code_idx: duplicateCode,
+  skills_code_idx: duplicateCode,
+  shift_types_code_idx: duplicateCode,
+  coverage_needs_slot_key: {
+    message: 'Un besoin existe déjà pour ce poste, ce grade, cette compétence et ce type de jour',
+  },
+  coverage_overrides_slot_key: {
+    message: 'Une exception existe déjà pour cette date, ce poste, ce grade et cette compétence',
+  },
+};
+
+/** Maps an error to its HTTP status and body; undefined for unexpected errors (500). */
+export function toErrorResponse(
+  error: unknown,
+  method: string
+): { status: 400 | 409; body: ApiError } | undefined {
+  if (error instanceof ValidationError) {
+    return { status: 400, body: { error: error.message, fields: error.fields } };
+  }
+  const pg = pgError(error);
+  if (pg?.code === '23505') {
+    const violation = (pg.constraint && uniqueViolations[pg.constraint]) || {
+      message: 'Doublon',
+    };
+    return {
+      status: 409,
+      body: {
+        error: violation.message,
+        ...(violation.field && { fields: { [violation.field]: [violation.message] } }),
+      },
+    };
+  }
+  if (pg?.code === '23503') {
+    // On DELETE the row is still referenced; on writes a referenced row is missing.
+    return method === 'DELETE'
+      ? { status: 409, body: { error: 'Suppression impossible : élément encore utilisé' } }
+      : { status: 400, body: { error: 'Référence inconnue' } };
+  }
+  return undefined;
+}
+
+export const notFound: ApiError = { error: 'Introuvable' };

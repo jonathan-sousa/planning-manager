@@ -34,7 +34,12 @@ infra/                      app CDK (tsconfig.infra.json)
   lib/api.ts                HTTP API + authorizer JWT Cognito → NodejsFunction (api/index.ts)
   lib/solver.ts             Lambda Python ARM64, bundling uv sans Docker
 api/                        Hono (tsconfig.api.json, projet référencé par le frontend pour AppType)
-  app.ts                    routes ; export type AppType
+  app.ts                    monte les routeurs, gestion d'erreurs ; export type AppType
+  routes/                   un routeur Hono par ressource (CRUD)
+  schemas.ts                schémas d'entrée Zod, partagés avec les formulaires du frontend
+  domain.ts                 énumérations du domaine (sans dépendance)
+  errors.ts                 forme ApiError { error, fields? }, mapping des erreurs PostgreSQL
+  validate.ts               zValidator qui lève une ValidationError (400 par champ)
   auth.ts                   middleware : 403 si pas dans MANAGERS (claim cognito:groups)
   db/schema.ts              schéma Drizzle ; db/migrations/ généré, committé
   db/client.ts              drizzle() du connecteur DSQL (jeton IAM, pool)
@@ -55,7 +60,7 @@ docs/                       architecture, modèle de domaine, règles de planifi
 ## Conventions
 
 - **Versions** : toujours la dernière stable, vérifiée sur le registre (`npm view`, PyPI). Ne jamais se fier à la mémoire. Un écart se justifie par une incompatibilité constatée et se documente dans `docs/architecture.md`.
-- **Schéma** : toute modification de `api/db/schema.ts` passe par `npm run db:generate` et le SQL généré est committé. Clés primaires UUID, pas de `SERIAL`, un DDL par transaction (géré par le migrateur).
+- **Schéma** : toute modification de `api/db/schema.ts` passe par `npm run db:generate` et le SQL généré est committé. Clés primaires UUID, pas de `SERIAL`, un DDL par transaction (géré par le migrateur) ; chaque FK `NOT VALID` générée est suivie d'un `ALTER TABLE ASYNC … VALIDATE CONSTRAINT` ajouté à la main.
 - **DSQL** : collation `C` → trier les libellés côté application (`localeCompare('fr')`), jamais par `ORDER BY` sur du texte accentué. Écritures multi-lignes dans `db.transactionWithRetry` (OCC). Une transaction modifie au plus 3 000 lignes.
 - **Dates** : chaînes `YYYY-MM-DD`, heures `HH:mm`, durées en minutes calculées en heure de Paris. Pas d'aller-retour par un `Date` UTC.
 - **Données** : fictives uniquement tant que l'hôpital n'a pas validé l'hébergement. Aucun code d'absence qui révèle un motif médical.
