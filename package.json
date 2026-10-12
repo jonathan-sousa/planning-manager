@@ -21,7 +21,8 @@
     "db:generate": "aurora-dsql-drizzle generate --out ./api/db/migrations -- --config drizzle.config.ts",
     "db:migrate": "tsx scripts/db-migrate.ts",
     "postinfra:deploy": "npm run env:write && npm run db:migrate",
-    "infra:size": "tsx scripts/asset-sizes.ts"
+    "infra:size": "tsx scripts/asset-sizes.ts",
+    "db:seed": "tsx scripts/db-seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.1150.0",

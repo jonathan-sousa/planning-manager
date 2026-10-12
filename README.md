@@ -22,7 +22,7 @@ Connexion via Cognito Managed Login, page d'accueil avec vérification de la bas
 - **AWS** : compte JS Consulting, région `eu-west-3`, CDK bootstrappé. Le déploiement écrit dans AWS : il se lance avec un profil disposant des droits d'écriture (`jsconsulting-jsousa-dev`).
 - **Stage** : une stack CloudFormation `PlanningManager-<stage>` par développeur ou environnement, choisie avec `-c stage=<nom>` (minuscules, chiffres et tirets ; défaut : le nom d'utilisateur du poste). `prod` active la protection contre la suppression, la rétention des ressources et les sauvegardes.
 - **`BOOTSTRAP_MANAGER_EMAIL`** (obligatoire) : email du premier manager créé à chaque déploiement d'un stage neuf. Il est lu à la synthèse, et le déploiement échoue s'il manque. En local, dans un `.envrc` non versionné (`source_up` puis `export BOOTSTRAP_MANAGER_EMAIL=…`). Changer l'email crée un nouveau manager sans supprimer l'ancien.
-- **`.env.local`** : généré par `npm run env:write` à partir des sorties CDK (`cdk-outputs.json`), non versionné, requis par `npm run dev`, `npm run build` et `npm run db:migrate`.
+- **`.env.local`** : généré par `npm run env:write` à partir des sorties CDK (`cdk-outputs.json`), non versionné, requis par `npm run dev`, `npm run build`, `npm run db:migrate` et `npm run db:seed`.
 - **Runtimes** : Node 24 (`.nvmrc`), Python 3.14 pour le solveur (`solver/.python-version`), `uv` installé.
 
 ## Development
@@ -35,6 +35,7 @@ npm run infra:synth    # synthèse CDK locale (bundle l'API et le solveur, sans 
 npm run infra:watch    # redéploie à chaud l'API et le solveur à chaque modification
 npm run db:generate    # génère une migration SQL (Drizzle) réécrite pour Aurora DSQL
 npm run db:migrate     # applique les migrations au stage courant
+npm run db:seed        # remplit le stage avec un service fictif (-- --reset pour remplacer les données)
 pre-commit run --all-files
 ```
 

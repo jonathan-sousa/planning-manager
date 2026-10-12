@@ -108,9 +108,11 @@ export const agentRequestInput = z
     path: ['endDate'],
     message: 'Fin antérieure au début',
   })
-  .refine((request) => (request.kind === 'WISH_SHIFT') === (request.shiftTypeId !== null), {
+  // An approved absence locks the cell with its absence code; a shift wish
+  // names the shift; a day-off wish has none.
+  .refine((request) => (request.kind === 'WISH_OFF') === (request.shiftTypeId === null), {
     path: ['shiftTypeId'],
-    message: 'Poste requis pour un souhait de poste, et seulement dans ce cas',
+    message: 'Requis, sauf pour un souhait de repos',
   });
 
 export const ruleSettingsInput = z.object({

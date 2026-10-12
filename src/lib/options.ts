@@ -28,6 +28,11 @@ export function useReferences(keep: { shiftTypeId?: string | null; agentId?: str
         (shift) => shift.kind === 'WORK' && (!shift.archived || shift.id === keep.shiftTypeId)
       )
       .map((shift) => ({ value: shift.id, label: `${shift.code} — ${shift.label}` })),
+    absenceOptions: shiftList
+      .filter(
+        (shift) => shift.kind !== 'WORK' && (!shift.archived || shift.id === keep.shiftTypeId)
+      )
+      .map((shift) => ({ value: shift.id, label: `${shift.code} — ${shift.label}` })),
     agentOptions: agentList
       .filter((agent) => agent.active || agent.id === keep.agentId)
       .map((agent) => ({ value: agent.id, label: `${agent.lastName} ${agent.firstName}` })),

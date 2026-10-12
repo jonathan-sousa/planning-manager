@@ -88,9 +88,8 @@ function AgentRequestForm({
         <form.AppField
           name="kind"
           listeners={{
-            // A shift is only meaningful for a shift wish.
-            onChange: ({ value }) =>
-              value !== 'WISH_SHIFT' && form.setFieldValue('shiftTypeId', null),
+            // The allowed codes depend on the kind: start over.
+            onChange: () => form.setFieldValue('shiftTypeId', null),
           }}
         >
           {(field) => <field.SelectField label="Type" options={optionsOf(requestKindLabels)} />}
@@ -108,13 +107,18 @@ function AgentRequestForm({
         <form.AppField name="endDate">
           {(field) => <field.TextField label="Au" type="date" />}
         </form.AppField>
-        <form.Subscribe selector={(state) => state.values.kind === 'WISH_SHIFT'}>
-          {(wishShift) =>
-            wishShift && (
-              <form.AppField name="shiftTypeId">
-                {(field) => (
-                  <field.SelectField label="Poste souhaité" options={refs.shiftOptions} nullable />
-                )}
+        <form.Subscribe selector={(state) => state.values.kind}>
+          {(kind) =>
+            kind !== 'WISH_OFF' && (
+              // Keyed by kind so the select is rebuilt with the matching options.
+              <form.AppField key={kind} name="shiftTypeId">
+                {(field) =>
+                  kind === 'WISH_SHIFT' ? (
+                    <field.SelectField label="Poste souhaité" options={refs.workShiftOptions} />
+                  ) : (
+                    <field.SelectField label="Code d'absence" options={refs.absenceOptions} />
+                  )
+                }
               </form.AppField>
             )
           }
