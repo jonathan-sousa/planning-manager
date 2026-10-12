@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { Duration } from 'aws-cdk-lib';
+import { Duration, type RemovalPolicy } from 'aws-cdk-lib';
 import {
   CorsHttpMethod,
   HttpApi,
@@ -10,6 +10,7 @@ import { HttpUserPoolAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import type { Auth } from './auth';
 import type { Database } from './database';
@@ -21,6 +22,7 @@ export interface ApiProps {
   readonly solver: Solver;
   /** Browser origins allowed to call the API. */
   readonly allowedOrigins?: string[];
+  readonly removalPolicy: RemovalPolicy;
 }
 
 const apiEntry = path.resolve(import.meta.dirname, '../../api/index.ts');
@@ -42,6 +44,10 @@ export class Api extends Construct {
       architecture: Architecture.ARM_64,
       memorySize: 512,
       timeout: Duration.seconds(30),
+      logGroup: new LogGroup(this, 'LogGroup', {
+        retention: RetentionDays.ONE_MONTH,
+        removalPolicy: props.removalPolicy,
+      }),
       environment: {
         DATABASE_ENDPOINT: props.database.cluster.clusterEndpoint,
         SOLVER_FUNCTION_NAME: props.solver.function.functionName,
@@ -49,8 +55,9 @@ export class Api extends Construct {
       bundling: {
         format: OutputFormat.ESM,
         mainFields: ['module', 'main'],
-        // Optional native/runtime-specific requires inside `pg`.
-        externalModules: ['pg-native', 'cloudflare:sockets'],
+        // AWS SDK v3 ships with the Node runtime; `pg-native` is an optional
+        // native binding `pg` probes for.
+        externalModules: ['@aws-sdk/*', '@smithy/*', 'pg-native'],
         // CommonJS dependencies bundled into ESM still call `require`.
         banner:
           "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);",

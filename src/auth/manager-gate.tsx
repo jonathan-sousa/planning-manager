@@ -1,12 +1,16 @@
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchAuthSession, signOut } from 'aws-amplify/auth';
+import { fetchAuthSession, signInWithRedirect, signOut } from 'aws-amplify/auth';
 
 const MANAGER_GROUP = 'MANAGERS';
 
 async function fetchGroups(): Promise<string[]> {
   const { tokens } = await fetchAuthSession();
-  const groups = tokens?.accessToken.payload['cognito:groups'];
+  if (!tokens) {
+    await signInWithRedirect();
+    throw new Error('Session expirée');
+  }
+  const groups = tokens.accessToken.payload['cognito:groups'];
   return Array.isArray(groups) ? groups.map(String) : [];
 }
 

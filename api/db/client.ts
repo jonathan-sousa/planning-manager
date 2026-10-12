@@ -7,14 +7,16 @@ function requireEnv(name: string): string {
   return value;
 }
 
-// One pool per Lambda execution environment, reused across warm invocations.
-// IAM token generation and TLS are handled by the DSQL connector.
+// One connection per Lambda execution environment (one invocation at a time),
+// reused while warm. IAM token generation and TLS are handled by the DSQL
+// connector; the short idle timeout avoids handing out sockets the server
+// closed while the sandbox was frozen.
 export const db = drizzle({
   connection: {
     host: requireEnv('DATABASE_ENDPOINT'),
     user: 'admin',
-    max: 2,
-    idleTimeoutMillis: 60_000,
+    max: 1,
+    idleTimeoutMillis: 10_000,
   },
   schema,
 });

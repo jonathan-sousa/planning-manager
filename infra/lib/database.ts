@@ -10,8 +10,10 @@ export interface DatabaseProps {
 }
 
 /**
- * Aurora DSQL cluster (PostgreSQL-compatible, serverless, no VPC) with a
- * daily AWS Backup plan. Schema migrations are applied by `npm run db:migrate`.
+ * Aurora DSQL cluster (PostgreSQL-compatible, serverless, no VPC). Production
+ * gets a daily AWS Backup plan; dev stages stay disposable (a backup vault
+ * cannot be deleted while it holds recovery points). Schema migrations are
+ * applied by `npm run db:migrate`.
  */
 export class Database extends Construct {
   readonly cluster: dsql.Cluster;
@@ -25,9 +27,11 @@ export class Database extends Construct {
       removalPolicy: props.removalPolicy,
     });
 
-    const plan = BackupPlan.daily35DayRetention(this, 'BackupPlan');
-    plan.addSelection('Cluster', {
-      resources: [BackupResource.fromArn(this.cluster.clusterArn)],
-    });
+    if (props.isProd) {
+      const plan = BackupPlan.daily35DayRetention(this, 'BackupPlan');
+      plan.addSelection('Cluster', {
+        resources: [BackupResource.fromArn(this.cluster.clusterArn)],
+      });
+    }
   }
 }

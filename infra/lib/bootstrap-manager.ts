@@ -1,5 +1,6 @@
 import type { IUserPool, UserPoolGroup } from 'aws-cdk-lib/aws-cognito';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import {
   AwsCustomResource,
   AwsCustomResourcePolicy,
@@ -43,6 +44,7 @@ export function bootstrapManager(
       }),
     ]),
     installLatestAwsSdk: false,
+    logRetention: RetentionDays.ONE_MONTH,
   });
 
   const addToGroup = new AwsCustomResource(scope, 'BootstrapManagerGroup', {
@@ -63,6 +65,7 @@ export function bootstrapManager(
       }),
     ]),
     installLatestAwsSdk: false,
+    logRetention: RetentionDays.ONE_MONTH,
   });
   addToGroup.node.addDependency(createUser, managersGroup);
 }
