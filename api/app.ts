@@ -3,13 +3,10 @@ import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { type Bindings, requireManager } from './auth';
+import { pgErrorCode } from './errors';
 import { db } from './db/client';
 import { grades } from './db/schema';
 import { checkSolverHealth } from './solver-client';
-
-function isPgError(error: unknown): error is Error & { code: string } {
-  return error instanceof Error && typeof (error as { code?: unknown }).code === 'string';
-}
 
 const gradeInput = z.object({
   code: z.string().trim().min(1).max(10),
@@ -22,7 +19,7 @@ const app = new Hono<{ Bindings: Bindings }>()
   .use('*', requireManager)
   .onError((error, c) => {
     // PostgreSQL unique_violation: the grade code is already taken.
-    if (isPgError(error) && error.code === '23505') {
+    if (pgErrorCode(error) === '23505') {
       return c.json({ error: 'Code déjà utilisé' }, 409);
     }
     console.error(error);
