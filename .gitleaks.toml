@@ -1,0 +1,17 @@
+title = "Baseline gitleaks config (extends defaults)"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow obvious non-secrets"
+paths = [
+  '''.*\.example$''',
+  '''.*\.sample$''',
+  '''.*test/fixtures/.*''',
+  '''.*tests?/data/.*''',
+  '''.*\.secrets\.baseline$''',
+]
+regexes = [
+  '''(?i)(example|sample|dummy|fake|test)[-_]?(key|token|secret|password)''',
+]
