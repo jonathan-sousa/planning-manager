@@ -18,13 +18,14 @@ pre-commit run --all-files
 
 ## Sandbox AWS
 
-`npx ampx sandbox` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui lance la sandbox (`npx ampx sandbox --profile jsconsulting-jsousa-dev`). Sans sandbox déployée, `amplify_outputs.json` n'existe pas, et ni `npm run dev` ni `npm run build` ne fonctionnent.
+`npx ampx sandbox` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui lance la sandbox (`npx ampx sandbox --profile jsconsulting-jsousa-dev`). `BOOTSTRAP_MANAGER_EMAIL` doit être défini (via `.envrc` / direnv), sinon `backend.ts` refuse de synthétiser. Il crée le premier manager du stage (`amplify/auth/bootstrap-manager.ts`). Sans sandbox déployée, `amplify_outputs.json` n'existe pas, et ni `npm run dev` ni `npm run build` ne fonctionnent.
 
 ## Structure
 
 ```text
 amplify/
   auth/resource.ts          Cognito, groupe MANAGERS
+  auth/bootstrap-manager.ts premier manager créé au déploiement (custom resource)
   data/resource.ts          schéma Amplify Data
   functions/solver/         Lambda Python (uv) : resource.ts, pyproject.toml, src/solver/, tests/
   backend.ts                overrides CDK : inscription fermée, PITR, grants

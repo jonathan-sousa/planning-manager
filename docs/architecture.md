@@ -58,13 +58,13 @@ Taille mesurée le 2026-10-12 : **191 Mo décompressés**, pour une limite Lambd
 
 ## Phases
 
-| Phase               | Contenu                                                                                                                                              |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 — Fondations      | Scaffold, auth `MANAGERS`, modèle `Grade`, spike solveur (`solverHealth`), dev-baseline, docs.                                                       |
-| 1 — Référentiels    | Grades, compétences, agents, postes (codes d'absence inclus), besoins de couverture, paramètres de règles, demandes d'agents, script de seed fictif. |
-| 2 — Grille manuelle | Grille agents × jours, saisie clavier, verrouillage, compteurs, validation en temps réel, statuts et publication, continuité entre mois.             |
-| 3 — Solveur         | `SolveRun`, proposition en diff, application protégée par version, diagnostic des trous de couverture.                                               |
-| 4 — Diffusion       | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations, Amplify Hosting et WAF.                                           |
+| Phase               | Contenu                                                                                                                                                                |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 — Fondations      | Scaffold, auth `MANAGERS` (premier manager créé au déploiement), modèle `Grade`, spike solveur (`solverHealth`), dev-baseline, docs.                                   |
+| 1 — Référentiels    | Grades, compétences, agents, postes (codes d'absence inclus), besoins de couverture, paramètres de règles, demandes d'agents, script de seed fictif.                   |
+| 2 — Grille manuelle | Grille agents × jours, saisie clavier, verrouillage, compteurs, validation en temps réel, statuts et publication, continuité entre mois.                               |
+| 3 — Solveur         | `SolveRun`, proposition en diff, application protégée par version, diagnostic des trous de couverture.                                                                 |
+| 4 — Diffusion       | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations, Amplify Hosting et WAF, emails Cognito via SES (le défaut est plafonné à ~50/jour). |
 
 ## Points ouverts
 
