@@ -19,6 +19,7 @@ const env = {
   VITE_AWS_REGION: stack.Region,
   VITE_USER_POOL_ID: stack.UserPoolId,
   VITE_USER_POOL_CLIENT_ID: stack.UserPoolClientId,
+  VITE_AUTH_DOMAIN: stack.AuthDomain,
   VITE_API_URL: stack.ApiUrl,
   DATABASE_ENDPOINT: stack.DatabaseEndpoint,
 };

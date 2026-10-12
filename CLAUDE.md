@@ -4,7 +4,7 @@ Contexte projet pour Claude Code. Le contexte métier et la conception sont dans
 
 ## En bref
 
-Planning mensuel du personnel paramédical d'un service d'urgences (hôpital public, FPH). SPA Vite + React + TanStack Router/Query + shadcn/ui ; backend AWS en CDK TypeScript (`eu-west-3`) : Cognito, API Gateway HTTP API + Lambda Hono, Aurora DSQL (PostgreSQL serverless) via Drizzle, solveur OR-Tools CP-SAT en Lambda Python.
+Planning mensuel du personnel paramédical d'un service d'urgences (hôpital public, FPH). SPA Vite + React + TanStack Router/Query + shadcn/ui ; backend AWS en CDK TypeScript (`eu-west-3`) : Cognito avec Managed Login (page de connexion hébergée), API Gateway HTTP API + Lambda Hono, Aurora DSQL (PostgreSQL serverless) via Drizzle, solveur OR-Tools CP-SAT en Lambda Python.
 
 ## Commandes
 
@@ -28,7 +28,7 @@ pre-commit run --all-files
 infra/                      app CDK (tsconfig.infra.json)
   bin/app.ts                une stack PlanningManager-<stage> ; stage via -c stage=…
   lib/stack.ts              assemble Auth, Database, Solver, Api ; sorties CloudFormation
-  lib/auth.ts               user pool (Essentials, inscription fermée), client SRP, groupe MANAGERS
+  lib/auth.ts               user pool (Essentials, inscription fermée), Managed Login (domaine Cognito, client OAuth code+PKCE, branding par défaut), groupe MANAGERS
   lib/bootstrap-manager.ts  premier manager créé au déploiement (custom resources)
   lib/database.ts           cluster Aurora DSQL + plan AWS Backup quotidien
   lib/api.ts                HTTP API + authorizer JWT Cognito → NodejsFunction (api/index.ts)
@@ -42,8 +42,9 @@ api/                        Hono (tsconfig.api.json, projet référencé par le 
 solver/                     Python (uv) : src/solver/handler.py, tests/
 scripts/                    write-env.ts (cdk-outputs.json → .env.local), db-migrate.ts
 src/                        frontend
-  main.tsx                  Amplify.configure(Auth seul), Authenticator FR, QueryClient, router
-  auth/                     garde d'accès au groupe MANAGERS (UI)
+  main.tsx                  Amplify.configure (Auth + OAuth), QueryClient, router
+  auth/auth-gate.tsx        redirige vers Managed Login (signInWithRedirect) tant qu'il n'y a pas de session
+  auth/manager-gate.tsx     « Accès refusé » hors du groupe MANAGERS (l'API refuse aussi)
   lib/api-client.ts         hc<AppType> avec le jeton d'accès Cognito ; unwrap()
   routes/                   routes file-based (routeTree.gen.ts est généré, ne pas éditer)
   components/ui/            shadcn (générés via `npx shadcn add`)
@@ -57,10 +58,11 @@ docs/                       architecture, modèle de domaine, règles de planifi
 - **DSQL** : collation `C` → trier les libellés côté application (`localeCompare('fr')`), jamais par `ORDER BY` sur du texte accentué. Écritures multi-lignes dans `db.transactionWithRetry` (OCC). Une transaction modifie au plus 3 000 lignes.
 - **Dates** : chaînes `YYYY-MM-DD`, heures `HH:mm`, durées en minutes calculées en heure de Paris. Pas d'aller-retour par un `Date` UTC.
 - **Données** : fictives uniquement tant que l'hôpital n'a pas validé l'hébergement. Aucun code d'absence qui révèle un motif médical.
+- **Authentification** : Cognito Managed Login ; `aws-amplify` ne sert qu'à la redirection OAuth et aux jetons. Pas de formulaire de connexion dans l'app, pas d'Amplify UI.
 - **Autorisations** : le JWT est validé par API Gateway, l'appartenance au groupe `MANAGERS` par `api/auth.ts`. Pas d'autorisation par propriétaire : les données du service sont partagées.
 - **Validation des règles** : une seule définition, en TypeScript (`src/lib/rules/`). Le solveur Python est testé contre les mêmes scénarios JSON (`fixtures/rule-scenarios/`).
 - **Taille du bundle solveur** : mesurer avec `npm run infra:synth` (`du -sh cdk.out/asset.*`) avant d'ajouter une dépendance Python ; limite Lambda 250 Mo décompressés. Le SDK AWS est exclu du bundle (fourni par le runtime).
-- **npm** : `npm audit` remonte des findings dans l'outillage de dev seulement (CLI `shadcn`, esbuild embarqué par `drizzle-kit`) ; la référence est `npm audit --omit=dev`, qui doit rester à 0. L'avertissement `ERESOLVE` sur `@xstate/react` vient d'Amplify UI (dépendance interne encore déclarée pour React ≤ 18) : sans effet, à ignorer tant qu'Amplify UI ne l'a pas corrigé.
+- **npm** : `npm audit` remonte des findings dans l'outillage de dev seulement (CLI `shadcn`, esbuild embarqué par `drizzle-kit`) ; la référence est `npm audit --omit=dev`, qui doit rester à 0.
 - **Shell** : les commandes Bash parallèles partagent le répertoire courant ; utiliser des chemins absolus plutôt que `cd`.
 
 ## Méthodologie

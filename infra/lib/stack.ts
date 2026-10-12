@@ -24,14 +24,24 @@ export class PlanningManagerStack extends Stack {
       );
     }
 
-    const auth = new Auth(this, 'Auth', { bootstrapManagerEmail, isProd, removalPolicy });
+    // Where the SPA runs: the Vite dev server until the app is hosted (phase 4).
+    const appOrigins = ['http://localhost:5173'];
+
+    const auth = new Auth(this, 'Auth', {
+      stage,
+      bootstrapManagerEmail,
+      appOrigins,
+      isProd,
+      removalPolicy,
+    });
     const database = new Database(this, 'Database', { stage, isProd, removalPolicy });
     const solver = new Solver(this, 'Solver', { database });
-    const api = new Api(this, 'Api', { auth, database, solver });
+    const api = new Api(this, 'Api', { auth, database, solver, allowedOrigins: appOrigins });
 
     new CfnOutput(this, 'Region', { value: this.region });
     new CfnOutput(this, 'UserPoolId', { value: auth.userPool.userPoolId });
     new CfnOutput(this, 'UserPoolClientId', { value: auth.userPoolClient.userPoolClientId });
+    new CfnOutput(this, 'AuthDomain', { value: auth.authDomain });
     new CfnOutput(this, 'ApiUrl', { value: api.httpApi.apiEndpoint });
     new CfnOutput(this, 'DatabaseEndpoint', { value: database.cluster.clusterEndpoint });
   }

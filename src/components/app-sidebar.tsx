@@ -1,6 +1,6 @@
-import { useAuthenticator } from '@aws-amplify/ui-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { fetchUserAttributes, signOut } from 'aws-amplify/auth';
 import { CalendarDays, House, LogOut, ShieldCheck } from 'lucide-react';
 import {
   Sidebar,
@@ -20,12 +20,15 @@ const navigation = [
 ] as const;
 
 export function AppSidebar() {
-  const { user, signOut } = useAuthenticator((context) => [context.user]);
   const queryClient = useQueryClient();
+  const { data: attributes } = useQuery({
+    queryKey: ['user-attributes'],
+    queryFn: fetchUserAttributes,
+  });
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     queryClient.clear();
-    signOut();
+    await signOut();
   };
 
   return (
@@ -63,9 +66,7 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="text-muted-foreground truncate px-2 text-xs">
-              {user.signInDetails?.loginId}
-            </div>
+            <div className="text-muted-foreground truncate px-2 text-xs">{attributes?.email}</div>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleSignOut}>
