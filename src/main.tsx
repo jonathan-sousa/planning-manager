@@ -6,12 +6,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { Amplify } from 'aws-amplify';
 import { I18n } from 'aws-amplify/utils';
-import outputs from '../amplify_outputs.json';
 import { ManagerGate } from './auth/manager-gate';
 import { routeTree } from './routeTree.gen';
 import './index.css';
 
-Amplify.configure(outputs);
+Amplify.configure({
+  Auth: {
+    Cognito: {
+      userPoolId: import.meta.env.VITE_USER_POOL_ID,
+      userPoolClientId: import.meta.env.VITE_USER_POOL_CLIENT_ID,
+    },
+  },
+});
 I18n.putVocabularies(translations);
 I18n.setLanguage('fr');
 

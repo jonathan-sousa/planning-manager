@@ -1,0 +1,4 @@
+# Copy to .envrc (git-ignored) and run `direnv allow`.
+# Inherits AWS_PROFILE from the parent JSConsulting .envrc.
+source_up
+export BOOTSTRAP_MANAGER_EMAIL=you@example.com

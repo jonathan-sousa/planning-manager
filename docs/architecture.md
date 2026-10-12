@@ -11,38 +11,60 @@
 
 ## Stack
 
-| Couche              | Choix                                                       | Raison                                                                                   |
-| ------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Frontend            | SPA Vite + React + TypeScript                               | Back-office entièrement authentifié, sans SEO : le SSR n'apporte rien.                   |
-| Routing             | TanStack Router (file-based, `src/routes/`)                 | Routes et search params typés.                                                           |
-| Données côté client | TanStack Query autour du client Amplify Data                | Cache, invalidation, mises à jour optimistes de la grille.                               |
-| UI                  | shadcn/ui, Tailwind CSS 4, Lucide                           | —                                                                                        |
-| Lint                | oxlint (template Vite officiel)                             | —                                                                                        |
-| Auth                | Cognito via Amplify Gen 2, `<Authenticator>` en français    | Inscription publique fermée au niveau du user pool (`allowAdminCreateUserOnly`).         |
-| Données             | Amplify Data (AppSync + DynamoDB), `eu-west-3`, PITR activé | Volume minuscule, serverless. Autorisation par groupe, données partagées entre managers. |
-| Solveur             | Lambda Python 3.14 ARM64 + OR-Tools CP-SAT, projet `uv`     | Référence pour le planning sous contraintes.                                             |
-| Tests               | Vitest (TS), pytest (Python), scénarios JSON partagés       | Voir « Un seul validateur » dans [scheduling-rules.md](scheduling-rules.md).             |
+| Couche              | Choix                                                                              | Raison                                                                                                                                    |
+| ------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend            | SPA Vite + React + TypeScript                                                      | Back-office entièrement authentifié, sans SEO : le SSR n'apporte rien.                                                                    |
+| Routing             | TanStack Router (file-based, `src/routes/`)                                        | Routes et search params typés.                                                                                                            |
+| Données côté client | TanStack Query autour du client Hono RPC (`hc<AppType>`)                           | Typage bout en bout sans codegen ; cache, invalidation, mises à jour optimistes.                                                          |
+| UI                  | shadcn/ui, Tailwind CSS 4, Lucide                                                  | —                                                                                                                                         |
+| Lint                | oxlint (template Vite officiel), ruff pour Python                                  | —                                                                                                                                         |
+| Infra               | AWS CDK TypeScript, une stack par stage                                            | Tout service AWS en L2, `cdk watch` avec hotswap Lambda. Amplify Gen 2 a été essayé puis abandonné : chaque besoin sortait de son modèle. |
+| Auth                | Cognito user pool (Essentials), `<Authenticator>` Amplify UI en français           | Inscription publique fermée (`AllowAdminCreateUserOnly`) ; premier manager créé au déploiement.                                           |
+| API                 | API Gateway HTTP API + authorizer JWT Cognito → une Lambda Node 24 ARM64 (Hono)    | 1 $/M requêtes, auth native ; l'appartenance au groupe est vérifiée dans l'app.                                                           |
+| Données             | Aurora DSQL (PostgreSQL distribué, serverless, sans VPC), Drizzle ORM, `eu-west-3` | Domaine relationnel, transactions jusqu'à 3 000 lignes (le diff du solveur devient atomique), 0 DPU au repos, free tier permanent.        |
+| Sauvegarde          | AWS Backup, plan quotidien, rétention 35 jours                                     | Sauvegardes complètes du cluster ; restauration vers un nouveau cluster.                                                                  |
+| Solveur             | Lambda Python 3.14 ARM64 + OR-Tools CP-SAT, projet `uv`, connecteur DSQL psycopg   | Référence pour le planning sous contraintes ; 6 Go, 90 s, sans relance automatique.                                                       |
+| Tests               | Vitest (TS), pytest (Python), scénarios JSON partagés                              | Voir « Un seul validateur » dans [scheduling-rules.md](scheduling-rules.md).                                                              |
 
 Versions : toujours la dernière stable, vérifiée sur le registre. Un écart doit être justifié par une incompatibilité constatée :
 
 - **Node 24** : Lambda ne propose pas encore `nodejs26.x`.
 - **Python 3.14** : runtime Lambda maximal, et OR-Tools ne publie pas de wheel au-delà de cp314.
-- **TypeScript 6.0** : version fixée par le template Vite officiel ; `ampx` embarque son propre TypeScript.
+- **TypeScript 6.0** : version fixée par le template Vite officiel.
+- **`@aws-cdk/aws-dsql-alpha`** : seul construct L2 pour DSQL ; API expérimentale, à surveiller à chaque mise à jour de CDK.
+
+Coût mensuel estimé en usage réel : 0 à 5 € (Cognito et CloudFront dans le free tier, HTTP API et Lambda dans le free tier, DSQL dans ou proche du free tier). La consommation DSQL se suit sur CloudWatch (`TotalDPU`).
+
+## Déploiement et stages
+
+`infra/bin/app.ts` instancie `PlanningManager-<stage>`. Le stage vient du contexte CDK (`-c stage=…`, défaut : nom d'utilisateur du poste). `prod` active `deletionProtection` et `RemovalPolicy.RETAIN` ; les autres stages se détruisent librement (sauf le coffre AWS Backup, à vider d'abord).
+
+`npm run infra:deploy` enchaîne `cdk deploy --outputs-file cdk-outputs.json`, `scripts/write-env.ts` (sorties → `.env.local`) et `scripts/db-migrate.ts` (migrations Drizzle, connexion `admin` par jeton IAM de l'appelant). Le frontend lit `VITE_USER_POOL_ID`, `VITE_USER_POOL_CLIENT_ID` et `VITE_API_URL`.
+
+Suivi possible : rôle de base de données dédié (`dsql:DbConnect` + `AWS IAM GRANT`) à la place d'`admin` pour les Lambdas, quand le schéma sera stable.
+
+## Base de données
+
+- Schéma dans `api/db/schema.ts` ; migrations générées par `npm run db:generate` (drizzle-kit puis `dsql-lint` : `CREATE INDEX ASYNC`, pas de `SERIAL`, FK ajoutées `NOT VALID`) et committées dans `api/db/migrations/`.
+- Le migrateur officiel applique un DDL par transaction et attend les index asynchrones.
+- Clés primaires UUID (`gen_random_uuid()`), horodatages `timestamptz` en UTC.
+- Concurrence optimiste : les écritures multi-lignes passent par `db.transactionWithRetry`.
+- Collation `C` : tri des libellés côté application.
 
 ## Solveur : bundling
 
-`amplify/functions/solver/resource.ts` bundle la fonction en local, sans Docker :
+`infra/lib/solver.ts` bundle la fonction en local, sans Docker :
 
-1. `uv export` produit les dépendances verrouillées.
-2. `uv pip install --python-platform aarch64-manylinux_2_28 --only-binary=:all:` les installe pour la plateforme Lambda.
+1. `uv export` produit les dépendances verrouillées, moins le SDK AWS (`boto3`, `botocore`, `s3transfer`, `jmespath`) que le runtime Lambda fournit déjà.
+2. `uv pip install --no-deps --python-platform aarch64-manylinux_2_28 --only-binary=:all:` les installe pour la plateforme Lambda.
 3. Le package `solver` est copié à côté.
 
-Taille mesurée le 2026-10-12 : **191 Mo décompressés**, pour une limite Lambda de 250 Mo. OR-Tools tire numpy, pandas et protobuf, et pandas pèse 43 Mo à lui seul. Il faut surveiller cette marge à chaque nouvelle dépendance ; au-delà de la limite, on passe à une image conteneur.
+Limite Lambda : 250 Mo décompressés. OR-Tools tire numpy, pandas (43 Mo) et protobuf ; le connecteur DSQL ajoute psycopg (24 Mo). Taille mesurée le 2026-10-12 : **217 Mo**. La taille courante se lit dans `cdk.out/` après `npm run infra:synth` ; au-delà de la limite, on passe à une image conteneur.
 
 ## Flux solveur (phase 3)
 
-1. Le manager lance l'optimisation : le client crée un `SolveRun` (`PENDING`) et appelle `solvePlanning(solveRunId)`, une mutation asynchrone (`a.handler.function(solver).async()`).
-2. La Lambda est configurée avec un timeout de 90 s, `retryAttempts: 0`, 6 Go de RAM et un seed fixé. Elle lit les entrées dans DynamoDB, puis :
+1. Le manager lance l'optimisation : `POST /solve-runs`. L'API crée le `SolveRun` (`PENDING`) et invoque la Lambda solveur en asynchrone (`InvocationType=Event`).
+2. Le solveur (timeout 90 s, pas de relance, 6 Go, seed fixé) lit le mois dans DSQL, puis :
    - fait un présolve sur les seules cellules fixées ;
    - construit le modèle `x[agent, jour, poste]` ;
    - optimise de façon lexicographique : d'abord la couverture, puis le reste ;
@@ -50,21 +72,18 @@ Taille mesurée le 2026-10-12 : **191 Mo décompressés**, pour une limite Lambd
 
    Toute exception passe le run en `FAILED`.
 
-3. Le client interroge le `SolveRun` à intervalles réguliers : les écritures DynamoDB directes ne déclenchent pas les subscriptions AppSync. Il affiche ensuite la proposition en diff, avec les violations recalculées côté client.
-4. `applySolveRun(solveRunId)` applique la proposition :
-   - refus si `Planning.version` a changé depuis le calcul ;
-   - écriture par `BatchWriteItem` en lots de 25, avec relance des `UnprocessedItems` ;
-   - attributs gérés par Amplify posés : `__typename`, `createdAt`, `updatedAt`.
+3. Le client interroge `GET /solve-runs/{id}` à intervalles réguliers, puis affiche la proposition en diff, avec les violations recalculées côté client.
+4. `POST /solve-runs/{id}/apply` applique la proposition dans **une seule transaction** : vérification de `Planning.version`, écriture du diff (≤ 3 000 lignes), incrément de version. Un conflit de version renvoie 409.
 
 ## Phases
 
-| Phase               | Contenu                                                                                                                                                                |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 — Fondations      | Scaffold, auth `MANAGERS` (premier manager créé au déploiement), modèle `Grade`, spike solveur (`solverHealth`), dev-baseline, docs.                                   |
-| 1 — Référentiels    | Grades, compétences, agents, postes (codes d'absence inclus), besoins de couverture, paramètres de règles, demandes d'agents, script de seed fictif.                   |
-| 2 — Grille manuelle | Grille agents × jours, saisie clavier, verrouillage, compteurs, validation en temps réel, statuts et publication, continuité entre mois.                               |
-| 3 — Solveur         | `SolveRun`, proposition en diff, application protégée par version, diagnostic des trous de couverture.                                                                 |
-| 4 — Diffusion       | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations, Amplify Hosting et WAF, emails Cognito via SES (le défaut est plafonné à ~50/jour). |
+| Phase               | Contenu                                                                                                                                                           |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 — Fondations      | Scaffold, infra CDK, auth `MANAGERS` (premier manager créé au déploiement), table `grades`, santé base + solveur, dev-baseline, docs.                             |
+| 1 — Référentiels    | Grades, compétences, agents, postes (codes d'absence inclus), besoins de couverture, paramètres de règles, demandes d'agents, script de seed fictif.              |
+| 2 — Grille manuelle | Grille agents × jours, saisie clavier, verrouillage, compteurs, validation en temps réel, statuts et publication, continuité entre mois.                          |
+| 3 — Solveur         | `SolveRun`, proposition en diff, application transactionnelle protégée par version, diagnostic des trous de couverture.                                           |
+| 4 — Diffusion       | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations, hébergement S3 + CloudFront (+ WAF), emails Cognito via SES (défaut ~50/jour). |
 
 ## Points ouverts
 

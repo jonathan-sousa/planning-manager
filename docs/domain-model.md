@@ -1,8 +1,8 @@
 # Modèle de domaine
 
-Toutes les entités Amplify Data sont autorisées au groupe `MANAGERS` (`ADMINS` s'ajoutera en phase 4). Il n'y a pas d'autorisation par propriétaire : les données du service sont partagées entre ses managers.
+Tables Aurora DSQL définies dans `api/db/schema.ts` (Drizzle). L'API n'est accessible qu'au groupe `MANAGERS` (`ADMINS` s'ajoutera en phase 4). Il n'y a pas d'autorisation par propriétaire : les données du service sont partagées entre ses managers.
 
-> État : seul `Grade` existe (phase 0). Le reste arrive en phase 1 et au-delà.
+> État : seule la table `grades` existe (phase 0). Le reste arrive en phase 1 et au-delà. Les noms ci-dessous sont ceux des entités ; les tables sont en `snake_case` pluriel.
 
 | Modèle             | Champs clés                                                                                                                                                                                                                                     | Notes                                                                                                                                            |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -23,6 +23,5 @@ Toutes les entités Amplify Data sont autorisées au groupe `MANAGERS` (`ADMINS`
 
 - **Dates et heures** : dates en `YYYY-MM-DD`, heures en `HH:mm`, durées en minutes calculées en heure de Paris (les nuits de changement d'heure font 11h ou 13h). Jamais d'aller-retour par un `Date` UTC.
 - **Minimisation RGPD** : aucun code révélant un motif médical (`ABS` générique, pas `MAL`).
-- **Écritures directes du solveur** dans les tables Amplify :
-  - poser `__typename`, `createdAt` et `updatedAt` (ISO) ;
-  - écrire le JSON en Map DynamoDB.
+- **Identifiants** : UUID aléatoires (`gen_random_uuid()`), jamais de séquence monotone (répartition des écritures DSQL). Les identifiants composites du tableau (`[agentId, date]`) deviennent des contraintes d'unicité.
+- **Écritures du solveur** : via SQL dans une transaction unique (≤ 3 000 lignes), avec vérification de `plannings.version` dans la même transaction.
