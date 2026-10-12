@@ -1,73 +1,36 @@
 # Dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+node_modules
 
 # Build
-/build
-/.next/
-/out/
+dist
+.tanstack
 *.tsbuildinfo
-next-env.d.ts
 
 # Environment
 .env*
 !.env.example
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+*.local
 
 # Logs
-logs/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# Testing
-/coverage
-cypress/videos
-cypress/screenshots
-e2e-results/
-
-# OS & Editors
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/*
-!.vscode/settings.json
-!.vscode/extensions.json
-!.vscode/launch.json
-!.vscode/tasks.json
-*.swp
-*.swo
-*~
-*.pem
-
-# Claude & Cursor
-.claude/settings.local.json
 
 # Amplify
-.amplify/
-amplify_outputs.json
+.amplify
+amplify_outputs*
 amplifyconfiguration*
-amplify-backup*
-amplify-build-config.json
-amplify-gradle-config.json
-amplifytools.xcconfig
 
-# Vercel
-.vercel
+# Python (solver)
+.venv
+__pycache__
+.pytest_cache
+.ruff_cache
 
-# Misc
-pids/
-*.pid
-*.seed
-*.pid.lock
+# Claude Code (per-developer settings)
+.claude/settings.local.json
+
+# Editors & OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.sw?

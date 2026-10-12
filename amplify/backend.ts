@@ -1,16 +1,18 @@
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
+import { solver } from './functions/solver/resource';
 
-/**
- * Backend configuration - Planning Manager
- *
- * Last updated: 2025-11-18
- * Backend version: 1.18.0
- *
- * @see https://docs.amplify.aws/react/build-a-backend/
- */
-defineBackend({
+const backend = defineBackend({
   auth,
   data,
+  solver,
 });
+
+backend.auth.resources.cfnResources.cfnUserPool.adminCreateUserConfig = {
+  allowAdminCreateUserOnly: true,
+};
+
+for (const table of Object.values(backend.data.resources.cfnResources.amplifyDynamoDbTables)) {
+  table.pointInTimeRecoveryEnabled = true;
+}

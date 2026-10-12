@@ -1,151 +1,51 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Contexte projet pour Claude Code. Le contexte métier et la conception sont dans `docs/` : commencer par `docs/architecture.md`.
 
-## Project Overview
+## En bref
 
-Planning Manager - Application de gestion de plannings (shifts) pour managers avec règles complexes et optimisation automatique.
+Planning mensuel du personnel paramédical d'un service d'urgences (hôpital public, FPH). SPA Vite + React + TanStack Router/Query + shadcn/ui, backend AWS Amplify Gen 2 (Cognito, AppSync, DynamoDB, `eu-west-3`), solveur OR-Tools CP-SAT en Lambda Python.
 
-## Tech Stack
-
-- **Frontend**: Next.js 15+ (App Router), React 19, TypeScript
-- **Backend**: AWS Amplify Gen 2, AWS Cognito (auth), DynamoDB
-- **UI Components**: shadcn/ui, Radix UI, Lucide React (icons)
-- **Styling**: Tailwind CSS v4
-- **Validation**: Zod
-- **State Management**: React Context API
-- **Node**: v24.11+ (minimum requis: v20.9.0)
-
-## Commands
+## Commandes
 
 ```bash
-# Development
-npm run dev          # Démarre le serveur de développement Next.js
-
-# AWS Amplify
-npx ampx sandbox     # Lance l'environnement Amplify sandbox local
-npx ampx generate outputs --branch main --app-id dky4b7m7ksc1p  # Génère les types Amplify depuis le backend déployé
-
-# Build & Deploy
-npm run build        # Build de production
-npm run lint         # Vérifier les erreurs ESLint
-npm run lint:fix     # Corriger automatiquement les erreurs ESLint
-npm run type-check   # Vérifier les types TypeScript
-npm run check        # Vérification complète (lint + types + build)
-npm run check:fast   # Vérification rapide (lint + types, sans build)
+npm run dev            # Vite, http://localhost:5173 (nécessite amplify_outputs.json)
+npm run check          # lint (oxlint) + types + tests + build
+npm run test           # Vitest
+npm run solver:test    # pytest du solveur (uv)
+pre-commit run --all-files
 ```
 
-## Vérification avant Push/Deploy
+## Sandbox AWS
 
-**IMPORTANT**: Pour éviter les erreurs de déploiement, toujours exécuter avant de push :
+`npx ampx sandbox` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui lance la sandbox (`npx ampx sandbox --profile jsconsulting-jsousa-dev`). Sans sandbox déployée, `amplify_outputs.json` n'existe pas, et ni `npm run dev` ni `npm run build` ne fonctionnent.
 
-```bash
-npm run check:fast   # Vérification rapide recommandée
-# ou
-npm run check        # Vérification complète avec build
+## Structure
+
+```text
+amplify/
+  auth/resource.ts          Cognito, groupe MANAGERS
+  data/resource.ts          schéma Amplify Data
+  functions/solver/         Lambda Python (uv) : resource.ts, pyproject.toml, src/solver/, tests/
+  backend.ts                overrides CDK : inscription fermée, PITR, grants
+src/
+  main.tsx                  Amplify.configure, Authenticator, QueryClient, router
+  auth/                     garde d'accès au groupe MANAGERS
+  routes/                   routes file-based (routeTree.gen.ts est généré, ne pas éditer)
+  components/ui/            shadcn (générés via `npx shadcn add`)
+  lib/                      client Amplify Data, utilitaires
+docs/                       architecture, modèle de domaine, règles de planification
 ```
 
-Un hook Git pre-push est configuré pour automatiser ces vérifications.
+## Conventions
 
-## Architecture
+- **Versions** : toujours la dernière stable, vérifiée sur le registre (`npm view`, PyPI). Ne jamais se fier à la mémoire. Un écart se justifie par une incompatibilité constatée et se documente dans `docs/architecture.md`.
+- **Dates** : chaînes `YYYY-MM-DD`, heures `HH:mm`, durées en minutes calculées en heure de Paris. Pas d'aller-retour par un `Date` UTC.
+- **Données** : fictives uniquement tant que l'hôpital n'a pas validé l'hébergement. Aucun code d'absence qui révèle un motif médical.
+- **Autorisations** : par groupe (`allow.groups(['MANAGERS'])`), pas par propriétaire.
+- **Validation des règles** : une seule définition, en TypeScript (`src/lib/rules/`). Le solveur Python est testé contre les mêmes scénarios JSON (`fixtures/rule-scenarios/`).
+- **Taille du bundle solveur** : 191 Mo décompressés pour une limite Lambda de 250 Mo. Mesurer avant d'ajouter une dépendance Python.
 
-```
-/app
-  /(auth)           # Routes protégées par authentification
-    /dashboard      # Tableau de bord principal
-    /planning       # Calendrier mensuel principal
-    /rules          # Gestion des règles de planning  
-    /employees      # Gestion des employés
-    /preferences    # Préférences utilisateur
-    /account        # Profil utilisateur
-    /admin          # Section administration
-  /components       # Composants spécifiques à l'app
-    ConfigureAmplify.tsx  # Configuration Amplify côté client
-  /providers        # Providers React
-    AmplifyProvider.tsx   # Provider Amplify avec auth
-/lib
-  /contexts         # Contextes React globaux
-    UserContext.tsx # Contexte utilisateur avec persistance
-  /hooks           # Custom hooks
-    useUserProfile.ts  # Hook pour profil et préférences
-  /types           # Types TypeScript
-  /validators      # Schémas Zod de validation
-/components
-  /ui              # Composants UI réutilisables (shadcn/ui)
-  /calendar        # Composants du calendrier
-  user-menu.tsx    # Menu utilisateur avec déconnexion
-  app-sidebar.tsx  # Sidebar de navigation principale
-/amplify           # Configuration AWS Amplify Gen 2
-  /auth            # Configuration Cognito
-  /data            # Schéma DynamoDB (UserProfile, UserPreferences, ActivityLog)
-  /backend         # Configuration backend
-```
+## Méthodologie
 
-## Fonctionnalités Principales
-
-1. **Calendrier Mensuel**: Grille employés x jours avec affectations
-2. **Gestion des Règles**: Système de règles configurables (repos min, heures max, etc.)
-3. **Optimisation Auto**: Remplissage automatique selon règles et contraintes
-4. **Verrouillage/Forçage**: Possibilité de verrouiller ou forcer des affectations
-5. **Persistance DynamoDB**: Synchronisation multi-appareils des données utilisateur
-6. **Interface Moderne**: Sidebar navigation, thème sombre/clair, composants shadcn/ui
-
-## Types Principaux
-
-### Types Métier
-- `Employee`: Employé avec positions et restrictions
-- `Shift`: Affectation employé/poste sur une date
-- `Planning`: Planning mensuel contenant les shifts
-- `PlanningRule`: Règle de gestion configurable
-
-### Types Amplify Data (DynamoDB)
-- `UserProfile`: Profil utilisateur complet
-- `UserPreferences`: Préférences d'interface et notifications
-- `ActivityLog`: Historique des actions utilisateur
-
-## Notes de Développement
-
-- Back-office uniquement (pas de SEO nécessaire)
-- 5-20 employés par planning
-- Desktop-first, responsive mobile
-- Authentification obligatoire via Cognito
-- Protection WAF activée sur CloudFront
-- Synchronisation temps réel avec DynamoDB
-- Hook pre-push Git pour validation automatique
-
-## Méthodologie de Résolution de Problèmes
-
-### Principe Fondamental
-**TOUJOURS** consulter la documentation officielle via MCP avant d'implémenter des solutions personnalisées.
-
-### Processus Obligatoire
-1. **Identifier le problème** clairement et précisément
-2. **Consulter la documentation officielle** via `mcp__context7__get-library-docs` avec des termes spécifiques
-3. **Rechercher des exemples officiels** dans la documentation
-4. **Appliquer la solution standard** trouvée dans la documentation
-5. **Éviter les solutions personnalisées** sauf si aucune solution officielle n'existe
-
-### Technologies Concernées
-- **AWS Amplify** : Toujours vérifier les patterns officiels pour l'authentification, les imports, la configuration
-- **Next.js** : Consulter la doc pour les patterns App Router, SSR, build issues
-- **TailwindCSS** : Vérifier les classes et configurations officielles
-- **TypeScript** : Types officiels et configurations recommandées
-- **Toute technologie** avec documentation MCP disponible
-
-### Questions à se Poser
-- "Cette problématique existe-t-elle dans la documentation officielle ?"
-- "Ai-je consulté MCP avant de développer une solution personnalisée ?"
-- "Cette approche est-elle standard ou inventée ?"
-- "Y a-t-il un exemple officiel qui traite ce cas d'usage ?"
-
-### Exemple Concret
-**Problème** : Import d'`amplify_outputs.json` qui échoue au build Next.js
-**❌ Approche incorrecte** : Créer des imports dynamiques personnalisés, hooks custom
-**✅ Approche correcte** : Consulter doc AWS → Trouver l'exemple officiel `ConfigureAmplifyClientSide` → Appliquer
-
-### Avantages de cette Méthodologie
-- Solutions éprouvées et maintenues
-- Compatibilité garantie avec les versions futures
-- Moins de bugs et d'effets de bord imprévisibles  
-- Code plus maintenable et conforme aux standards
-- Gain de temps significatif sur le long terme
+Avant d'intégrer une brique Amplify, TanStack, shadcn ou OR-Tools, consulter la doc officielle via context7 (`mcp__plugin_context7_context7__resolve-library-id` puis `mcp__plugin_context7_context7__query-docs`) et appliquer le pattern officiel plutôt qu'une solution maison.

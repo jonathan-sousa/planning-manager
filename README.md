@@ -1,90 +1,38 @@
 # Planning Manager
 
-Application de gestion de plannings (shifts) pour managers avec règles complexes et optimisation automatique.
+Outil de construction et d'optimisation des plannings mensuels du personnel paramédical d'un service d'urgences (hôpital public, roulement jour/nuit en 12h). Back-office réservé aux cadres de santé.
 
-## Stack Technique
-
-- **Frontend**: Next.js 15.5.2 (App Router), React 19.1.1, TypeScript
-- **Backend**: AWS Amplify Gen 2, AWS Cognito, DynamoDB
-- **UI Components**: shadcn/ui, Radix UI
-- **Styling**: Tailwind CSS v4
-- **Validation**: Zod
-- **State Management**: React Context API
-
-## Installation
+## Quick start
 
 ```bash
 npm install
+npx ampx sandbox --profile jsconsulting-jsousa-dev   # déploie le backend perso et génère amplify_outputs.json
+npm run dev                                          # http://localhost:5173
 ```
 
-## Développement
+Le premier compte se crée dans la console Cognito (inscription publique désactivée), puis s'ajoute au groupe `MANAGERS`.
+
+## Usage
+
+Phase 0 (fondations) : connexion, page d'accueil avec vérification du solveur, gestion des grades. La feuille de route complète est dans [`docs/architecture.md`](docs/architecture.md).
+
+## Configuration
+
+- **AWS** : compte JS Consulting, région `eu-west-3`. La sandbox écrit dans AWS : elle se lance avec un profil disposant des droits d'écriture.
+- **`amplify_outputs.json`** : généré par la sandbox, non versionné, requis par `npm run dev` et `npm run build`.
+- **Runtimes** : Node 24 (`.nvmrc`), Python 3.14 pour le solveur (`amplify/functions/solver/.python-version`), `uv` installé.
+
+## Development
 
 ```bash
-# Serveur de développement
-npm run dev
-
-# Environnement Amplify sandbox
-npx ampx sandbox
-
-# Générer les types TypeScript depuis le schéma Amplify
-npx ampx generate outputs --branch main --app-id dky4b7m7ksc1p
+npm run check        # lint + types + tests + build
+npm run test         # Vitest
+npm run solver:test  # pytest du solveur
+pre-commit run --all-files
 ```
 
-## Build et Déploiement
+Documentation : [`docs/`](docs/README.md).
 
-```bash
-# Build de production
-npm run build
+## License
 
-# Vérifications avant déploiement (lint + types)
-npm run check:fast
-
-# Linting
-npm run lint
-
-# Vérification des types TypeScript
-npm run type-check
-```
-
-## Fonctionnalités
-
-- 🗓️ **Calendrier mensuel** avec grille employés × jours
-- 📋 **Gestion des règles** de planning configurables
-- 🤖 **Optimisation automatique** selon contraintes
-- 🔒 **Verrouillage/forçage** d'affectations spécifiques
-- 🔐 **Authentification sécurisée** via AWS Cognito
-- 💾 **Persistance des données** utilisateur avec synchronisation multi-appareils
-- 👤 **Profils utilisateurs** avec préférences personnalisables
-- 🎨 **Interface moderne** avec sidebar navigation et thème sombre/clair
-- 🛡️ **Protection WAF** pour sécurité renforcée
-
-## Architecture
-
-```
-/app
-├── /(auth)              # Routes protégées (dashboard, planning, etc.)
-├── /components          # Composants spécifiques à l'app
-├── /providers          # Providers React (Amplify, Theme, etc.)
-└── layout.tsx          # Layout principal avec providers
-
-/components
-├── /ui                 # Composants UI réutilisables (shadcn/ui)
-├── /calendar           # Composants du calendrier
-└── /user-menu.tsx      # Menu utilisateur avec déconnexion
-
-/lib
-├── /contexts           # Contextes React (UserContext)
-├── /hooks             # Custom hooks (useUserProfile)
-├── /types             # Types TypeScript
-└── /validators        # Schémas Zod de validation
-
-/amplify
-├── /auth              # Configuration Cognito
-├── /data              # Schéma de données (UserProfile, UserPreferences, etc.)
-└── /backend           # Configuration backend Amplify
-```
-
-## Accès
-
-- **URL Production**: https://planning-manager.lab.jonathan-sousa.com
-- **Protection**: AWS WAF avec règles managées
+Propriétaire — voir [`LICENSE`](LICENSE).
