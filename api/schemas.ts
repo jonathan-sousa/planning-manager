@@ -5,13 +5,16 @@ import { DAY_KINDS, HOURS_REGIMES, NIGHT_MODES, REQUEST_KINDS, SHIFT_KINDS } fro
 
 z.config(z.locales.fr());
 
-const code = z.string().trim().min(1).max(10);
-const label = z.string().trim().min(1).max(100);
-const isoDate = z.iso.date();
+const code = z.string().trim().min(1, 'Requis').max(10);
+const label = z.string().trim().min(1, 'Requis').max(100);
+const isoDate = z.iso.date({ error: 'Date requise' });
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Heure au format HH:mm');
-const count = z.int().min(0).max(50);
-const minutes = (max: number) => z.int().min(0).max(max);
-const weight = z.int().min(0).max(100);
+const integer = () => z.int({ error: 'Nombre entier requis' });
+const count = integer().min(0).max(50);
+const minutes = (max: number) => z.int({ error: 'Durée requise' }).min(0).max(max);
+const weight = integer().min(0).max(100);
+/** Reference to another row, chosen in a select. */
+const ref = z.uuid({ error: 'Choix requis' });
 
 export const idParam = z.object({ id: z.uuid() });
 
@@ -23,9 +26,9 @@ export const agentInput = z
   .object({
     firstName: label,
     lastName: label,
-    gradeId: z.uuid(),
-    skillIds: z.array(z.uuid()).transform((ids) => [...new Set(ids)]),
-    workTimeRatio: z.int().min(10).max(100),
+    gradeId: ref,
+    skillIds: z.array(ref).transform((ids) => [...new Set(ids)]),
+    workTimeRatio: integer().min(10).max(100),
     nightMode: z.enum(NIGHT_MODES),
     hoursRegime: z.enum(HOURS_REGIMES),
     active: z.boolean(),
@@ -50,23 +53,31 @@ export const shiftTypeInput = z
     color: z.string().regex(/^#[0-9a-f]{6}$/i, 'Couleur au format #rrggbb'),
     archived: z.boolean(),
   })
-  .superRefine((shift, ctx) => {
-    const timed = shift.kind === 'WORK';
-    for (const field of ['startTime', 'endTime'] as const) {
-      if (timed && !shift[field]) {
-        ctx.addIssue({ code: 'custom', path: [field], message: 'Requis pour un poste travaillé' });
+  .superRefine(
+    (shift, ctx) => {
+      const timed = shift.kind === 'WORK';
+      for (const field of ['startTime', 'endTime'] as const) {
+        if (timed && !shift[field]) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [field],
+            message: 'Requis pour un poste travaillé',
+          });
+        }
+        if (!timed && shift[field]) {
+          ctx.addIssue({ code: 'custom', path: [field], message: 'Réservé aux postes travaillés' });
+        }
       }
-      if (!timed && shift[field]) {
-        ctx.addIssue({ code: 'custom', path: [field], message: 'Réservé aux postes travaillés' });
-      }
-    }
-  });
+      // Also when other fields are invalid, so that every error shows at once.
+    },
+    { when: () => true }
+  );
 
 export const coverageNeedInput = z
   .object({
-    shiftTypeId: z.uuid(),
-    gradeId: z.uuid(),
-    skillId: z.uuid().nullable(),
+    shiftTypeId: ref,
+    gradeId: ref,
+    skillId: ref.nullable(),
     dayKind: z.enum(DAY_KINDS),
     minCount: count,
     targetCount: count.nullable(),
@@ -78,19 +89,19 @@ export const coverageNeedInput = z
 
 export const coverageOverrideInput = z.object({
   date: isoDate,
-  shiftTypeId: z.uuid(),
-  gradeId: z.uuid(),
-  skillId: z.uuid().nullable(),
+  shiftTypeId: ref,
+  gradeId: ref,
+  skillId: ref.nullable(),
   minCount: count,
 });
 
 export const agentRequestInput = z
   .object({
-    agentId: z.uuid(),
+    agentId: ref,
     startDate: isoDate,
     endDate: isoDate,
     kind: z.enum(REQUEST_KINDS),
-    shiftTypeId: z.uuid().nullable(),
+    shiftTypeId: ref.nullable(),
     comment: z.string().trim().max(500).nullable(),
   })
   .refine((request) => request.endDate >= request.startDate, {
@@ -109,12 +120,12 @@ export const ruleSettingsInput = z.object({
   minBreakMinutes: minutes(120),
   maxWeeklyMinutes: minutes(7 * 24 * 60),
   minWeeklyRestMinutes: minutes(7 * 24 * 60),
-  fortnightMinRestDays: z.int().min(0).max(14),
+  fortnightMinRestDays: integer().min(0).max(14),
   fortnightAnchorDate: isoDate.refine(
     (date) => new Date(`${date}T00:00:00Z`).getUTCDay() === 1,
     'Doit être un lundi'
   ),
-  maxConsecutiveWorkDays: z.int().min(1).max(14),
+  maxConsecutiveWorkDays: integer().min(1).max(14),
   restDayExcludesPreviousNight: z.boolean(),
   monthlyHoursToleranceMinutes: minutes(100 * 60),
   hoursDeviationWeight: weight,

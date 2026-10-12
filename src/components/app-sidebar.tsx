@@ -1,13 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { fetchAuthSession, signOut } from 'aws-amplify/auth';
-import { CalendarDays, House, LogOut, ShieldCheck } from 'lucide-react';
+import {
+  Award,
+  CalendarClock,
+  CalendarDays,
+  CalendarX,
+  Clock,
+  House,
+  LogOut,
+  MessageSquare,
+  Scale,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -15,8 +28,25 @@ import {
 } from '@/components/ui/sidebar';
 
 const navigation = [
-  { to: '/', label: 'Accueil', icon: House },
-  { to: '/grades', label: 'Grades', icon: ShieldCheck },
+  { label: undefined, items: [{ to: '/', label: 'Accueil', icon: House }] },
+  {
+    label: 'Référentiels',
+    items: [
+      { to: '/agents', label: 'Agents', icon: Users },
+      { to: '/grades', label: 'Grades', icon: ShieldCheck },
+      { to: '/skills', label: 'Compétences', icon: Award },
+      { to: '/shift-types', label: 'Postes', icon: Clock },
+    ],
+  },
+  {
+    label: 'Planification',
+    items: [
+      { to: '/coverage-needs', label: 'Besoins', icon: CalendarClock },
+      { to: '/coverage-overrides', label: 'Exceptions', icon: CalendarX },
+      { to: '/agent-requests', label: 'Demandes', icon: MessageSquare },
+      { to: '/rule-settings', label: 'Règles', icon: Scale },
+    ],
+  },
 ] as const;
 
 export function AppSidebar() {
@@ -37,28 +67,31 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigation.map(({ to, label, icon: Icon }) => (
-                <SidebarMenuItem key={to}>
-                  <SidebarMenuButton
-                    render={
-                      <Link
-                        to={to}
-                        activeOptions={{ exact: true }}
-                        activeProps={{ 'data-active': true }}
-                      />
-                    }
-                  >
-                    <Icon />
-                    <span>{label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {navigation.map((group) => (
+          <SidebarGroup key={group.label ?? 'main'}>
+            {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map(({ to, label, icon: Icon }) => (
+                  <SidebarMenuItem key={to}>
+                    <SidebarMenuButton
+                      render={
+                        <Link
+                          to={to}
+                          activeOptions={{ exact: true }}
+                          activeProps={{ 'data-active': true }}
+                        />
+                      }
+                    >
+                      <Icon />
+                      <span>{label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

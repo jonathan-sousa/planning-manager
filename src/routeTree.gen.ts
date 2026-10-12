@@ -10,11 +10,38 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AgentRequestsRouteImport } from './routes/agent-requests'
+import { Route as AgentsRouteImport } from './routes/agents'
+import { Route as CoverageNeedsRouteImport } from './routes/coverage-needs'
+import { Route as CoverageOverridesRouteImport } from './routes/coverage-overrides'
 import { Route as GradesRouteImport } from './routes/grades'
+import { Route as RuleSettingsRouteImport } from './routes/rule-settings'
+import { Route as ShiftTypesRouteImport } from './routes/shift-types'
+import { Route as SkillsRouteImport } from './routes/skills'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentRequestsRoute = AgentRequestsRouteImport.update({
+  id: '/agent-requests',
+  path: '/agent-requests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentsRoute = AgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoverageNeedsRoute = CoverageNeedsRouteImport.update({
+  id: '/coverage-needs',
+  path: '/coverage-needs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoverageOverridesRoute = CoverageOverridesRouteImport.update({
+  id: '/coverage-overrides',
+  path: '/coverage-overrides',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GradesRoute = GradesRouteImport.update({
@@ -22,31 +49,102 @@ const GradesRoute = GradesRouteImport.update({
   path: '/grades',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RuleSettingsRoute = RuleSettingsRouteImport.update({
+  id: '/rule-settings',
+  path: '/rule-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShiftTypesRoute = ShiftTypesRouteImport.update({
+  id: '/shift-types',
+  path: '/shift-types',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SkillsRoute = SkillsRouteImport.update({
+  id: '/skills',
+  path: '/skills',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agent-requests': typeof AgentRequestsRoute
+  '/agents': typeof AgentsRoute
+  '/coverage-needs': typeof CoverageNeedsRoute
+  '/coverage-overrides': typeof CoverageOverridesRoute
   '/grades': typeof GradesRoute
+  '/rule-settings': typeof RuleSettingsRoute
+  '/shift-types': typeof ShiftTypesRoute
+  '/skills': typeof SkillsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agent-requests': typeof AgentRequestsRoute
+  '/agents': typeof AgentsRoute
+  '/coverage-needs': typeof CoverageNeedsRoute
+  '/coverage-overrides': typeof CoverageOverridesRoute
   '/grades': typeof GradesRoute
+  '/rule-settings': typeof RuleSettingsRoute
+  '/shift-types': typeof ShiftTypesRoute
+  '/skills': typeof SkillsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agent-requests': typeof AgentRequestsRoute
+  '/agents': typeof AgentsRoute
+  '/coverage-needs': typeof CoverageNeedsRoute
+  '/coverage-overrides': typeof CoverageOverridesRoute
   '/grades': typeof GradesRoute
+  '/rule-settings': typeof RuleSettingsRoute
+  '/shift-types': typeof ShiftTypesRoute
+  '/skills': typeof SkillsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/grades'
+  fullPaths:
+    | '/'
+    | '/agent-requests'
+    | '/agents'
+    | '/coverage-needs'
+    | '/coverage-overrides'
+    | '/grades'
+    | '/rule-settings'
+    | '/shift-types'
+    | '/skills'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/grades'
-  id: '__root__' | '/' | '/grades'
+  to:
+    | '/'
+    | '/agent-requests'
+    | '/agents'
+    | '/coverage-needs'
+    | '/coverage-overrides'
+    | '/grades'
+    | '/rule-settings'
+    | '/shift-types'
+    | '/skills'
+  id:
+    | '__root__'
+    | '/'
+    | '/agent-requests'
+    | '/agents'
+    | '/coverage-needs'
+    | '/coverage-overrides'
+    | '/grades'
+    | '/rule-settings'
+    | '/shift-types'
+    | '/skills'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentRequestsRoute: typeof AgentRequestsRoute
+  AgentsRoute: typeof AgentsRoute
+  CoverageNeedsRoute: typeof CoverageNeedsRoute
+  CoverageOverridesRoute: typeof CoverageOverridesRoute
   GradesRoute: typeof GradesRoute
+  RuleSettingsRoute: typeof RuleSettingsRoute
+  ShiftTypesRoute: typeof ShiftTypesRoute
+  SkillsRoute: typeof SkillsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,6 +156,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agent-requests': {
+      id: '/agent-requests'
+      path: '/agent-requests'
+      fullPath: '/agent-requests'
+      preLoaderRoute: typeof AgentRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agents': {
+      id: '/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof AgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coverage-needs': {
+      id: '/coverage-needs'
+      path: '/coverage-needs'
+      fullPath: '/coverage-needs'
+      preLoaderRoute: typeof CoverageNeedsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coverage-overrides': {
+      id: '/coverage-overrides'
+      path: '/coverage-overrides'
+      fullPath: '/coverage-overrides'
+      preLoaderRoute: typeof CoverageOverridesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/grades': {
       id: '/grades'
       path: '/grades'
@@ -65,12 +191,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GradesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rule-settings': {
+      id: '/rule-settings'
+      path: '/rule-settings'
+      fullPath: '/rule-settings'
+      preLoaderRoute: typeof RuleSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shift-types': {
+      id: '/shift-types'
+      path: '/shift-types'
+      fullPath: '/shift-types'
+      preLoaderRoute: typeof ShiftTypesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/skills': {
+      id: '/skills'
+      path: '/skills'
+      fullPath: '/skills'
+      preLoaderRoute: typeof SkillsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentRequestsRoute: AgentRequestsRoute,
+  AgentsRoute: AgentsRoute,
+  CoverageNeedsRoute: CoverageNeedsRoute,
+  CoverageOverridesRoute: CoverageOverridesRoute,
   GradesRoute: GradesRoute,
+  RuleSettingsRoute: RuleSettingsRoute,
+  ShiftTypesRoute: ShiftTypesRoute,
+  SkillsRoute: SkillsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
