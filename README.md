@@ -7,7 +7,7 @@ Outil de construction et d'optimisation des plannings mensuels du personnel para
 ```bash
 npm install
 cp .envrc.example .envrc && direnv allow              # BOOTSTRAP_MANAGER_EMAIL + profil AWS
-npm run infra:deploy -- -c stage=$USER                # déploie le stage perso, écrit .env.local, migre la base
+npm run infra:deploy                                  # déploie le stage perso (-- -c stage=<nom> pour un autre), écrit .env.local, migre la base
 npm run dev                                           # http://localhost:5173
 ```
 

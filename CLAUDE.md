@@ -20,7 +20,7 @@ pre-commit run --all-files
 
 ## Déploiement AWS
 
-`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie (`npm run infra:deploy -- -c stage=jonathansousa`, qui enchaîne `cdk deploy`, `env:write` et `db:migrate`). Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc`) et inspecte `cdk.out/`. Sans `.env.local`, ni `npm run dev` ni `db:migrate` ne fonctionnent ; `npm run build` passe mais avec des variables vides.
+`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie (`npm run infra:deploy`, soit `cdk deploy` suivi, via le hook `postinfra:deploy`, de `env:write` et `db:migrate` ; `-- -c stage=<nom>` pour un autre stage). Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc`) et inspecte `cdk.out/`. Sans `.env.local`, ni `npm run dev` ni `db:migrate` ne fonctionnent ; `npm run build` passe mais avec des variables vides.
 
 ## Structure
 
