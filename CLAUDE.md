@@ -62,7 +62,7 @@ docs/                       architecture, modèle de domaine, règles de planifi
 - **Authentification** : Cognito Managed Login ; `aws-amplify` ne sert qu'à la redirection OAuth et aux jetons. Pas de formulaire de connexion dans l'app, pas d'Amplify UI.
 - **Autorisations** : le JWT est validé par API Gateway, l'appartenance au groupe `MANAGERS` par `api/auth.ts`. Pas d'autorisation par propriétaire : les données du service sont partagées.
 - **Validation des règles** : une seule définition, en TypeScript (`src/lib/rules/`). Le solveur Python est testé contre les mêmes scénarios JSON (`fixtures/rule-scenarios/`).
-- **Taille du bundle solveur** : mesurer avec `npm run infra:synth` (`du -sh cdk.out/asset.*`) avant d'ajouter une dépendance Python ; limite Lambda 250 Mo décompressés. Le SDK AWS est exclu du bundle (fourni par le runtime).
+- **Taille du bundle solveur** : mesurer avec `npm run infra:synth && npm run infra:size` avant d'ajouter une dépendance Python ; limite Lambda 250 Mo décompressés. Le SDK AWS est exclu du bundle (fourni par le runtime).
 - **npm** : `npm audit` doit rester à 0, dev compris. Le preset Tailwind de shadcn est vendorisé dans `src/styles/shadcn-tailwind.css` (le CLI `shadcn` n'est pas installé : `npx shadcn@latest add …`). `overrides.esbuild` aligne tous les esbuild transitifs (drizzle-kit en embarque un vieux) sur la version du projet.
 - **Shell** : les commandes Bash parallèles partagent le répertoire courant ; utiliser des chemins absolus plutôt que `cd`.
 
