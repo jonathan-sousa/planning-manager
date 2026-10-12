@@ -60,6 +60,7 @@ docs/                       architecture, modèle de domaine, règles de planifi
 - **Autorisations** : le JWT est validé par API Gateway, l'appartenance au groupe `MANAGERS` par `api/auth.ts`. Pas d'autorisation par propriétaire : les données du service sont partagées.
 - **Validation des règles** : une seule définition, en TypeScript (`src/lib/rules/`). Le solveur Python est testé contre les mêmes scénarios JSON (`fixtures/rule-scenarios/`).
 - **Taille du bundle solveur** : mesurer avec `npm run infra:synth` (`du -sh cdk.out/asset.*`) avant d'ajouter une dépendance Python ; limite Lambda 250 Mo décompressés. Le SDK AWS est exclu du bundle (fourni par le runtime).
+- **npm** : `npm audit` remonte des findings dans l'outillage de dev seulement (CLI `shadcn`, esbuild embarqué par `drizzle-kit`) ; la référence est `npm audit --omit=dev`, qui doit rester à 0. L'avertissement `ERESOLVE` sur `@xstate/react` vient d'Amplify UI (dépendance interne encore déclarée pour React ≤ 18) : sans effet, à ignorer tant qu'Amplify UI ne l'a pas corrigé.
 - **Shell** : les commandes Bash parallèles partagent le répertoire courant ; utiliser des chemins absolus plutôt que `cd`.
 
 ## Méthodologie
