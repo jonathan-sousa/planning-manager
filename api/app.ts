@@ -1,29 +1,27 @@
-import { zValidator } from '@hono/zod-validator';
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { z } from 'zod';
 import { type Bindings, requireManager } from './auth';
-import { pgErrorCode } from './errors';
 import { db } from './db/client';
-import { grades } from './db/schema';
+import { toErrorResponse } from './errors';
+import { agentRequestRoutes } from './routes/agent-requests';
+import { agentRoutes } from './routes/agents';
+import { coverageNeedRoutes } from './routes/coverage-needs';
+import { coverageOverrideRoutes } from './routes/coverage-overrides';
+import { gradeRoutes } from './routes/grades';
+import { ruleSettingsRoutes } from './routes/rule-settings';
+import { shiftTypeRoutes } from './routes/shift-types';
+import { skillRoutes } from './routes/skills';
 import { checkSolverHealth } from './solver-client';
-
-const gradeInput = z.object({
-  code: z.string().trim().min(1).max(10),
-  label: z.string().trim().min(1).max(100),
-});
 
 const app = new Hono<{ Bindings: Bindings }>()
   // CORS preflights: API Gateway adds the CORS headers itself.
   .options('*', (c) => c.body(null, 204))
   .use('*', requireManager)
   .onError((error, c) => {
-    // PostgreSQL unique_violation: the grade code is already taken.
-    if (pgErrorCode(error) === '23505') {
-      return c.json({ error: 'Code déjà utilisé' }, 409);
-    }
+    const response = toErrorResponse(error, c.req.method);
+    if (response) return c.json(response.body, response.status);
     console.error(error);
-    return c.json({ error: 'Internal error' }, 500);
+    return c.json({ error: 'Erreur interne' }, 500);
   })
 
   .get('/health', async (c) => {
@@ -32,20 +30,14 @@ const app = new Hono<{ Bindings: Bindings }>()
     return c.json({ database: 'ok', solver });
   })
 
-  .get('/grades', async (c) => {
-    const rows = await db.select().from(grades).orderBy(grades.sortOrder, grades.code);
-    return c.json(rows);
-  })
-
-  .post('/grades', zValidator('json', gradeInput), async (c) => {
-    const input = c.req.valid('json');
-    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(grades);
-    const [row] = await db
-      .insert(grades)
-      .values({ ...input, sortOrder: count })
-      .returning();
-    return c.json(row, 201);
-  });
+  .route('/grades', gradeRoutes)
+  .route('/skills', skillRoutes)
+  .route('/agents', agentRoutes)
+  .route('/shift-types', shiftTypeRoutes)
+  .route('/coverage-needs', coverageNeedRoutes)
+  .route('/coverage-overrides', coverageOverrideRoutes)
+  .route('/agent-requests', agentRequestRoutes)
+  .route('/rule-settings', ruleSettingsRoutes);
 
 export type AppType = typeof app;
 export default app;

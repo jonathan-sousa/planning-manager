@@ -50,9 +50,22 @@ Coût mensuel estimé en usage réel : 0 à 5 € (Cognito et CloudFront dans le
 
 Suivi possible : rôle de base de données dédié (`dsql:DbConnect` + `AWS IAM GRANT`) à la place d'`admin` pour les Lambdas, quand le schéma sera stable.
 
+## API
+
+- Un routeur Hono par ressource dans `api/routes/`, monté dans `api/app.ts` (CRUD : `GET /`, `POST /`, `PUT /:id`, `DELETE /:id`).
+- Les schémas d'entrée Zod de `api/schemas.ts` sont la seule définition de la validation : l'API les applique, les formulaires du frontend les réutilisent. Ils ne dépendent que de `zod` et de `api/domain.ts`, sans Drizzle. Messages en français (`z.locales.fr()`).
+- Toute erreur a la forme `{ error, fields? }` (`ApiError`, `api/errors.ts`) ; `fields` associe un champ de formulaire à ses messages :
+  - 400 : saisie invalide, ou référence inconnue ;
+  - 404 : identifiant inconnu ;
+  - 409 : doublon (contrainte unique, rattachée au champ fautif) ou suppression d'une ligne encore référencée.
+- Tri des libellés en français dans l'API (`api/sort.ts`), jamais par `ORDER BY` sur du texte.
+
 ## Base de données
 
 - Schéma dans `api/db/schema.ts` ; migrations générées par `npm run db:generate` (drizzle-kit puis `dsql-lint` : `CREATE INDEX ASYNC`, pas de `SERIAL`, FK ajoutées `NOT VALID`) et committées dans `api/db/migrations/`.
+- Chaque FK ajoutée `NOT VALID` est suivie, à la main dans la migration, d'un `ALTER TABLE ASYNC … VALIDATE CONSTRAINT …` (contrôle des lignes existantes). Les FK sont en `RESTRICT`, sauf les tables qui dépendent d'un agent (`agent_skills`, `agent_requests`) en `CASCADE`.
+- Pas de type `enum` en DSQL : colonnes `text` typées par Drizzle, valeurs listées dans `api/domain.ts` et validées par l'API.
+- Les données initiales indispensables (la ligne `rule_settings`) sont insérées par la migration ; les données de démonstration relèvent du seed.
 - Le migrateur officiel applique un DDL par transaction et attend les index asynchrones.
 - Clés primaires UUID (`gen_random_uuid()`), horodatages `timestamptz` en UTC.
 - Concurrence optimiste : les écritures multi-lignes passent par `db.transactionWithRetry`.

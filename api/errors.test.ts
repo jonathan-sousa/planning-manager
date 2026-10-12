@@ -1,15 +1,38 @@
 import { DrizzleQueryError } from 'drizzle-orm/errors';
 import { describe, expect, it } from 'vitest';
-import { pgErrorCode } from './errors';
+import { pgError, toErrorResponse } from './errors';
 
-describe('pgErrorCode', () => {
-  it('reads the SQLSTATE through the Drizzle wrapper', () => {
-    const cause = Object.assign(new Error('duplicate key'), { code: '23505' });
-    expect(pgErrorCode(new DrizzleQueryError('insert …', [], cause))).toBe('23505');
+const pgFailure = (code: string, constraint?: string) =>
+  new DrizzleQueryError('query …', [], Object.assign(new Error('pg'), { code, constraint }));
+
+describe('pgError', () => {
+  it('reads the SQLSTATE and constraint through the Drizzle wrapper', () => {
+    expect(pgError(pgFailure('23505', 'grades_code_idx'))).toEqual({
+      code: '23505',
+      constraint: 'grades_code_idx',
+    });
   });
 
   it('returns undefined for errors without a code', () => {
-    expect(pgErrorCode(new Error('boom'))).toBeUndefined();
-    expect(pgErrorCode('not an error')).toBeUndefined();
+    expect(pgError(new Error('boom'))).toBeUndefined();
+    expect(pgError('not an error')).toBeUndefined();
+  });
+});
+
+describe('toErrorResponse', () => {
+  it('maps a duplicate code to 409 on the code field', () => {
+    expect(toErrorResponse(pgFailure('23505', 'skills_code_idx'), 'POST')).toEqual({
+      status: 409,
+      body: { error: 'Code déjà utilisé', fields: { code: ['Code déjà utilisé'] } },
+    });
+  });
+
+  it('maps a foreign key violation by method', () => {
+    expect(toErrorResponse(pgFailure('23503'), 'DELETE')?.status).toBe(409);
+    expect(toErrorResponse(pgFailure('23503'), 'POST')?.status).toBe(400);
+  });
+
+  it('leaves unexpected errors to the 500 handler', () => {
+    expect(toErrorResponse(new Error('boom'), 'GET')).toBeUndefined();
   });
 });

@@ -8,6 +8,13 @@
       "when": 1791835904259,
       "tag": "0000_flashy_silver_fox",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791845875233,
+      "tag": "0001_silky_mauler",
+      "breakpoints": true
     }
   ]
 }
