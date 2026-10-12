@@ -47,7 +47,8 @@ src/                        frontend
   auth/manager-gate.tsx     « Accès refusé » hors du groupe MANAGERS (l'API refuse aussi)
   lib/api-client.ts         hc<AppType> avec le jeton d'accès Cognito ; unwrap()
   routes/                   routes file-based (routeTree.gen.ts est généré, ne pas éditer)
-  components/ui/            shadcn (générés via `npx shadcn add`)
+  components/ui/            shadcn (générés via `npx shadcn@latest add`)
+  styles/shadcn-tailwind.css preset Tailwind de shadcn, copié depuis le paquet (variants data-*, keyframes)
 docs/                       architecture, modèle de domaine, règles de planification
 ```
 
@@ -62,7 +63,7 @@ docs/                       architecture, modèle de domaine, règles de planifi
 - **Autorisations** : le JWT est validé par API Gateway, l'appartenance au groupe `MANAGERS` par `api/auth.ts`. Pas d'autorisation par propriétaire : les données du service sont partagées.
 - **Validation des règles** : une seule définition, en TypeScript (`src/lib/rules/`). Le solveur Python est testé contre les mêmes scénarios JSON (`fixtures/rule-scenarios/`).
 - **Taille du bundle solveur** : mesurer avec `npm run infra:synth` (`du -sh cdk.out/asset.*`) avant d'ajouter une dépendance Python ; limite Lambda 250 Mo décompressés. Le SDK AWS est exclu du bundle (fourni par le runtime).
-- **npm** : `npm audit` remonte des findings dans l'outillage de dev seulement (CLI `shadcn`, esbuild embarqué par `drizzle-kit`) ; la référence est `npm audit --omit=dev`, qui doit rester à 0.
+- **npm** : `npm audit` doit rester à 0, dev compris. Le preset Tailwind de shadcn est vendorisé dans `src/styles/shadcn-tailwind.css` (le CLI `shadcn` n'est pas installé : `npx shadcn@latest add …`). `overrides.esbuild` aligne tous les esbuild transitifs (drizzle-kit en embarque un vieux) sur la version du projet.
 - **Shell** : les commandes Bash parallèles partagent le répertoire courant ; utiliser des chemins absolus plutôt que `cd`.
 
 ## Méthodologie

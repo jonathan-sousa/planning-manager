@@ -24,3 +24,4 @@ cdk.out/
 .turbo/
 src/routeTree.gen.ts
 api/db/migrations/
+src/styles/shadcn-tailwind.css

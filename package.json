@@ -63,7 +63,6 @@
     "esbuild": "^0.28.2",
     "oxlint": "^1.87.0",
     "prettier": "^3.9.10",
-    "shadcn": "^4.21.4",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "vite": "^8.3.4",
@@ -72,5 +71,8 @@
   "allowScripts": {
     "esbuild": true,
     "fsevents": true
+  },
+  "overrides": {
+    "esbuild": "$esbuild"
   }
 }
