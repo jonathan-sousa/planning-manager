@@ -22,7 +22,7 @@ export function bootstrapManager(
 ) {
   const createUser = new AwsCustomResource(scope, 'BootstrapManagerUser', {
     onUpdate: {
-      service: 'CognitoIdentityProvider',
+      service: 'cognito-identity-provider',
       action: 'AdminCreateUser',
       parameters: {
         UserPoolId: userPool.userPoolId,
@@ -47,7 +47,7 @@ export function bootstrapManager(
 
   const addToGroup = new AwsCustomResource(scope, 'BootstrapManagerGroup', {
     onUpdate: {
-      service: 'CognitoIdentityProvider',
+      service: 'cognito-identity-provider',
       action: 'AdminAddUserToGroup',
       parameters: {
         UserPoolId: userPool.userPoolId,
