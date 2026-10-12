@@ -54,7 +54,10 @@ function GradesPage() {
           <Input
             id="grade-code"
             value={code}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={(e) => {
+              setCode(e.target.value);
+              createGrade.reset();
+            }}
             required
             className="w-28"
           />
@@ -64,7 +67,10 @@ function GradesPage() {
           <Input
             id="grade-label"
             value={label}
-            onChange={(e) => setLabel(e.target.value)}
+            onChange={(e) => {
+              setLabel(e.target.value);
+              createGrade.reset();
+            }}
             required
           />
         </div>

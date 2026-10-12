@@ -24,12 +24,20 @@ export const api = hc<AppType>(import.meta.env.VITE_API_URL, {
 type SuccessBody<R> =
   R extends ClientResponse<infer T, infer S, 'json'> ? (S extends 200 | 201 ? T : never) : never;
 
-/** Unwraps a Hono RPC response, throwing on non-2xx status. */
+/**
+ * Unwraps a Hono RPC response. On a non-2xx status, throws with the API's
+ * `{ error: string }` message when there is one, the HTTP status otherwise.
+ */
 export async function unwrap<R extends ClientResponse<unknown>>(
   response: R
 ): Promise<SuccessBody<R>> {
   if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
+    const body: unknown = await response.json().catch(() => undefined);
+    const message =
+      body && typeof body === 'object' && 'error' in body && typeof body.error === 'string'
+        ? body.error
+        : `Erreur ${response.status}`;
+    throw new Error(message);
   }
   return response.json() as Promise<SuccessBody<R>>;
 }
