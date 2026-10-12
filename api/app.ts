@@ -13,6 +13,8 @@ const gradeInput = z.object({
 });
 
 const app = new Hono<{ Bindings: Bindings }>()
+  // CORS preflights: API Gateway adds the CORS headers itself.
+  .options('*', (c) => c.body(null, 204))
   .use('*', requireManager)
   .onError((error, c) => {
     console.error(error);
