@@ -9,15 +9,15 @@ dist
 # Environment
 .env*
 !.env.example
+!.envrc.example
 *.local
 
 # Logs
 *.log
 
-# Amplify
-.amplify
-amplify_outputs*
-amplifyconfiguration*
+# CDK
+cdk.out
+cdk-outputs.json
 
 # Python (solver)
 .venv

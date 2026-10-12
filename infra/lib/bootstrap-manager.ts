@@ -1,5 +1,5 @@
+import type { IUserPool, UserPoolGroup } from 'aws-cdk-lib/aws-cognito';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import type { CfnUserPoolGroup, IUserPool } from 'aws-cdk-lib/aws-cognito';
 import {
   AwsCustomResource,
   AwsCustomResourcePolicy,
@@ -17,7 +17,7 @@ import type { Construct } from 'constructs';
 export function bootstrapManager(
   scope: Construct,
   userPool: IUserPool,
-  managersGroup: CfnUserPoolGroup,
+  managersGroup: UserPoolGroup,
   email: string
 ) {
   const createUser = new AwsCustomResource(scope, 'BootstrapManagerUser', {

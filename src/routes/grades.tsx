@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { client } from '@/lib/data-client';
+import { api, unwrap } from '@/lib/api-client';
 
 export const Route = createFileRoute('/grades')({
   component: GradesPage,
@@ -27,22 +27,11 @@ function GradesPage() {
 
   const grades = useQuery({
     queryKey: gradesQueryKey,
-    queryFn: async () => {
-      const { data, errors } = await client.models.Grade.list();
-      if (errors?.length) throw new Error(errors.map((error) => error.message).join(', '));
-      return data.toSorted((a, b) => a.order - b.order);
-    },
+    queryFn: () => api.grades.$get().then(unwrap),
   });
 
   const createGrade = useMutation({
-    mutationFn: async () => {
-      const { errors } = await client.models.Grade.create({
-        code: code.trim(),
-        label: label.trim(),
-        order: grades.data?.length ?? 0,
-      });
-      if (errors?.length) throw new Error(errors.map((error) => error.message).join(', '));
-    },
+    mutationFn: () => api.grades.$post({ json: { code, label } }).then(unwrap),
     onSuccess: () => {
       setCode('');
       setLabel('');
