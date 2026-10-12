@@ -1,0 +1,20 @@
+[project]
+name = "solver"
+version = "0.1.0"
+description = "CP-SAT planning solver for Planning Manager"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "ortools==9.15.6755",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,12 +1,12 @@
 import { defineAuth } from '@aws-amplify/backend';
 
 /**
- * Define and configure your auth resource
- * @see https://docs.amplify.aws/gen2/build-a-backend/auth
+ * Only managers (cadres de santé) sign in. Accounts are created by an
+ * administrator: self sign-up is disabled on the user pool in backend.ts.
  */
 export const auth = defineAuth({
   loginWith: {
     email: true,
   },
-  groups: ['ADMINS', 'USERS', 'MANAGERS']
+  groups: ['MANAGERS'],
 });
