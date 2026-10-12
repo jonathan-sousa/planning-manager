@@ -1,0 +1,25 @@
+# Lockfiles — gérés par le package manager, jamais reformater à la main.
+pnpm-lock.yaml
+package-lock.json
+npm-shrinkwrap.json
+yarn.lock
+
+# Build / generated outputs
+node_modules/
+dist/
+build/
+out/
+.next/
+coverage/
+
+# IaC outputs (CDK + Terraform)
+cdk.out/
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Misc
+.cache/
+.parcel-cache/
+.turbo/
+src/routeTree.gen.ts

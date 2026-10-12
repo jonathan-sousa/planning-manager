@@ -1,0 +1,14 @@
+# Baseline markdownlint config
+# Reference: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+default: true
+
+MD013: false
+# MD060 (table-column-style) : exige l'alignement exact des pipes de tableaux —
+# purement cosmétique, pénible sur les tableaux édités à la main (prose FR
+# accentuée, emojis) et sans valeur de lecture une fois rendu. Désactivé.
+MD060: false
+MD024:
+  siblings_only: true
+MD033: false
+MD041: false
