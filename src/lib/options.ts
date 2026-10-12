@@ -13,6 +13,9 @@ export function useReferences(keep: { shiftTypeId?: string | null; agentId?: str
 
   return {
     gradeCode: new Map(gradeList.map((grade) => [grade.id, grade.code])),
+    gradeOrder: new Map(
+      gradeList.map((grade) => [grade.id, String(grade.sortOrder).padStart(3, '0')])
+    ),
     skillCode: new Map(skillList.map((skill) => [skill.id, skill.code])),
     shiftCode: new Map(shiftList.map((shift) => [shift.id, shift.code])),
     agentName: new Map(

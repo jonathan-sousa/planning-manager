@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import { DAY_KINDS } from '../../api/domain';
 import { coverageNeedInput, type CoverageNeedInput } from '../../api/schemas';
 import { CrudPage } from '@/components/crud-page';
 import { FormShell } from '@/components/form-fields';
@@ -15,6 +16,15 @@ export const Route = createFileRoute('/coverage-needs')({
 function CoverageNeedsPage() {
   const { data, error } = useQuery(coverageNeeds.query);
   const refs = useReferences();
+  // Day kind, then shift, grade and skill (the general need before its skill).
+  const sortKey = (need: CoverageNeed) =>
+    [
+      DAY_KINDS.indexOf(need.dayKind),
+      refs.shiftCode.get(need.shiftTypeId),
+      refs.gradeOrder.get(need.gradeId),
+      need.skillId ? refs.skillCode.get(need.skillId) : '',
+    ].join('|');
+  const rows = data?.toSorted((a, b) => sortKey(a).localeCompare(sortKey(b), 'fr'));
   const label = (need: CoverageNeed) =>
     `${refs.shiftCode.get(need.shiftTypeId)} ${refs.gradeCode.get(need.gradeId)} (${dayKindLabels[need.dayKind]})`;
 
@@ -23,7 +33,7 @@ function CoverageNeedsPage() {
       title="Besoins de couverture"
       noun={{ article: 'un', name: 'besoin' }}
       resource={coverageNeeds}
-      rows={data}
+      rows={rows}
       error={error}
       rowLabel={label}
       columns={[
