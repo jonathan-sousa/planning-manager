@@ -1,6 +1,11 @@
 import * as path from 'node:path';
 import { Duration } from 'aws-cdk-lib';
-import { CorsHttpMethod, HttpApi } from 'aws-cdk-lib/aws-apigatewayv2';
+import {
+  CorsHttpMethod,
+  HttpApi,
+  HttpMethod,
+  HttpNoneAuthorizer,
+} from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpUserPoolAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
@@ -58,8 +63,9 @@ export class Api extends Construct {
       userPoolClients: [props.auth.userPoolClient],
     });
 
+    const integration = new HttpLambdaIntegration('Integration', this.function);
     this.httpApi = new HttpApi(this, 'HttpApi', {
-      defaultIntegration: new HttpLambdaIntegration('Integration', this.function),
+      defaultIntegration: integration,
       defaultAuthorizer: authorizer,
       corsPreflight: {
         allowOrigins: props.allowedOrigins ?? ['http://localhost:5173'],
@@ -68,5 +74,16 @@ export class Api extends Construct {
         maxAge: Duration.hours(1),
       },
     });
+
+    // The protected $default route would otherwise catch CORS preflights and
+    // reject them with 401: unauthenticated OPTIONS routes take priority.
+    for (const path of ['/', '/{proxy+}']) {
+      this.httpApi.addRoutes({
+        path,
+        methods: [HttpMethod.OPTIONS],
+        integration,
+        authorizer: new HttpNoneAuthorizer(),
+      });
+    }
   }
 }
