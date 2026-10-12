@@ -50,7 +50,12 @@ src/                        frontend
   main.tsx                  Amplify.configure (Auth + OAuth), QueryClient, router
   auth/auth-gate.tsx        redirige vers Managed Login (signInWithRedirect) tant qu'il n'y a pas de session
   auth/manager-gate.tsx     « Accès refusé » hors du groupe MANAGERS (l'API refuse aussi)
-  lib/api-client.ts         hc<AppType> avec le jeton d'accès Cognito ; unwrap()
+  lib/api-client.ts         hc<AppType> avec le jeton d'accès Cognito ; unwrap() lève ApiRequestError
+  lib/resources.ts          requêtes et écritures de chaque ressource, types des lignes
+  lib/options.ts            listes de référence (codes par id, options des selects)
+  hooks/form.ts             useAppForm (TanStack Form) ; submitToApi reporte les erreurs de l'API sur les champs
+  components/form-fields.tsx champs de formulaire liés à shadcn, FormShell
+  components/crud-page.tsx  liste + fenêtres de création, modification, suppression
   routes/                   routes file-based (routeTree.gen.ts est généré, ne pas éditer)
   components/ui/            shadcn (générés via `npx shadcn@latest add`)
   styles/shadcn-tailwind.css preset Tailwind de shadcn, copié depuis le paquet (variants data-*, keyframes)
@@ -65,6 +70,7 @@ docs/                       architecture, modèle de domaine, règles de planifi
 - **Dates** : chaînes `YYYY-MM-DD`, heures `HH:mm`, durées en minutes calculées en heure de Paris. Pas d'aller-retour par un `Date` UTC.
 - **Données** : fictives uniquement tant que l'hôpital n'a pas validé l'hébergement. Aucun code d'absence qui révèle un motif médical.
 - **Authentification** : Cognito Managed Login ; `aws-amplify` ne sert qu'à la redirection OAuth et aux jetons. Pas de formulaire de connexion dans l'app, pas d'Amplify UI.
+- **Formulaires** : TanStack Form validé par les schémas de `api/schemas.ts` (`onDynamic` + `revalidateLogic` : validation à la soumission, puis à chaque frappe), écriture dans `onSubmitAsync` via `submitToApi`. Pas de second schéma côté client.
 - **Autorisations** : le JWT est validé par API Gateway, l'appartenance au groupe `MANAGERS` par `api/auth.ts`. Pas d'autorisation par propriétaire : les données du service sont partagées.
 - **Validation des règles** : une seule définition, en TypeScript (`src/lib/rules/`). Le solveur Python est testé contre les mêmes scénarios JSON (`fixtures/rule-scenarios/`).
 - **Taille du bundle solveur** : mesurer avec `npm run infra:synth && npm run infra:size` avant d'ajouter une dépendance Python ; limite Lambda 250 Mo décompressés. Le SDK AWS est exclu du bundle (fourni par le runtime).

@@ -26,12 +26,12 @@ describe('API', () => {
   });
 
   it('answers invalid input with French messages per field', async () => {
-    const response = await post('/grades', { code: '', label: 'Infirmier' });
+    const response = await post('/grades', { code: '', label: 'x'.repeat(101) });
     expect(response.status).toBe(400);
     const body = (await response.json()) as ApiError;
     expect(body.error).toBe('Données invalides');
-    expect(Object.keys(body.fields ?? {})).toEqual(['code']);
-    expect(body.fields?.code?.[0]).toMatch(/trop petit/i);
+    expect(body.fields?.code).toEqual(['Requis']);
+    expect(body.fields?.label?.[0]).toMatch(/trop grand/i);
   });
 
   it('reports cross-field rules on the field at fault', async () => {

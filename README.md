@@ -15,7 +15,7 @@ Au premier déploiement d'un stage, le compte `BOOTSTRAP_MANAGER_EMAIL` est cré
 
 ## Usage
 
-Connexion via Cognito Managed Login, page d'accueil avec vérification de la base et du solveur, gestion des grades. Feuille de route : [`docs/architecture.md`](docs/architecture.md#feuille-de-route).
+Connexion via Cognito Managed Login, page d'accueil avec vérification de la base et du solveur. Référentiels : agents, grades, compétences, postes (absences et repos compris). Planification : besoins de couverture et exceptions datées, demandes des agents, règles de planification. Feuille de route : [`docs/architecture.md`](docs/architecture.md#feuille-de-route).
 
 ## Configuration
 

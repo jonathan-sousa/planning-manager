@@ -1,0 +1,136 @@
+import { useQuery } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
+import { shiftTypeInput, type ShiftTypeInput } from '../../api/schemas';
+import { CrudPage } from '@/components/crud-page';
+import { FormShell } from '@/components/form-fields';
+import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';
+import { Badge } from '@/components/ui/badge';
+import { formatMinutes, shiftMinutes } from '@/lib/format';
+import { optionsOf, shiftKindLabels } from '@/lib/labels';
+import { type ShiftType, shiftTypes } from '@/lib/resources';
+
+export const Route = createFileRoute('/shift-types')({
+  component: ShiftTypesPage,
+});
+
+function ShiftTypesPage() {
+  const { data, error } = useQuery(shiftTypes.query);
+  return (
+    <CrudPage
+      title="Postes"
+      noun={{ article: 'un', name: 'poste' }}
+      resource={shiftTypes}
+      rows={data}
+      error={error}
+      rowLabel={(shift) => shift.code}
+      columns={[
+        {
+          header: 'Code',
+          className: 'w-24',
+          cell: (shift) => (
+            <span className="flex items-center gap-2 font-medium">
+              <span className="size-3 rounded-sm" style={{ backgroundColor: shift.color }} />
+              {shift.code}
+            </span>
+          ),
+        },
+        { header: 'Libellé', cell: (shift) => shift.label },
+        { header: 'Type', cell: (shift) => shiftKindLabels[shift.kind] },
+        {
+          header: 'Horaires',
+          cell: (shift) =>
+            shift.startTime && shift.endTime ? `${shift.startTime} – ${shift.endTime}` : '—',
+        },
+        { header: 'Décompte', cell: (shift) => formatMinutes(shift.countedMinutes) },
+        {
+          header: 'État',
+          cell: (shift) => (
+            <span className="flex gap-1">
+              {shift.isNight && <Badge variant="secondary">Nuit</Badge>}
+              {shift.archived && <Badge variant="outline">Archivé</Badge>}
+            </span>
+          ),
+        },
+      ]}
+      renderForm={(props) => <ShiftTypeForm {...props} />}
+    />
+  );
+}
+
+const emptyShift: ShiftTypeInput = {
+  code: '',
+  label: '',
+  kind: 'WORK',
+  startTime: null,
+  endTime: null,
+  breakMinutes: 0,
+  countedMinutes: Number.NaN,
+  isNight: false,
+  color: '#3b82f6',
+  archived: false,
+};
+
+function ShiftTypeForm({ row, onSaved }: { row: ShiftType | undefined; onSaved: () => void }) {
+  const form = useAppForm({
+    defaultValues: row ? toInput(row) : emptyShift,
+    validationLogic,
+    validators: {
+      onDynamic: shiftTypeInput,
+      onSubmitAsync: ({ value }) =>
+        submitToApi(() => (row ? shiftTypes.update(row.id, value) : shiftTypes.create(value))),
+    },
+    onSubmit: onSaved,
+  });
+
+  // Proposes the counted time of a work shift: its span minus the break.
+  const proposeCountedMinutes = () => {
+    const { kind, startTime, endTime, breakMinutes } = form.state.values;
+    if (kind === 'WORK' && startTime && endTime && Number.isInteger(breakMinutes)) {
+      form.setFieldValue('countedMinutes', shiftMinutes(startTime, endTime) - breakMinutes);
+    }
+  };
+  const timing = { onChange: proposeCountedMinutes };
+
+  return (
+    <form.AppForm>
+      <FormShell>
+        <form.AppField name="code">{(field) => <field.TextField label="Code" />}</form.AppField>
+        <form.AppField name="label">{(field) => <field.TextField label="Libellé" />}</form.AppField>
+        <form.AppField name="kind">
+          {(field) => <field.SelectField label="Type" options={optionsOf(shiftKindLabels)} />}
+        </form.AppField>
+        <form.AppField name="color">
+          {(field) => <field.ColorField label="Couleur" />}
+        </form.AppField>
+        <form.AppField name="startTime" listeners={timing}>
+          {(field) => <field.TextField label="Début" type="time" nullable />}
+        </form.AppField>
+        <form.AppField name="endTime" listeners={timing}>
+          {(field) => <field.TextField label="Fin" type="time" nullable />}
+        </form.AppField>
+        <form.AppField name="breakMinutes" listeners={timing}>
+          {(field) => <field.NumberField label="Pause (minutes)" />}
+        </form.AppField>
+        <form.AppField name="countedMinutes">
+          {(field) => (
+            <field.DurationField
+              label="Temps décompté"
+              description="Crédité au solde de l'agent (h:mm)"
+            />
+          )}
+        </form.AppField>
+        <form.AppField name="isNight">
+          {(field) => <field.SwitchField label="Poste de nuit" />}
+        </form.AppField>
+        <form.AppField name="archived">
+          {(field) => <field.SwitchField label="Archivé" />}
+        </form.AppField>
+      </FormShell>
+    </form.AppForm>
+  );
+}
+
+function toInput(shift: ShiftType): ShiftTypeInput {
+  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...input } = shift;
+  return input;
+}
