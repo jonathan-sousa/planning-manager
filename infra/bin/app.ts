@@ -6,6 +6,11 @@ const app = new App();
 
 // One stack per stage. Developers get a personal stage named after their user.
 const stage: string = app.node.tryGetContext('stage') ?? userInfo().username;
+if (!/^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/.test(stage)) {
+  throw new Error(
+    `Invalid stage "${stage}": use lowercase letters, digits and dashes (-c stage=…)`
+  );
+}
 
 new PlanningManagerStack(app, `PlanningManager-${stage}`, {
   stage,

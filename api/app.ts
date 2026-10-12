@@ -7,6 +7,10 @@ import { db } from './db/client';
 import { grades } from './db/schema';
 import { checkSolverHealth } from './solver-client';
 
+function isPgError(error: unknown): error is Error & { code: string } {
+  return error instanceof Error && typeof (error as { code?: unknown }).code === 'string';
+}
+
 const gradeInput = z.object({
   code: z.string().trim().min(1).max(10),
   label: z.string().trim().min(1).max(100),
@@ -17,6 +21,10 @@ const app = new Hono<{ Bindings: Bindings }>()
   .options('*', (c) => c.body(null, 204))
   .use('*', requireManager)
   .onError((error, c) => {
+    // PostgreSQL unique_violation: the grade code is already taken.
+    if (isPgError(error) && error.code === '23505') {
+      return c.json({ error: 'Code déjà utilisé' }, 409);
+    }
     console.error(error);
     return c.json({ error: 'Internal error' }, 500);
   })
@@ -34,13 +42,11 @@ const app = new Hono<{ Bindings: Bindings }>()
 
   .post('/grades', zValidator('json', gradeInput), async (c) => {
     const input = c.req.valid('json');
-    const [row] = await db.transactionWithRetry(async (tx) => {
-      const [{ count }] = await tx.select({ count: sql<number>`count(*)::int` }).from(grades);
-      return tx
-        .insert(grades)
-        .values({ ...input, sortOrder: count })
-        .returning();
-    });
+    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(grades);
+    const [row] = await db
+      .insert(grades)
+      .values({ ...input, sortOrder: count })
+      .returning();
     return c.json(row, 201);
   });
 

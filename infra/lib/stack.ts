@@ -35,10 +35,15 @@ export class PlanningManagerStack extends Stack {
       removalPolicy,
     });
     const database = new Database(this, 'Database', { stage, isProd, removalPolicy });
-    const solver = new Solver(this, 'Solver', { database });
-    const api = new Api(this, 'Api', { auth, database, solver, allowedOrigins: appOrigins });
+    const solver = new Solver(this, 'Solver', { database, removalPolicy });
+    const api = new Api(this, 'Api', {
+      auth,
+      database,
+      solver,
+      allowedOrigins: appOrigins,
+      removalPolicy,
+    });
 
-    new CfnOutput(this, 'Region', { value: this.region });
     new CfnOutput(this, 'UserPoolId', { value: auth.userPool.userPoolId });
     new CfnOutput(this, 'UserPoolClientId', { value: auth.userPoolClient.userPoolClientId });
     new CfnOutput(this, 'AuthDomain', { value: auth.authDomain });

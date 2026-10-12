@@ -16,7 +16,6 @@ if (!stackName) throw new Error(`No PlanningManager stack in ${outputsFile}`);
 const stack = outputs[stackName];
 
 const env = {
-  VITE_AWS_REGION: stack.Region,
   VITE_USER_POOL_ID: stack.UserPoolId,
   VITE_USER_POOL_CLIENT_ID: stack.UserPoolClientId,
   VITE_AUTH_DOMAIN: stack.AuthDomain,
