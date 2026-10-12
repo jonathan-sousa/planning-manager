@@ -11,7 +11,7 @@ npm run infra:deploy -- -c stage=$USER                # déploie le stage perso,
 npm run dev                                           # http://localhost:5173
 ```
 
-Au premier déploiement d'un stage, le compte `BOOTSTRAP_MANAGER_EMAIL` est créé dans le groupe `MANAGERS` et reçoit par email un mot de passe temporaire. L'inscription publique est désactivée.
+Au premier déploiement d'un stage, le compte `BOOTSTRAP_MANAGER_EMAIL` est créé dans le groupe `MANAGERS` et reçoit par email un mot de passe temporaire. La connexion passe par la page Cognito Managed Login (redirection) ; l'inscription publique est désactivée.
 
 ## Usage
 

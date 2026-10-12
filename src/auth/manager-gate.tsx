@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
-import { useAuthenticator } from '@aws-amplify/ui-react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchAuthSession } from 'aws-amplify/auth';
+import { fetchAuthSession, signOut } from 'aws-amplify/auth';
 
 const MANAGER_GROUP = 'MANAGERS';
 
@@ -11,10 +10,10 @@ async function fetchGroups(): Promise<string[]> {
   return Array.isArray(groups) ? groups.map(String) : [];
 }
 
+/** Blocks signed-in users that are not managers. The API enforces the same rule. */
 export function ManagerGate({ children }: { children: ReactNode }) {
-  const { user, signOut } = useAuthenticator((context) => [context.user]);
   const { data: groups, isPending } = useQuery({
-    queryKey: ['auth-groups', user.userId],
+    queryKey: ['auth-groups'],
     queryFn: fetchGroups,
   });
 
@@ -28,7 +27,7 @@ export function ManagerGate({ children }: { children: ReactNode }) {
           Votre compte n'appartient pas au groupe des managers. Contactez l'administrateur de
           l'application.
         </p>
-        <button className="text-sm underline" onClick={signOut}>
+        <button className="text-sm underline" onClick={() => signOut()}>
           Se déconnecter
         </button>
       </main>
