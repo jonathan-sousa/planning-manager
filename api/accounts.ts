@@ -8,6 +8,7 @@ import {
   AdminDisableUserCommand,
   AdminEnableUserCommand,
   AdminRemoveUserFromGroupCommand,
+  AdminSetUserMFAPreferenceCommand,
   AdminUpdateUserAttributesCommand,
   AdminUserGlobalSignOutCommand,
   CognitoIdentityProviderClient,
@@ -172,6 +173,21 @@ export async function updateAccount(username: string, input: { name: string; adm
     })
   );
   await setGroup(username, ADMIN_GROUP, input.admin);
+}
+
+/**
+ * Forgets the user's authenticator app: MFA being required, Managed Login asks
+ * them to enroll a new one at their next sign-in. Their sessions are revoked.
+ */
+export async function resetMfa(username: string) {
+  const params = { UserPoolId: userPoolId(), Username: username };
+  await cognito.send(
+    new AdminSetUserMFAPreferenceCommand({
+      ...params,
+      SoftwareTokenMfaSettings: { Enabled: false, PreferredMfa: false },
+    })
+  );
+  await cognito.send(new AdminUserGlobalSignOutCommand(params));
 }
 
 /** A disabled account cannot sign in; its refresh tokens are revoked. */

@@ -25,6 +25,7 @@ const { cognito, live } = vi.hoisted(() => ({
     resendInvitation: vi.fn(),
     updateAccount: vi.fn(),
     setAccountEnabled: vi.fn(),
+    resetMfa: vi.fn(),
   },
 }));
 vi.mock('../accounts', () => ({
@@ -171,6 +172,13 @@ describe('accounts', () => {
     ]);
     expect((await send(admin, 'POST', `/accounts/${OTHER}/disable`)).status).toBe(204);
     expect(cognito.setAccountEnabled).toHaveBeenCalledWith(OTHER, false);
+  });
+
+  it('resets the MFA of another account only', async () => {
+    expect((await send(admin, 'POST', `/accounts/${ME}/reset-mfa`)).status).toBe(409);
+    expect((await send(admin, 'POST', `/accounts/${OTHER}/reset-mfa`)).status).toBe(204);
+    expect(cognito.resetMfa).toHaveBeenCalledWith(OTHER);
+    expect((await send(manager, 'POST', `/accounts/${OTHER}/reset-mfa`)).status).toBe(403);
   });
 
   it('resends only a pending invitation of an enabled account', async () => {
