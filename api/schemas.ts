@@ -33,6 +33,10 @@ const timeMinutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(tim
 
 export const idParam = z.object({ id: z.uuid() });
 
+export const monthParam = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mois au format AAAA-MM'),
+});
+
 export const gradeInput = z.object({ code, label });
 
 export const skillInput = z.object({ code, label });
@@ -148,6 +152,23 @@ export const agentRequestInput = z
     }
   );
 
+/** Desired state of grid cells; `shiftTypeId: null` empties the cell. */
+export const cellsInput = z.object({
+  /** Planning version the edit is based on (optimistic concurrency). */
+  version: integer().min(0),
+  cells: z
+    .array(
+      z.object({
+        agentId: ref,
+        date: isoDate,
+        shiftTypeId: ref.nullable(),
+        locked: z.boolean(),
+      })
+    )
+    .min(1)
+    .max(500),
+});
+
 export const ruleSettingsInput = z.object({
   minDailyRestMinutes: minutes(24 * 60),
   maxShiftAmplitudeMinutes: minutes(24 * 60),
@@ -179,4 +200,5 @@ export type ShiftTypeInput = z.input<typeof shiftTypeInput>;
 export type CoverageNeedInput = z.input<typeof coverageNeedInput>;
 export type CoverageOverrideInput = z.input<typeof coverageOverrideInput>;
 export type AgentRequestInput = z.input<typeof agentRequestInput>;
+export type CellsInput = z.input<typeof cellsInput>;
 export type RuleSettingsInput = z.input<typeof ruleSettingsInput>;

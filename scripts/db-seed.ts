@@ -35,6 +35,8 @@ try {
     }
     if (reset) {
       for (const table of [
+        schema.assignments,
+        schema.plannings,
         schema.agentRequests,
         schema.coverageOverrides,
         schema.coverageNeeds,

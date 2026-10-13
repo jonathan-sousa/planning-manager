@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiError } from './errors';
 
-// Fake Drizzle client: every builder call returns the same chain, and awaiting
-// it yields the next queued result, in query order.
+// Fake Drizzle client: every builder call returns the same chain, awaiting it
+// yields the next queued result in query order, and a transaction runs its
+// callback on the same client.
 const { db, results } = vi.hoisted(() => {
   const results: unknown[][] = [];
   const db: unknown = new Proxy(() => {}, {
     get: (_target, prop) =>
       prop === 'then'
         ? (resolve: (rows: unknown[]) => void) => resolve(results.shift() ?? [])
-        : () => db,
+        : prop === 'transactionWithRetry'
+          ? (transaction: (tx: unknown) => unknown) => transaction(db)
+          : () => db,
     apply: () => db,
   });
   return { db, results };
@@ -17,6 +20,7 @@ const { db, results } = vi.hoisted(() => {
 vi.mock('./db/client', () => ({ db }));
 
 const { default: app } = await import('./app');
+const { countedOn } = await import('./routes/plannings');
 
 const env = {
   event: {
@@ -84,7 +88,7 @@ describe('checks that read the database', () => {
   });
 
   it('freezes worked / not worked on a referenced shift type', async () => {
-    results.push([{ id: uuid(4), ...shift }], [{ id: uuid(7) }], [], []);
+    results.push([{ id: uuid(4), ...shift }], [], [{ id: uuid(7) }], [], []);
     const response = await send('PUT', `/shift-types/${uuid(4)}`, {
       ...shift,
       kind: 'ABSENCE',
@@ -96,14 +100,66 @@ describe('checks that read the database', () => {
     expect(((await response.json()) as ApiError).fields).toHaveProperty('kind');
   });
 
+  it('freezes the timing of a shift type used in a planning', async () => {
+    results.push([{ id: uuid(4), ...shift }], [{ id: uuid(8) }]);
+    const response = await send('PUT', `/shift-types/${uuid(4)}`, { ...shift, endTime: '19:30' });
+    expect(response.status).toBe(409);
+  });
+
   it('lets a referenced shift type change its hours, or absence for rest', async () => {
-    results.push([{ id: uuid(4), ...shift }], [{ id: uuid(4), ...shift, endTime: '19:30' }]);
+    results.push([{ id: uuid(4), ...shift }], [], [{ id: uuid(4), ...shift, endTime: '19:30' }]);
     const retimed = await send('PUT', `/shift-types/${uuid(4)}`, { ...shift, endTime: '19:30' });
     expect(retimed.status).toBe(200);
 
     const absence = { ...shift, kind: 'ABSENCE', startTime: null, endTime: null, breakMinutes: 0 };
-    results.push([{ id: uuid(6), ...absence }], [{ id: uuid(6), ...absence, kind: 'REST' }]);
+    results.push([{ id: uuid(6), ...absence }], [], [{ id: uuid(6), ...absence, kind: 'REST' }]);
     const rest = await send('PUT', `/shift-types/${uuid(6)}`, { ...absence, kind: 'REST' });
     expect(rest.status).toBe(200);
+  });
+});
+
+describe('planning cells', () => {
+  const cell = { agentId: uuid(1), date: '2026-11-03', shiftTypeId: uuid(2), locked: false };
+  const save = (cells: unknown[]) => send('PUT', '/plannings/2026-11/cells', { version: 3, cells });
+
+  it('refuses cells outside the month', async () => {
+    expect((await save([{ ...cell, date: '2026-12-01' }])).status).toBe(400);
+  });
+
+  it('refuses an edit based on a stale version, or a planning no longer in draft', async () => {
+    results.push([], [{ month: '2026-11', status: 'DRAFT' }]);
+    const stale = await save([cell]);
+    expect(stale.status).toBe(409);
+    expect(((await stale.json()) as ApiError).error).toMatch(/rechargez/);
+
+    results.push([], [{ month: '2026-11', status: 'PUBLISHED' }]);
+    expect(((await (await save([cell])).json()) as ApiError).error).toMatch(/brouillon/);
+  });
+
+  it('refuses a cell outside the agent contract', async () => {
+    results.push(
+      [{ version: 4 }],
+      [{ id: uuid(2), ...shift }],
+      [{ id: uuid(1), lastName: 'Joly', startDate: '2027-01-04', endDate: null }]
+    );
+    const response = await save([cell]);
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as ApiError).fields?.cells?.[0]).toMatch(/Hors contrat/);
+  });
+
+  it('writes the cells and returns the new version', async () => {
+    const agent = { id: uuid(1), lastName: 'Joly', startDate: '2026-01-05', endDate: null };
+    results.push([{ version: 4 }], [{ id: uuid(2), ...shift }], [agent], [], [{ id: uuid(9) }]);
+    const response = await save([cell, { ...cell, date: '2026-11-04', shiftTypeId: null }]);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ version: 4 });
+  });
+
+  it('credits night shifts their real length on daylight saving nights', () => {
+    const night = { ...shift, id: uuid(3), startTime: '19:00', endTime: '07:00', isNight: true };
+    const row = { ...night, createdAt: '', updatedAt: '' } as Parameters<typeof countedOn>[1];
+    expect(countedOn('2026-10-14', row)).toBe(720);
+    expect(countedOn('2026-10-24', row)).toBe(780);
+    expect(countedOn('2026-03-28', row)).toBe(660);
   });
 });

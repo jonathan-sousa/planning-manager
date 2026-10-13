@@ -20,3 +20,9 @@ export type DayKind = (typeof DAY_KINDS)[number];
 
 export const REQUEST_KINDS = ['ABSENCE_APPROVED', 'WISH_OFF', 'WISH_SHIFT'] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
+
+export const PLANNING_STATUSES = ['DRAFT', 'VALIDATED', 'PUBLISHED'] as const;
+export type PlanningStatus = (typeof PLANNING_STATUSES)[number];
+
+export const ASSIGNMENT_SOURCES = ['MANUAL', 'SOLVER', 'REQUEST'] as const;
+export type AssignmentSource = (typeof ASSIGNMENT_SOURCES)[number];

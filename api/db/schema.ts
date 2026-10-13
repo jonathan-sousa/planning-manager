@@ -7,11 +7,20 @@ import {
   text,
   timestamp,
   unique,
+  index,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-import { DAY_KINDS, HOURS_REGIMES, NIGHT_MODES, REQUEST_KINDS, SHIFT_KINDS } from '../domain';
+import {
+  ASSIGNMENT_SOURCES,
+  DAY_KINDS,
+  HOURS_REGIMES,
+  NIGHT_MODES,
+  PLANNING_STATUSES,
+  REQUEST_KINDS,
+  SHIFT_KINDS,
+} from '../domain';
 
 // Aurora DSQL: random UUID primary keys, timestamps in UTC, no SERIAL, no
 // enum types (text columns typed through `enum`, values validated by the API).
@@ -164,6 +173,46 @@ export const agentRequests = pgTable('agent_requests', {
   comment: text(),
   ...timestamps,
 });
+
+/** One per month ('YYYY-MM'); `version` guards concurrent edits of its cells. */
+export const plannings = pgTable('plannings', {
+  month: text().primaryKey(),
+  status: text({ enum: PLANNING_STATUSES }).notNull().default('DRAFT'),
+  version: integer().notNull().default(0),
+  publishedAt: timestamp('published_at', { withTimezone: true, mode: 'string' }),
+  notes: text(),
+  ...timestamps,
+});
+
+/** One cell of the grid: what an agent does on a day (a night belongs to its start day). */
+export const assignments = pgTable(
+  'assignments',
+  {
+    ...id,
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'restrict' }),
+    date: day('date').notNull(),
+    month: text()
+      .notNull()
+      .references(() => plannings.month, { onDelete: 'restrict' }),
+    shiftTypeId: uuid('shift_type_id')
+      .notNull()
+      .references(() => shiftTypes.id, { onDelete: 'restrict' }),
+    /** Minutes credited, fixed when the cell is set (daylight saving time included). */
+    countedMinutes: integer('counted_minutes').notNull(),
+    locked: boolean().notNull().default(false),
+    source: text({ enum: ASSIGNMENT_SOURCES }).notNull(),
+    comment: text(),
+    /** Cognito username of the last writer. */
+    updatedBy: text('updated_by').notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('assignments_agent_date_idx').on(table.agentId, table.date),
+    index('assignments_date_idx').on(table.date),
+  ]
+);
 
 /**
  * Single row (id 'default', inserted by the migration). Defaults follow the
