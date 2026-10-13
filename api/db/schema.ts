@@ -10,6 +10,7 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { DAY_KINDS, HOURS_REGIMES, NIGHT_MODES, REQUEST_KINDS, SHIFT_KINDS } from '../domain';
 
 // Aurora DSQL: random UUID primary keys, timestamps in UTC, no SERIAL, no
@@ -98,7 +99,12 @@ export const shiftTypes = pgTable(
     archived: boolean().notNull().default(false),
     ...timestamps,
   },
-  (table) => [uniqueIndex('shift_types_code_idx').on(table.code)]
+  // Archiving frees the code: a new shift type can take it over.
+  (table) => [
+    uniqueIndex('shift_types_active_code_idx')
+      .on(table.code)
+      .where(sql`not ${table.archived}`),
+  ]
 );
 
 export const coverageNeeds = pgTable(

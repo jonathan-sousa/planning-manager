@@ -31,8 +31,8 @@ Les primes de dimanche, de jour férié et de nuit relèvent de la paie : elles 
 
 ## Un seul validateur
 
-`src/lib/rules/` (TypeScript) est la seule définition de ce qu'est une violation. Les scénarios `fixtures/rule-scenarios/*.json` servent trois fois :
+Le validateur, construit avec la grille (phase 2), sera la seule définition de ce qu'est une violation : `src/lib/rules/` (TypeScript). Ses scénarios `fixtures/rule-scenarios/*.json` serviront trois fois :
 
-- **Vitest** : le validateur TS produit exactement les violations attendues.
-- **pytest** : le modèle CP-SAT, toutes variables fixées sur le scénario, est faisable si et seulement si aucune violation dure n'est attendue.
-- **Bout en bout** : chaque sortie du solveur repasse dans le validateur TS, qui doit trouver zéro violation dure.
+- **Vitest** : le validateur TS doit produire exactement les violations attendues.
+- **pytest** : le modèle CP-SAT, toutes variables fixées sur le scénario, doit être faisable si et seulement si aucune violation dure n'est attendue.
+- **Bout en bout** : chaque sortie du solveur repasse dans le validateur TS, qui ne doit trouver aucune violation dure.

@@ -8,19 +8,14 @@ import { idParam, shiftTypeInput } from '../schemas';
 import { compareFr } from '../sort';
 import { validate } from '../validate';
 
-/** What defines the time worked: frozen once the shift type is referenced. */
-const TIMING_FIELDS = [
-  'kind',
-  'startTime',
-  'endTime',
-  'breakMinutes',
-  'countedMinutes',
-  'isNight',
-] as const;
-
-const inUse: ApiError = {
-  error:
-    'Poste déjà utilisé : son type, ses horaires et son décompte ne se modifient plus. Archivez-le et créez-en un nouveau.',
+/**
+ * Needs, overrides and requests depend on the kind (work shift vs absence or
+ * rest code): it is frozen once they refer to the shift type. Hours, break and
+ * counted time stay editable: these rows follow the current definition.
+ */
+const kindInUse: ApiError = {
+  error: 'Poste déjà utilisé par des besoins ou des demandes : son type ne se modifie plus.',
+  fields: { kind: ['Type figé : poste déjà utilisé'] },
 };
 
 /** Whether any row refers to the shift type. */
@@ -57,8 +52,7 @@ export const shiftTypeRoutes = new Hono()
     const input = c.req.valid('json');
     const [current] = await db.select().from(shiftTypes).where(eq(shiftTypes.id, id));
     if (!current) return c.json(notFound, 404);
-    const retimed = TIMING_FIELDS.some((field) => current[field] !== input[field]);
-    if (retimed && (await isReferenced(id))) return c.json(inUse, 409);
+    if (current.kind !== input.kind && (await isReferenced(id))) return c.json(kindInUse, 409);
     const [row] = await db.update(shiftTypes).set(input).where(eq(shiftTypes.id, id)).returning();
     return c.json(row!, 200);
   })

@@ -15,6 +15,13 @@
       "when": 1791845875233,
       "tag": "0001_silky_mauler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791883424049,
+      "tag": "0002_big_risque",
+      "breakpoints": true
     }
   ]
 }

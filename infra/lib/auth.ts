@@ -101,6 +101,12 @@ export class Auth extends Construct {
       description: 'Cadres de santé autorisés à gérer les plannings',
     });
 
-    bootstrapManager(this, this.userPool, this.managersGroup, props.bootstrapManagerEmail);
+    bootstrapManager(
+      this,
+      this.userPool,
+      this.managersGroup,
+      props.bootstrapManagerEmail,
+      props.removalPolicy
+    );
   }
 }
