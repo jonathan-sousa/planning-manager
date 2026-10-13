@@ -11,10 +11,13 @@ from psycopg.types.json import Jsonb
 from .calendar import add_days, month_dates
 from .model import CONTEXT_DAYS, Problem
 
+# Database role of the solver (migration 0006): reads the month, updates its runs.
+USER = "solver"
+
 
 def connect():
     return dsql.connect(
-        host=os.environ["DATABASE_ENDPOINT"], user="admin", row_factory=dict_row
+        host=os.environ["DATABASE_ENDPOINT"], user=USER, row_factory=dict_row
     )
 
 

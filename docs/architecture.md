@@ -83,6 +83,7 @@ Coût mensuel estimé en usage réel : 0 à 5 € (Cognito et CloudFront dans le
 - Le migrateur officiel applique un DDL par transaction et attend les index asynchrones.
 - Clés primaires UUID (`gen_random_uuid()`, exceptions dans [domain-model.md](domain-model.md#conventions)), horodatages `timestamptz` en UTC.
 - Concurrence optimiste : les écritures multi-lignes passent par `db.transactionWithRetry`.
+- Rôles : l'API et les scripts se connectent en `admin` ; le solveur en `solver` (migration 0006), qui ne peut que lire les tables du mois et mettre à jour `solve_runs`. Son rôle IAM n'a que `dsql:DbConnect`, et `npm run db:migrate` le relie au rôle de base (`AWS IAM GRANT`, ARN lu dans les sorties CDK). Une table que le solveur doit lire reçoit son `GRANT SELECT … TO solver` dans sa migration.
 - Collation `C` : tri des libellés côté application.
 
 ## Solveur : bundling

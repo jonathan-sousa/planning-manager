@@ -70,6 +70,8 @@ export class Solver extends Construct {
       }),
     });
 
-    props.database.cluster.grantConnectAdmin(this.function);
+    // Connects as the `solver` database role (migration 0006), mapped to this
+    // function's IAM role by `npm run db:migrate`.
+    props.database.cluster.grantConnect(this.function);
   }
 }
