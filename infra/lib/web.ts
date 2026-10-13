@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
-import { Duration, type RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { type RemovalPolicy, Stack } from 'aws-cdk-lib';
 import type { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import {
   Function as CloudFrontFunction,
@@ -7,8 +8,6 @@ import {
   FunctionCode,
   FunctionEventType,
   FunctionRuntime,
-  HeadersFrameOption,
-  HeadersReferrerPolicy,
   HttpVersion,
   ResponseHeadersPolicy,
   ViewerProtocolPolicy,
@@ -57,37 +56,6 @@ export class Web extends Construct {
       removalPolicy: props.removalPolicy,
     });
 
-    // The app's own files and the hosts it calls: the API, Managed Login (code
-    // exchange) and Cognito (session refresh). Tokens live in localStorage: no
-    // other origin may run scripts or receive data.
-    const csp = [
-      "default-src 'self'",
-      "script-src 'self'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data:",
-      "font-src 'self'",
-      `connect-src 'self' ${props.config.apiUrl} https://${props.config.authDomain} https://cognito-idp.${Stack.of(this).region}.amazonaws.com`,
-      "object-src 'none'",
-      "base-uri 'self'",
-      "frame-ancestors 'none'",
-    ].join('; ');
-    const headers = new ResponseHeadersPolicy(this, 'Headers', {
-      securityHeadersBehavior: {
-        contentSecurityPolicy: { contentSecurityPolicy: csp, override: true },
-        strictTransportSecurity: {
-          accessControlMaxAge: Duration.days(365),
-          includeSubdomains: true,
-          override: true,
-        },
-        contentTypeOptions: { override: true },
-        frameOptions: { frameOption: HeadersFrameOption.DENY, override: true },
-        referrerPolicy: {
-          referrerPolicy: HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
-          override: true,
-        },
-      },
-    });
-
     // Client-side routes (/planning/2026-11) have no file extension: they get
     // the app. Missing files and WAF blocks keep their real status.
     const spaRoutes = new CloudFrontFunction(this, 'SpaRoutes', {
@@ -101,7 +69,9 @@ export class Web extends Construct {
       defaultBehavior: {
         origin: S3BucketOrigin.withOriginAccessControl(bucket),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        responseHeadersPolicy: headers,
+        // HSTS, nosniff, no framing by other sites (a custom policy, with a
+        // CSP header, is outside the Free plan: the CSP is in the page).
+        responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
         functionAssociations: [
           { function: spaRoutes, eventType: FunctionEventType.VIEWER_REQUEST },
         ],
@@ -138,8 +108,31 @@ export class Web extends Construct {
       cacheControl: [CacheControl.fromString('public, max-age=31536000, immutable')],
       prune: false,
     });
+    // The app's own files and the hosts it calls: the API, Managed Login (code
+    // exchange) and Cognito (session refresh). Tokens live in localStorage: no
+    // other origin may run scripts or receive data. Written into the page, as
+    // the Free plan allows no custom response headers.
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data:",
+      "font-src 'self'",
+      `connect-src 'self' ${props.config.apiUrl} https://${props.config.authDomain} https://cognito-idp.${Stack.of(this).region}.amazonaws.com`,
+      "object-src 'none'",
+      "base-uri 'self'",
+    ].join('; ');
+    const indexHtml = readFileSync(path.join(distDir, 'index.html'), 'utf8').replace(
+      '<meta charset="UTF-8" />',
+      `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${csp}" />`
+    );
+
     const page = new BucketDeployment(this, 'Page', {
-      sources: [Source.asset(distDir), Source.jsonData('config.json', { ...props.config })],
+      sources: [
+        Source.asset(distDir, { exclude: ['index.html'] }),
+        Source.data('index.html', indexHtml),
+        Source.jsonData('config.json', { ...props.config }),
+      ],
       destinationBucket: bucket,
       exclude: ['assets/*'],
       cacheControl: [CacheControl.noCache()],
