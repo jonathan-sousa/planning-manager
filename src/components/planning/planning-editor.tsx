@@ -7,8 +7,10 @@ import type { PlanningStatus } from '../../../api/domain';
 import { planningAgents, type RuleInput, type Violation } from '../../../api/rules/model';
 import { acceptViolationInput } from '../../../api/schemas';
 import { countPlanning, coverage, validatePlanning } from '../../../api/rules/validate';
+import type { CoverageSlotKey } from '../../../api/rules/diagnose';
+import { CoverageDiagnosis } from './coverage-diagnosis';
 import { type CoverageRow, PlanningGrid } from './planning-grid';
-import { usePlanningEditor } from './use-planning-editor';
+import { cellKey, usePlanningEditor } from './use-planning-editor';
 import { useSolveRun } from './use-solve-run';
 import { FormShell } from '@/components/form-fields';
 import { Button } from '@/components/ui/button';
@@ -57,6 +59,9 @@ export function PlanningEditor(props: PlanningEditorProps) {
   // While a proposal is reviewed, the grid shows it over the current cells.
   const cells = solver.preview?.cells ?? editor.cells;
   const [accepting, setAccepting] = useState<Violation | null>(null);
+  const [diagnosing, setDiagnosing] = useState<{ slot: CoverageSlotKey; label: string } | null>(
+    null
+  );
   const dates = useMemo(() => monthDates(month), [month]);
   const contextDates = useMemo(
     () => Array.from({ length: CONTEXT_DAYS }, (_, i) => addDays(dates[0]!, i - CONTEXT_DAYS)),
@@ -103,6 +108,10 @@ export function PlanningEditor(props: PlanningEditorProps) {
 
   const shiftCode = new Map(shifts.map((shift) => [shift.id, shift.code]));
   const skillCode = new Map(skills.map((skill) => [skill.id, skill.code]));
+  const slotLabel = ({ shiftTypeId, gradeId, skillId }: NonNullable<Violation['slot']>) =>
+    [shiftCode.get(shiftTypeId), gradeCode.get(gradeId), skillId && skillCode.get(skillId)]
+      .filter(Boolean)
+      .join(' ');
   const coverageRows = [
     ...Map.groupBy(
       coverage(input),
@@ -112,13 +121,8 @@ export function PlanningEditor(props: PlanningEditorProps) {
     .map((slots): CoverageRow => {
       const { shiftTypeId, gradeId, skillId } = slots[0]!;
       return {
-        label: [
-          shiftCode.get(shiftTypeId),
-          gradeCode.get(gradeId),
-          skillId && skillCode.get(skillId),
-        ]
-          .filter(Boolean)
-          .join(' '),
+        label: slotLabel({ shiftTypeId, gradeId, skillId }),
+        slot: { shiftTypeId, gradeId, skillId },
         byDate: new Map(
           slots.map((slot) => [slot.date, { count: slot.count, min: slot.minCount }])
         ),
@@ -218,6 +222,8 @@ export function PlanningEditor(props: PlanningEditorProps) {
             Proposition du solveur : {solver.preview.changed.size} case(s) modifiée(s) (marquées
             d'un point bleu), {openHard} violation(s) dure(s), manque de couverture{' '}
             {String(solver.stats?.coverage ?? '?')}.
+            {Number(solver.stats?.coverage) > 0 &&
+              ' Cliquez sur une case rouge de la couverture pour savoir pourquoi.'}
           </span>
           <Button size="sm" disabled={solver.applying} onClick={solver.apply}>
             Appliquer
@@ -249,6 +255,9 @@ export function PlanningEditor(props: PlanningEditorProps) {
         readOnly={readOnly}
         onApply={apply}
         onUndo={undo}
+        onDiagnose={(line, date) =>
+          setDiagnosing({ slot: { ...line.slot, date }, label: line.label })
+        }
       />
 
       <section className="space-y-2">
@@ -271,12 +280,30 @@ export function PlanningEditor(props: PlanningEditorProps) {
                 >
                   {formatDate(violation.date)}
                 </span>
-                <span>{violation.agentId ? agentName.get(violation.agentId) : 'Couverture'}</span>
+                <span>
+                  {violation.slot
+                    ? `Couverture ${slotLabel(violation.slot)}`
+                    : agentName.get(violation.agentId!)}
+                </span>
                 <span className="text-muted-foreground">{violation.message}</span>
                 {acceptance && (
                   <span className="text-muted-foreground italic">
                     — acceptée : {acceptance.comment}
                   </span>
+                )}
+                {violation.slot && (
+                  <Button
+                    variant="link"
+                    size="xs"
+                    onClick={() =>
+                      setDiagnosing({
+                        slot: { ...violation.slot!, date: violation.date },
+                        label: slotLabel(violation.slot!),
+                      })
+                    }
+                  >
+                    Pourquoi ?
+                  </Button>
                 )}
                 {!readOnly && isOpenHard(violation) && (
                   <Button variant="link" size="xs" onClick={() => setAccepting(violation)}>
@@ -297,6 +324,20 @@ export function PlanningEditor(props: PlanningEditorProps) {
           })}
         </ul>
       </section>
+
+      <CoverageDiagnosis
+        input={input}
+        target={diagnosing}
+        isLocked={(agentId, date) => cells.get(cellKey(agentId, date))?.locked ?? false}
+        agentName={agentName}
+        shiftCode={shiftCode}
+        readOnly={readOnly}
+        onPlace={(agentId, { date, shiftTypeId }) => {
+          apply([{ agentId, date, shiftTypeId, locked: false }]);
+          setDiagnosing(null);
+        }}
+        onClose={() => setDiagnosing(null)}
+      />
 
       <Dialog open={accepting !== null} onOpenChange={(open) => !open && setAccepting(null)}>
         <DialogContent className="sm:max-w-lg">

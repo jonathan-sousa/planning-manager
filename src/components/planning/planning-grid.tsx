@@ -11,6 +11,7 @@ import type { Agent, ShiftType } from '@/lib/resources';
 
 export interface CoverageRow {
   label: string;
+  slot: { shiftTypeId: string; gradeId: string; skillId: string | null };
   /** Per date: required minimum and agents counted, or undefined when no need. */
   byDate: Map<string, { count: number; min: number }>;
 }
@@ -33,6 +34,8 @@ interface PlanningGridProps {
   readOnly: boolean;
   onApply: (edits: CellEdit[]) => void;
   onUndo: () => void;
+  /** Opens the explanation of an unmet coverage minimum. */
+  onDiagnose: (line: CoverageRow, date: string) => void;
 }
 
 type Position = { row: number; col: number };
@@ -61,6 +64,7 @@ export function PlanningGrid({
   readOnly,
   onApply,
   onUndo,
+  onDiagnose,
 }: PlanningGridProps) {
   const [anchor, setAnchor] = useState<Position>({ row: 0, col: 0 });
   const [focus, setFocus] = useState<Position>({ row: 0, col: 0 });
@@ -378,14 +382,16 @@ export function PlanningGrid({
               ))}
               {dates.map((date) => {
                 const need = line.byDate.get(date);
+                const short = need !== undefined && need.count < need.min;
                 return (
                   <td
                     key={date}
+                    title={short ? 'Pourquoi ? Cliquez pour le diagnostic' : undefined}
+                    onClick={short ? () => onDiagnose(line, date) : undefined}
                     className={cn(
                       'border-t border-l text-center tabular-nums',
-                      need &&
-                        need.count < need.min &&
-                        'bg-destructive/15 text-destructive font-medium'
+                      short &&
+                        'bg-destructive/15 text-destructive hover:bg-destructive/25 cursor-pointer font-medium'
                     )}
                   >
                     {/* A need with no minimum (target only) shows the headcount. */}

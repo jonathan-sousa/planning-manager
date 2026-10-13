@@ -104,6 +104,8 @@ export interface Violation {
   date: string;
   /** Absent for coverage, which concerns a day rather than an agent. */
   agentId?: string;
+  /** Coverage only: the need that is not met. */
+  slot?: { shiftTypeId: string; gradeId: string; skillId: string | null };
   message: string;
 }
 
