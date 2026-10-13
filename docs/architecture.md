@@ -70,6 +70,7 @@ Coût mensuel estimé en usage réel : 0 à 5 € (Cognito et CloudFront dans le
 - `src/components/planning/planning-editor.tsx` : statut (valider, publier, rouvrir), liste des violations, acceptation d'une violation dure avec justification (case en pointillés).
 - `src/components/planning/use-planning-editor.ts` : copie locale des cases, modifiée immédiatement, enregistrée en arrière-plan par lots (400 ms) avec la version du planning ; une version dépassée (autre manager) recharge le mois avec un message. Annulation des dernières saisies.
 - `src/components/planning/planning-grid.tsx` : saisie au clavier (flèches, Maj pour étendre la sélection, code tapé appliqué à la sélection, Suppr, Alt+L pour verrouiller, copier-coller de codes, Cmd/Ctrl+Z) ; cases hors contrat hachurées, cases verrouillées laissées intactes.
+- `src/components/planning/use-solve-run.ts` : lancement du solveur (Compléter, Réoptimiser), suivi toutes les 2 s, proposition affichée par-dessus la grille (cases modifiées marquées d'un point bleu, validateur appliqué à la proposition), puis appliquée ou abandonnée ; la grille est en lecture seule pendant la revue.
 - Le validateur `api/rules/` tourne à chaque saisie : violations sur les cases (rouge : dure, orange : souple) et en liste, compteurs par agent, ligne de couverture par besoin.
 
 ## Base de données
@@ -123,7 +124,7 @@ L'existant est décrit dans le [README](../README.md#usage). Phases restantes :
 
 | Phase         | Contenu                                                                                                                                                                                                                                                                                                                    |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 3 — Solveur   | `SolveRun`, proposition en diff, application transactionnelle protégée par version, diagnostic des trous de couverture.                                                                                                                                                                                                    |
+| 3 — Solveur   | Diagnostic des trous de couverture : quand un minimum reste impossible, expliquer pourquoi (effectif, qualifications, absences, règles qui bloquent).                                                                                                                                                                      |
 | 4 — Diffusion | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations (avec notification des rebonds et plaintes SES), hébergement S3 + CloudFront (+ WAF) sur `planning-manager.lab.jonathan-sousa.com`, domaine de connexion `auth.planning-manager.lab.jonathan-sousa.com` (certificat ACM en `us-east-1`). |
 
 ## Points ouverts
