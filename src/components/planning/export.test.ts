@@ -1,3 +1,5 @@
+/// <reference types="node" />
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { buildPdf, type PlanningExport, toCsv } from './export';
 import type { Agent, ShiftType } from '@/lib/resources';
@@ -75,8 +77,16 @@ describe('planning exports', () => {
     ]);
   });
 
-  it('builds an A3 landscape PDF', async () => {
-    const doc = await buildPdf(data);
+  it('builds an A3 landscape PDF in a font that covers every European name', async () => {
+    const font = (file: string) => {
+      const bytes = readFileSync(`src/assets/fonts/${file}`);
+      return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    };
+    const doc = await buildPdf(
+      { ...data, agents: [...data.agents, agent('c', 'Ștefănescu', 'Łucja')] },
+      { regular: font('Geist-Regular.ttf'), bold: font('Geist-Bold.ttf') }
+    );
+    expect(doc.getFontList()).toHaveProperty('Geist');
     expect(doc.getNumberOfPages()).toBe(1);
     expect(Math.round(doc.internal.pageSize.getWidth())).toBe(420);
   });

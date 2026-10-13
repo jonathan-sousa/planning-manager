@@ -14,6 +14,8 @@ import { cellKey, type GridCell } from './cells';
 import { formatBalance, formatDate, formatMinutes } from '@/lib/format';
 import { planningStatusLabels } from '@/lib/labels';
 import type { Agent, ShiftType } from '@/lib/resources';
+import geistBoldUrl from '@/assets/fonts/Geist-Bold.ttf?url';
+import geistRegularUrl from '@/assets/fonts/Geist-Regular.ttf?url';
 
 export interface PlanningExport {
   month: string;
@@ -103,13 +105,36 @@ const OFF_DAY: Rgb = [232, 232, 232];
 const OUT_OF_CONTRACT: Rgb = [210, 210, 210];
 const SHORT: Rgb = [200, 30, 30];
 
+/**
+ * TrueType files of the PDF font: Geist, the app's font, covers the names
+ * jsPDF's built-in Helvetica cannot (Ș, ł, ğ, ễ…).
+ */
+export interface PdfFonts {
+  regular: ArrayBuffer;
+  bold: ArrayBuffer;
+}
+
+const base64 = (bytes: ArrayBuffer) => {
+  const view = new Uint8Array(bytes);
+  let binary = '';
+  for (let i = 0; i < view.length; i += 0x8000) {
+    binary += String.fromCharCode(...view.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+};
+
 /** A3 landscape: the agents × days grid, counters, coverage and a legend of the codes. */
-export async function buildPdf(data: PlanningExport) {
+export async function buildPdf(data: PlanningExport, fonts: PdfFonts) {
   const [{ jsPDF }, { autoTable }] = await Promise.all([
     import('jspdf'),
     import('jspdf-autotable'),
   ]);
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
+  doc.addFileToVFS('Geist-Regular.ttf', base64(fonts.regular));
+  doc.addFont('Geist-Regular.ttf', 'Geist', 'normal');
+  doc.addFileToVFS('Geist-Bold.ttf', base64(fonts.bold));
+  doc.addFont('Geist-Bold.ttf', 'Geist', 'bold');
+  doc.setFont('Geist', 'normal');
   const shiftById = new Map(data.shifts.map((shift) => [shift.id, shift]));
   const title = `Planning — ${capitalized(monthLabel(data.month))}`;
   const firstDay = 2;
@@ -131,6 +156,7 @@ export async function buildPdf(data: PlanningExport) {
     margin: { left: 10, right: 10, bottom: 14 },
     theme: 'grid',
     styles: {
+      font: 'Geist',
       fontSize: 7,
       cellPadding: 1,
       halign: 'center',
@@ -242,5 +268,10 @@ export async function buildPdf(data: PlanningExport) {
 }
 
 export async function downloadPdf(data: PlanningExport) {
-  (await buildPdf(data)).save(`planning-${data.month}.pdf`);
+  const [regular, bold] = await Promise.all(
+    [geistRegularUrl, geistBoldUrl].map((url) =>
+      fetch(url).then((response) => response.arrayBuffer())
+    )
+  );
+  (await buildPdf(data, { regular: regular!, bold: bold! })).save(`planning-${data.month}.pdf`);
 }
