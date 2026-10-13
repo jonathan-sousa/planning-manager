@@ -13,8 +13,8 @@ const stage = resolveStage(app.node.tryGetContext('stage'));
 
 const env = { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'eu-west-3' };
 
-// Sending domain, shared by every stage: deployed with any of them (a no-op
-// when unchanged).
+// Sending domain, shared by every stage; deployed with production only
+// (scripts/deploy.ts), so a change to it is a production change.
 const mail = new MailStack(app, 'PlanningManagerMail', { env });
 
 // Production is hosted on its own domain: CloudFront needs its certificate and
