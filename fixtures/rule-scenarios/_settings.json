@@ -1,0 +1,13 @@
+{
+  "minDailyRestMinutes": 720,
+  "maxShiftAmplitudeMinutes": 720,
+  "breakThresholdMinutes": 360,
+  "minBreakMinutes": 20,
+  "maxWeeklyMinutes": 2880,
+  "minWeeklyRestMinutes": 2160,
+  "fortnightMinRestDays": 4,
+  "fortnightAnchorDate": "2026-01-05",
+  "maxConsecutiveWorkDays": 5,
+  "restDayExcludesPreviousNight": true,
+  "monthlyHoursToleranceMinutes": 720
+}

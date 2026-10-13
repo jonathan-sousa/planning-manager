@@ -1,0 +1,25 @@
+{
+  "description": "Quatorze matins de suite : aucune fenêtre de 7 jours du 3 au 15 novembre ne rencontre un repos de 36 h ; signalé une fois, sur la première.",
+  "month": "2026-11",
+  "agents": [{ "name": "A" }],
+  "cells": {
+    "A": {
+      "2026-11-02": "M",
+      "2026-11-03": "M",
+      "2026-11-04": "M",
+      "2026-11-05": "M",
+      "2026-11-06": "M",
+      "2026-11-07": "M",
+      "2026-11-08": "M",
+      "2026-11-09": "M",
+      "2026-11-10": "M",
+      "2026-11-11": "M",
+      "2026-11-12": "M",
+      "2026-11-13": "M",
+      "2026-11-14": "M",
+      "2026-11-15": "M"
+    }
+  },
+  "rules": ["WEEKLY_REST"],
+  "expected": [{ "rule": "WEEKLY_REST", "agent": "A", "date": "2026-11-09" }]
+}

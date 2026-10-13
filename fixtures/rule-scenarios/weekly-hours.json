@@ -1,0 +1,17 @@
+{
+  "description": "Cinq jours de 12 h font 60 h sur 7 jours glissants : signalé une fois, sur la première fenêtre en dépassement. Quatre jours (48 h) restent légaux.",
+  "month": "2026-11",
+  "agents": [{ "name": "A" }, { "name": "B" }],
+  "cells": {
+    "A": {
+      "2026-11-09": "J",
+      "2026-11-10": "J",
+      "2026-11-11": "J",
+      "2026-11-12": "J",
+      "2026-11-13": "J"
+    },
+    "B": { "2026-11-09": "J", "2026-11-10": "J", "2026-11-11": "J", "2026-11-12": "J" }
+  },
+  "rules": ["WEEKLY_HOURS"],
+  "expected": [{ "rule": "WEEKLY_HOURS", "agent": "A", "date": "2026-11-13" }]
+}

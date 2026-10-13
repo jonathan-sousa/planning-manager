@@ -1,0 +1,25 @@
+{
+  "description": "Quinzaine du 9 au 22 novembre (ancrage au 5 janvier 2026) : trois jours de repos seulement, aucun couple avec un dimanche. Les autres quinzaines, vides, sont en règle.",
+  "month": "2026-11",
+  "agents": [{ "name": "A" }],
+  "cells": {
+    "A": {
+      "2026-11-09": "M",
+      "2026-11-10": "M",
+      "2026-11-13": "M",
+      "2026-11-14": "M",
+      "2026-11-15": "M",
+      "2026-11-16": "M",
+      "2026-11-17": "M",
+      "2026-11-19": "M",
+      "2026-11-20": "M",
+      "2026-11-21": "M",
+      "2026-11-22": "M"
+    }
+  },
+  "rules": ["FORTNIGHT_REST"],
+  "expected": [
+    { "rule": "FORTNIGHT_REST", "agent": "A", "date": "2026-11-22" },
+    { "rule": "FORTNIGHT_REST", "agent": "A", "date": "2026-11-22" }
+  ]
+}

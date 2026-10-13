@@ -10,6 +10,10 @@ const fromUtc = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 export const addDays = (date: string, days: number): string => fromUtc(toUtc(date) + days * DAY_MS);
 
+/** Whole days from `from` to `to` (negative when `to` is earlier). */
+export const daysBetween = (from: string, to: string): number =>
+  Math.round((toUtc(to) - toUtc(from)) / DAY_MS);
+
 /** 0 = Sunday … 6 = Saturday. */
 export const dayOfWeek = (date: string): number => new Date(toUtc(date)).getUTCDay();
 

@@ -1,0 +1,22 @@
+{
+  "description": "Couverture par exceptions datées : 2 IDE de jour le 3 novembre (un seul présent), 1 IDE IOA le 4 (l'IDE présent n'a pas la compétence).",
+  "month": "2026-11",
+  "agents": [
+    { "name": "A", "grade": "IDE" },
+    { "name": "B", "grade": "IDE", "skills": ["IOA"] },
+    { "name": "C", "grade": "AS" }
+  ],
+  "cells": {
+    "A": { "2026-11-03": "J", "2026-11-04": "J" },
+    "C": { "2026-11-03": "J" }
+  },
+  "overrides": [
+    { "date": "2026-11-03", "shift": "J", "grade": "IDE", "minCount": 2 },
+    { "date": "2026-11-04", "shift": "J", "grade": "IDE", "skill": "IOA", "minCount": 1 }
+  ],
+  "rules": ["COVERAGE"],
+  "expected": [
+    { "rule": "COVERAGE", "date": "2026-11-03" },
+    { "rule": "COVERAGE", "date": "2026-11-04" }
+  ]
+}

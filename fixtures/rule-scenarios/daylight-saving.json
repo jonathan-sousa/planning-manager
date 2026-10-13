@@ -1,0 +1,8 @@
+{
+  "description": "La nuit du changement d'heure d'octobre dure 13 h réelles : pas de violation d'amplitude (horaires nominaux), mais le repos jusqu'au poste suivant se mesure en heure réelle.",
+  "month": "2026-10",
+  "agents": [{ "name": "A" }],
+  "cells": { "A": { "2026-10-24": "N", "2026-10-25": "N" } },
+  "rules": ["SHIFT_AMPLITUDE", "DAILY_REST"],
+  "expected": []
+}

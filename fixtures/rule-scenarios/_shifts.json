@@ -1,0 +1,47 @@
+[
+  {
+    "code": "J",
+    "kind": "WORK",
+    "startTime": "07:00",
+    "endTime": "19:00",
+    "breakMinutes": 20,
+    "countedMinutes": 720,
+    "isNight": false
+  },
+  {
+    "code": "N",
+    "kind": "WORK",
+    "startTime": "19:00",
+    "endTime": "07:00",
+    "breakMinutes": 20,
+    "countedMinutes": 720,
+    "isNight": true
+  },
+  {
+    "code": "M",
+    "kind": "WORK",
+    "startTime": "08:00",
+    "endTime": "15:30",
+    "breakMinutes": 30,
+    "countedMinutes": 420,
+    "isNight": false
+  },
+  {
+    "code": "CA",
+    "kind": "ABSENCE",
+    "startTime": null,
+    "endTime": null,
+    "breakMinutes": 0,
+    "countedMinutes": 420,
+    "isNight": false
+  },
+  {
+    "code": "RH",
+    "kind": "REST",
+    "startTime": null,
+    "endTime": null,
+    "breakMinutes": 0,
+    "countedMinutes": 0,
+    "isNight": false
+  }
+]
