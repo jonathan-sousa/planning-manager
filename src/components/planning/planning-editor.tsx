@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { FileDown, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { addDays, monthDates } from '../../../api/calendar';
@@ -10,7 +10,9 @@ import { countPlanning, coverage, validatePlanning } from '../../../api/rules/va
 import type { CoverageSlotKey } from '../../../api/rules/diagnose';
 import { CoverageDiagnosis } from './coverage-diagnosis';
 import { type CoverageRow, PlanningGrid } from './planning-grid';
-import { cellKey, usePlanningEditor } from './use-planning-editor';
+import { cellKey } from './cells';
+import { downloadCsv, downloadPdf, type PlanningExport } from './export';
+import { usePlanningEditor } from './use-planning-editor';
 import { useSolveRun } from './use-solve-run';
 import { FormShell } from '@/components/form-fields';
 import { Button } from '@/components/ui/button';
@@ -130,6 +132,23 @@ export function PlanningEditor(props: PlanningEditorProps) {
     })
     .sort((a, b) => a.label.localeCompare(b.label, 'fr'));
 
+  // What the grid shows, the solver proposal aside (exports are disabled during its review).
+  const exported = (): PlanningExport => ({
+    month,
+    status,
+    dates,
+    agents: rows,
+    gradeCode,
+    shifts,
+    cells: editor.cells,
+    counters,
+    coverage: coverageRows,
+  });
+  const exportPdf = useMutation({
+    mutationFn: () => downloadPdf(exported()),
+    onError: (error) => toast.error(error.message),
+  });
+
   const agentName = new Map(
     rows.map((agent) => [agent.id, `${agent.lastName} ${agent.firstName}`])
   );
@@ -191,6 +210,27 @@ export function PlanningEditor(props: PlanningEditorProps) {
           >
             Rouvrir en brouillon
           </Button>
+        )}
+        {!solver.preview && (
+          <>
+            <Button
+              variant="outline"
+              disabled={exportPdf.isPending}
+              title="Planning du mois en PDF A3 paysage, pour l'affichage"
+              onClick={() => exportPdf.mutate()}
+            >
+              <FileDown />
+              PDF
+            </Button>
+            <Button
+              variant="outline"
+              title="Une ligne par case (agent, date, poste, heures), pour Excel ou un autre outil"
+              onClick={() => downloadCsv(exported())}
+            >
+              <FileDown />
+              CSV
+            </Button>
+          </>
         )}
         <span className="text-muted-foreground text-xs">
           {solver.running

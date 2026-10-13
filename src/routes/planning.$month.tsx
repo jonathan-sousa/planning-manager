@@ -6,6 +6,7 @@ import { addMonths, monthLabel } from '../../api/calendar';
 import { PlanningEditor } from '@/components/planning/planning-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { planningStatusLabels } from '@/lib/labels';
 import {
   agentRequests,
   agents,
@@ -21,8 +22,6 @@ import {
 export const Route = createFileRoute('/planning/$month')({
   component: PlanningPage,
 });
-
-const statusLabels = { DRAFT: 'Brouillon', VALIDATED: 'Validé', PUBLISHED: 'Publié' } as const;
 
 function PlanningPage() {
   const { month } = Route.useParams();
@@ -71,7 +70,7 @@ function PlanningPage() {
           <ChevronRight />
         </Button>
         {planning.data?.planning && (
-          <Badge variant="secondary">{statusLabels[planning.data.planning.status]}</Badge>
+          <Badge variant="secondary">{planningStatusLabels[planning.data.planning.status]}</Badge>
         )}
       </div>
 

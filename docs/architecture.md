@@ -87,6 +87,7 @@ Production (`npm run infra:deploy -- prod`) :
 - `src/components/planning/planning-grid.tsx` : saisie au clavier (flèches, Maj pour étendre la sélection, code tapé appliqué à la sélection, Suppr, Alt+L pour verrouiller, copier-coller de codes, Cmd/Ctrl+Z) ; cases hors contrat hachurées, cases verrouillées laissées intactes.
 - `src/components/planning/use-solve-run.ts` : lancement du solveur (Compléter, Réoptimiser), suivi toutes les 2 s, proposition affichée par-dessus la grille (cases modifiées marquées d'un point bleu, validateur appliqué à la proposition), puis appliquée ou abandonnée ; la grille est en lecture seule pendant la revue.
 - Le validateur `api/rules/` tourne à chaque saisie : violations sur les cases (rouge : dure, orange : souple) et en liste, compteurs par agent, ligne de couverture par besoin.
+- `src/components/planning/export.ts` : exports du mois tel que la grille le montre (désactivés pendant la revue d'une proposition du solveur), générés dans le navigateur. PDF A3 paysage (jsPDF et jspdf-autotable, chargés au premier export) : grille aux couleurs des postes, week-ends et fériés grisés, compteurs, lignes de couverture, légende des codes, statut du planning et pagination. CSV : une ligne par case (nom, prénom, grade, date, code, libellé, début, fin, heures), séparateur `;`, virgule décimale, UTF-8 avec BOM, pour Excel ; le format attendu par l'outil de gestion des temps de l'hôpital reste à confirmer.
 - `src/components/planning/coverage-diagnosis.tsx` : une case de couverture rouge (ou « Pourquoi ? » dans la liste) explique le manque, agent par agent du grade : libre, sur un autre poste, bloqué par une règle dure (placement simulé avec le validateur, `api/rules/diagnose.ts`), case verrouillée, absent, sans la compétence, hors contrat. Les agents libres ou déplaçables se placent d'un clic.
 
 ## Base de données
@@ -137,9 +138,9 @@ Le budget de recherche est réparti 20 % / 30 % / 50 % entre les trois niveaux ;
 
 L'existant est décrit dans le [README](../README.md#usage). Phases restantes :
 
-| Phase         | Contenu                                            |
-| ------------- | -------------------------------------------------- |
-| 4 — Diffusion | Export PDF A3 et CSV, clôture des soldes d'heures. |
+| Phase         | Contenu                      |
+| ------------- | ---------------------------- |
+| 4 — Diffusion | Clôture des soldes d'heures. |
 
 ## Points ouverts
 

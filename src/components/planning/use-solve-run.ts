@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { countedOn } from '../../../api/calendar';
 import type { SolveMode } from '../../../api/domain';
-import { cellKey, type GridCell } from './use-planning-editor';
+import { cellKey, type GridCell } from './cells';
 import { plannings, type ShiftType } from '@/lib/resources';
 
 const POLL_MS = 2000;

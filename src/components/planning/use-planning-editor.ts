@@ -2,26 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { countedOn } from '../../../api/calendar';
+import { type CellEdit, cellKey, type GridCell } from './cells';
 import { ApiRequestError } from '@/lib/api-client';
 import { type Assignment, type MonthPlanning, plannings, type ShiftType } from '@/lib/resources';
-
-export interface GridCell {
-  agentId: string;
-  date: string;
-  shiftTypeId: string;
-  countedMinutes: number;
-  locked: boolean;
-}
-
-/** Desired state of a cell; `shiftTypeId: null` empties it. */
-export interface CellEdit {
-  agentId: string;
-  date: string;
-  shiftTypeId: string | null;
-  locked: boolean;
-}
-
-export const cellKey = (agentId: string, date: string) => `${agentId}|${date}`;
 
 const SAVE_DELAY_MS = 400;
 

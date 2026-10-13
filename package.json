@@ -40,6 +40,8 @@
     "cn": "^0.4.0",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.13",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.56.0",
     "pg": "^8.23.1",
     "react": "^19.3.0",
@@ -74,7 +76,8 @@
   },
   "allowScripts": {
     "esbuild": true,
-    "fsevents": true
+    "fsevents": true,
+    "core-js": false
   },
   "overrides": {
     "esbuild": "$esbuild"
