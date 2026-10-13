@@ -43,6 +43,13 @@
       "when": 1791887682315,
       "tag": "0005_gigantic_cassandra_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791896844512,
+      "tag": "0006_solver_role",
+      "breakpoints": true
     }
   ]
 }

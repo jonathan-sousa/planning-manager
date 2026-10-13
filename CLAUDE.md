@@ -12,7 +12,7 @@ Liste complète dans le [README](README.md#development) : `npm run check` avant 
 
 ## Déploiement AWS
 
-`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie (`npm run infra:deploy:mail` une fois par compte, puis `npm run infra:deploy`, soit `cdk deploy` suivi, via le hook `postinfra:deploy`, de `env:write` et `db:migrate` ; `-- -c stage=<nom>` pour un autre stage). Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc` ; aucun identifiant AWS requis) et inspecte `cdk.out/`. Rôle de `.env.local` : voir le README (§ Configuration).
+`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie (`npm run infra:deploy:mail` une fois par compte, puis `npm run infra:deploy`, soit `cdk deploy` suivi, via le hook `postinfra:deploy`, de `env:write` et `db:migrate` (migrations, puis rôle IAM du solveur relié au rôle de base `solver`) ; `-- -c stage=<nom>` pour un autre stage). Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc` ; aucun identifiant AWS requis) et inspecte `cdk.out/`. Rôle de `.env.local` : voir le README (§ Configuration).
 
 ## Structure
 
@@ -63,7 +63,7 @@ docs/                       architecture, modèle de domaine, règles de planifi
 ## Conventions
 
 - **Versions** : toujours la dernière stable, vérifiée sur le registre (`npm view`, PyPI). Ne jamais se fier à la mémoire. Un écart se justifie par une incompatibilité constatée et se documente dans `docs/architecture.md`.
-- **Schéma et DSQL** : toute modification de `api/db/schema.ts` passe par `npm run db:generate` et le SQL généré est committé, sans jamais retoucher une migration déjà appliquée. Règles DSQL (FK `NOT VALID` + validation, tri, OCC, 3 000 lignes) : `docs/architecture.md` § Base de données.
+- **Schéma et DSQL** : toute modification de `api/db/schema.ts` passe par `npm run db:generate` et le SQL généré est committé, sans jamais retoucher une migration déjà appliquée. Règles DSQL (FK `NOT VALID` + validation, tri, OCC, 3 000 lignes, rôle `solver` à qui accorder toute nouvelle table qu'il lit) : `docs/architecture.md` § Base de données.
 - **Données, dates, identifiants** : `docs/domain-model.md` § Conventions. Données fictives uniquement tant que l'hôpital n'a pas validé l'hébergement (jeu de démonstration : `scripts/seed/data.ts`).
 - **Authentification** : Cognito Managed Login ; `aws-amplify` ne sert qu'à la redirection OAuth et aux jetons. Pas de formulaire de connexion dans l'app, pas d'Amplify UI.
 - **Formulaires** : TanStack Form validé par les schémas de `api/schemas.ts` (`onDynamic` + `revalidateLogic` : validation à la soumission, puis à chaque frappe), écriture dans `onSubmitAsync` via `submitToApi`. Pas de second schéma côté client.

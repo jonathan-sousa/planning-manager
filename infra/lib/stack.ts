@@ -49,5 +49,6 @@ export class PlanningManagerStack extends Stack {
     new CfnOutput(this, 'AuthDomain', { value: auth.authDomain });
     new CfnOutput(this, 'ApiUrl', { value: api.httpApi.apiEndpoint });
     new CfnOutput(this, 'DatabaseEndpoint', { value: database.cluster.clusterEndpoint });
+    new CfnOutput(this, 'SolverRoleArn', { value: solver.function.role!.roleArn });
   }
 }

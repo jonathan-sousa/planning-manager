@@ -22,6 +22,7 @@ const env = {
   VITE_AUTH_DOMAIN: stack.AuthDomain,
   VITE_API_URL: stack.ApiUrl,
   DATABASE_ENDPOINT: stack.DatabaseEndpoint,
+  SOLVER_ROLE_ARN: stack.SolverRoleArn,
 };
 
 const lines = Object.entries(env).map(([key, value]) => {

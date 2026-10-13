@@ -12,7 +12,7 @@ from . import db, model
 
 def check_database() -> str:
     with (
-        dsql.connect(host=os.environ["DATABASE_ENDPOINT"], user="admin") as conn,
+        dsql.connect(host=os.environ["DATABASE_ENDPOINT"], user=db.USER) as conn,
         conn.cursor() as cur,
     ):
         cur.execute("SELECT 1")
