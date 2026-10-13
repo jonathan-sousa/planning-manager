@@ -3,6 +3,7 @@ import type { InferResponseType } from 'hono/client';
 import type {
   AgentInput,
   AgentRequestInput,
+  CellsInput,
   CoverageNeedInput,
   CoverageOverrideInput,
   GradeInput,
@@ -97,6 +98,17 @@ export const ruleSettings = {
   update: (json: RuleSettingsInput) => api['rule-settings'].$put({ json }).then(unwrap),
 };
 
+export const plannings = {
+  query: (month: string) =>
+    queryOptions({
+      queryKey: ['plannings', month],
+      queryFn: () => api.plannings[':month'].$get({ param: { month } }).then(unwrap),
+    }),
+  create: (month: string) => api.plannings[':month'].$post({ param: { month } }).then(unwrap),
+  writeCells: (month: string, json: CellsInput) =>
+    api.plannings[':month'].cells.$put({ param: { month }, json }).then(unwrap),
+};
+
 export type Grade = InferResponseType<typeof api.grades.$get, 200>[number];
 export type Skill = InferResponseType<typeof api.skills.$get, 200>[number];
 export type Agent = InferResponseType<typeof api.agents.$get, 200>[number];
@@ -108,3 +120,5 @@ export type CoverageOverride = InferResponseType<
 >[number];
 export type AgentRequest = InferResponseType<(typeof api)['agent-requests']['$get'], 200>[number];
 export type RuleSettings = InferResponseType<(typeof api)['rule-settings']['$get'], 200>;
+export type MonthPlanning = InferResponseType<(typeof api)['plannings'][':month']['$get'], 200>;
+export type Assignment = MonthPlanning['assignments'][number];

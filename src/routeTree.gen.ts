@@ -18,6 +18,8 @@ import { Route as GradesRouteImport } from './routes/grades'
 import { Route as RuleSettingsRouteImport } from './routes/rule-settings'
 import { Route as ShiftTypesRouteImport } from './routes/shift-types'
 import { Route as SkillsRouteImport } from './routes/skills'
+import { Route as PlanningIndexRouteImport } from './routes/planning.index'
+import { Route as PlanningMonthRouteImport } from './routes/planning.$month'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -64,6 +66,16 @@ const SkillsRoute = SkillsRouteImport.update({
   path: '/skills',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlanningIndexRoute = PlanningIndexRouteImport.update({
+  id: '/planning/',
+  path: '/planning/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanningMonthRoute = PlanningMonthRouteImport.update({
+  id: '/planning/$month',
+  path: '/planning/$month',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -75,6 +87,8 @@ export interface FileRoutesByFullPath {
   '/rule-settings': typeof RuleSettingsRoute
   '/shift-types': typeof ShiftTypesRoute
   '/skills': typeof SkillsRoute
+  '/planning/$month': typeof PlanningMonthRoute
+  '/planning/': typeof PlanningIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +100,8 @@ export interface FileRoutesByTo {
   '/rule-settings': typeof RuleSettingsRoute
   '/shift-types': typeof ShiftTypesRoute
   '/skills': typeof SkillsRoute
+  '/planning/$month': typeof PlanningMonthRoute
+  '/planning': typeof PlanningIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +114,8 @@ export interface FileRoutesById {
   '/rule-settings': typeof RuleSettingsRoute
   '/shift-types': typeof ShiftTypesRoute
   '/skills': typeof SkillsRoute
+  '/planning/$month': typeof PlanningMonthRoute
+  '/planning/': typeof PlanningIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +129,8 @@ export interface FileRouteTypes {
     | '/rule-settings'
     | '/shift-types'
     | '/skills'
+    | '/planning/$month'
+    | '/planning/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +142,8 @@ export interface FileRouteTypes {
     | '/rule-settings'
     | '/shift-types'
     | '/skills'
+    | '/planning/$month'
+    | '/planning'
   id:
     | '__root__'
     | '/'
@@ -133,6 +155,8 @@ export interface FileRouteTypes {
     | '/rule-settings'
     | '/shift-types'
     | '/skills'
+    | '/planning/$month'
+    | '/planning/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,6 +169,8 @@ export interface RootRouteChildren {
   RuleSettingsRoute: typeof RuleSettingsRoute
   ShiftTypesRoute: typeof ShiftTypesRoute
   SkillsRoute: typeof SkillsRoute
+  PlanningMonthRoute: typeof PlanningMonthRoute
+  PlanningIndexRoute: typeof PlanningIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -212,6 +238,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SkillsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/planning/': {
+      id: '/planning/'
+      path: '/planning'
+      fullPath: '/planning/'
+      preLoaderRoute: typeof PlanningIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planning/$month': {
+      id: '/planning/$month'
+      path: '/planning/$month'
+      fullPath: '/planning/$month'
+      preLoaderRoute: typeof PlanningMonthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -225,6 +265,8 @@ const rootRouteChildren: RootRouteChildren = {
   RuleSettingsRoute: RuleSettingsRoute,
   ShiftTypesRoute: ShiftTypesRoute,
   SkillsRoute: SkillsRoute,
+  PlanningMonthRoute: PlanningMonthRoute,
+  PlanningIndexRoute: PlanningIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

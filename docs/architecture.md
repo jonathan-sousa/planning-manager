@@ -64,6 +64,13 @@ Coût mensuel estimé en usage réel : 0 à 5 € (Cognito et CloudFront dans le
   - 409 : doublon (contrainte unique, rattachée au champ `code` quand c'est lui), suppression d'une ligne encore référencée, ou type d'un poste utilisé.
 - Tri des libellés en français dans l'API (`api/sort.ts`), jamais par `ORDER BY` sur du texte.
 
+## Grille de planning
+
+- `src/routes/planning.$month.tsx` : un mois, créé à la demande (`POST /plannings/:month`).
+- `src/components/planning/use-planning-editor.ts` : copie locale des cases, modifiée immédiatement, enregistrée en arrière-plan par lots (400 ms) avec la version du planning ; une version dépassée (autre manager) recharge le mois avec un message. Annulation des dernières saisies.
+- `src/components/planning/planning-grid.tsx` : saisie au clavier (flèches, Maj pour étendre la sélection, code tapé appliqué à la sélection, Suppr, Alt+L pour verrouiller, copier-coller de codes, Cmd/Ctrl+Z) ; cases hors contrat hachurées, cases verrouillées laissées intactes.
+- Le validateur `api/rules/` tourne à chaque saisie : violations sur les cases (rouge : dure, orange : souple) et en liste, compteurs par agent, ligne de couverture par besoin.
+
 ## Base de données
 
 - Schéma dans `api/db/schema.ts` ; migrations générées par `npm run db:generate` (drizzle-kit puis `dsql-lint` : `CREATE INDEX ASYNC`, pas de `SERIAL`, FK ajoutées `NOT VALID`) et committées dans `api/db/migrations/`.

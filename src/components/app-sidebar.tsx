@@ -28,7 +28,13 @@ import {
 } from '@/components/ui/sidebar';
 
 const navigation = [
-  { label: undefined, items: [{ to: '/', label: 'Accueil', icon: House }] },
+  {
+    label: undefined,
+    items: [
+      { to: '/', label: 'Accueil', icon: House },
+      { to: '/planning', label: 'Planning', icon: CalendarDays },
+    ],
+  },
   {
     label: 'Référentiels',
     items: [
@@ -78,7 +84,7 @@ export function AppSidebar() {
                       render={
                         <Link
                           to={to}
-                          activeOptions={{ exact: true }}
+                          activeOptions={{ exact: to === '/' }}
                           activeProps={{ 'data-active': true }}
                         />
                       }
