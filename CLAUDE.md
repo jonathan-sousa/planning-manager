@@ -44,7 +44,7 @@ api/                        Hono (tsconfig.api.json, projet référencé par le 
   db/client.ts              drizzle() du connecteur DSQL (jeton IAM, pool)
   solver-client.ts          invocation de la Lambda solveur
 solver/                     Python (uv) : handler.py (actions health, solve), model.py (CP-SAT), db.py (DSQL), calendar.py (miroir de api/calendar.ts), cli.py ; tests/
-scripts/                    stage-outputs.ts (sorties CDK du stage), write-env.ts (sorties → .env.local), db-migrate.ts, db-seed.ts + seed/ (service fictif), asset-sizes.ts (infra:size), solver.e2e.test.ts (mois résolu puis validé)
+scripts/                    stage-outputs.ts (sorties CDK du stage), write-env.ts (sorties → .env.local), db-migrate.ts, db-status.ts (avancement des migrations), db-seed.ts + seed/ (service fictif), asset-sizes.ts (infra:size), solver.e2e.test.ts (mois résolu puis validé)
 src/                        frontend
   config.ts                 /config.json du stage (ids Cognito, URL de l'API), lu au démarrage
   main.tsx                  Amplify.configure (Auth + OAuth), QueryClient, router
