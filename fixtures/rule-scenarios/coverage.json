@@ -15,6 +15,7 @@
     { "date": "2026-11-04", "shift": "J", "grade": "IDE", "skill": "IOA", "minCount": 1 }
   ],
   "rules": ["COVERAGE"],
+  "hard": false,
   "expected": [
     { "rule": "COVERAGE", "date": "2026-11-03" },
     { "rule": "COVERAGE", "date": "2026-11-04" }

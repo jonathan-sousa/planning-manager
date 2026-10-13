@@ -19,6 +19,8 @@ const { db, results } = vi.hoisted(() => {
   return { db, results };
 });
 vi.mock('./db/client', () => ({ db }));
+const startSolve = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock('./solver-client', () => ({ startSolve, checkSolverHealth: vi.fn() }));
 
 const { default: app } = await import('./app');
 const { countedOn } = await import('./routes/plannings');
@@ -228,5 +230,54 @@ describe('planning status', () => {
     results.push(...validationQueries(accepted), [{ month: '2026-11', status: 'VALIDATED' }]);
     const response = await setStatus('VALIDATED');
     expect(response.status).toBe(200);
+  });
+});
+
+describe('solve runs', () => {
+  const run = {
+    id: uuid(7),
+    month: '2026-11',
+    mode: 'COMPLETE',
+    status: 'SUCCEEDED',
+    planningVersion: 3,
+  };
+
+  it('starts the solver on a draft only', async () => {
+    results.push([{ month: '2026-11', status: 'PUBLISHED', version: 3 }]);
+    expect((await send('POST', '/plannings/2026-11/solve-runs', { mode: 'COMPLETE' })).status).toBe(
+      409
+    );
+
+    results.push(
+      [{ month: '2026-11', status: 'DRAFT', version: 3 }],
+      [{ ...run, status: 'PENDING' }]
+    );
+    const response = await send('POST', '/plannings/2026-11/solve-runs', { mode: 'COMPLETE' });
+    expect(response.status).toBe(202);
+    expect(startSolve).toHaveBeenCalledWith(uuid(7));
+  });
+
+  it('refuses to apply a proposal computed on an older version', async () => {
+    results.push([{ ...run, result: { cells: [], stats: {} } }], []);
+    const response = await send('POST', `/plannings/2026-11/solve-runs/${uuid(7)}/apply`, {});
+    expect(response.status).toBe(409);
+    expect(((await response.json()) as ApiError).error).toMatch(/relancez/);
+  });
+
+  it('applies a proposal at the right version', async () => {
+    const agent = { id: uuid(1), lastName: 'Joly', startDate: '2026-01-05', endDate: null };
+    const cells = [{ agentId: uuid(1), date: '2026-11-03', shiftTypeId: uuid(2) }];
+    results.push(
+      [{ ...run, result: { cells, stats: {} } }],
+      [{ version: 4 }],
+      [{ id: uuid(2), ...shift }],
+      [agent],
+      [],
+      [{ id: uuid(9) }],
+      []
+    );
+    const response = await send('POST', `/plannings/2026-11/solve-runs/${uuid(7)}/apply`, {});
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ version: 4 });
   });
 });

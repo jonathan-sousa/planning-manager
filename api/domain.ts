@@ -27,6 +27,12 @@ export type PlanningStatus = (typeof PLANNING_STATUSES)[number];
 export const ASSIGNMENT_SOURCES = ['MANUAL', 'SOLVER', 'REQUEST'] as const;
 export type AssignmentSource = (typeof ASSIGNMENT_SOURCES)[number];
 
+export const SOLVE_MODES = ['COMPLETE', 'REOPTIMIZE'] as const;
+export type SolveMode = (typeof SOLVE_MODES)[number];
+
+export const SOLVE_STATUSES = ['PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED', 'APPLIED'] as const;
+export type SolveStatus = (typeof SOLVE_STATUSES)[number];
+
 /** Planning rules and their severity (api/rules/ applies them). */
 export const RULES = {
   APPROVED_ABSENCE: 'HARD',

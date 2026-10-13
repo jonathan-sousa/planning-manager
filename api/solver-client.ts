@@ -25,6 +25,17 @@ async function invoke(payload: Record<string, unknown>): Promise<unknown> {
   return body;
 }
 
+/** Starts a solve run without waiting: the solver writes its result to the run. */
+export async function startSolve(runId: string): Promise<void> {
+  await lambda.send(
+    new InvokeCommand({
+      FunctionName: process.env.SOLVER_FUNCTION_NAME,
+      InvocationType: 'Event',
+      Payload: JSON.stringify({ action: 'solve', runId }),
+    })
+  );
+}
+
 export async function checkSolverHealth(): Promise<SolverHealth> {
   return solverHealth.parse(await invoke({ action: 'health' }));
 }

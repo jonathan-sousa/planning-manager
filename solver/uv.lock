@@ -323,6 +323,7 @@ source = { editable = "." }
 dependencies = [
     { name = "aurora-dsql-python-connector", extra = ["psycopg"] },
     { name = "ortools" },
+    { name = "tzdata" },
 ]
 
 [package.dev-dependencies]
@@ -334,6 +335,7 @@ dev = [
 requires-dist = [
     { name = "aurora-dsql-python-connector", extras = ["psycopg"], specifier = "==0.2.7" },
     { name = "ortools", specifier = "==9.15.6755" },
+    { name = "tzdata", specifier = "==2026.5" },
 ]
 
 [package.metadata.requires-dev]

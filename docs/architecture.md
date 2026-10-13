@@ -93,19 +93,29 @@ Coût mensuel estimé en usage réel : 0 à 5 € (Cognito et CloudFront dans le
 
 Limite Lambda : 250 Mo décompressés. OR-Tools tire numpy, pandas (43 Mo) et protobuf ; le connecteur DSQL ajoute psycopg (24 Mo). La taille se mesure avec `npm run infra:size` après `npm run infra:synth` (`cdk.out/` conserve d'anciens assets, d'où le script) ; au-delà de la limite, on passe à une image conteneur.
 
-## Flux solveur (cible)
+## Solveur
 
-1. Le manager lance l'optimisation : `POST /solve-runs`. L'API crée le `SolveRun` (`PENDING`) et invoque la Lambda solveur en asynchrone (`InvocationType=Event`).
-2. Le solveur (timeout 90 s, pas de relance, 6 Go, seed fixé) lit le mois dans DSQL, puis :
-   - fait un présolve sur les seules cellules fixées ;
-   - construit le modèle `x[agent, jour, poste]` ;
-   - optimise de façon lexicographique : d'abord la couverture, puis le reste ;
-   - écrit le diff dans le `SolveRun`.
+1. Le manager lance le solveur sur un brouillon : `POST /plannings/:month/solve-runs` avec un mode. L'API crée le `SolveRun` (`PENDING`, version du planning lue) et invoque la Lambda solveur en asynchrone (`InvocationType=Event`).
+2. La Lambda (`solver/src/solver/`, timeout 90 s, pas de relance, 6 Go, graine fixe, 60 s de recherche) passe le run en `RUNNING`, lit le mois et ses 13 jours de contexte dans DSQL (`db.py`), construit et résout le modèle (`model.py`), puis écrit la proposition (cases à changer) dans `result` (`SUCCEEDED`) ou l'erreur (`FAILED`).
+3. Le client interroge `GET /plannings/:month/solve-runs/:id`, affiche la proposition en différence avec les violations recalculées par le validateur.
+4. `POST /plannings/:month/solve-runs/:id/apply` applique la proposition dans **une seule transaction** : version du planning identique à celle lue par le solveur (sinon 409), écriture des cases (source `SOLVER`), incrément de version.
 
-   Toute exception passe le run en `FAILED`.
+Modes :
 
-3. Le client interroge `GET /solve-runs/{id}` à intervalles réguliers, puis affiche la proposition en diff, avec les violations recalculées côté client.
-4. `POST /solve-runs/{id}/apply` applique la proposition dans **une seule transaction** : vérification de `Planning.version`, écriture du diff (≤ 3 000 lignes), incrément de version. Un conflit de version renvoie 409.
+- **Compléter** : toutes les cases déjà saisies sont gardées, les vides sont remplies ;
+- **Réoptimiser** : seules les cases verrouillées et les absences sont gardées ; le brouillon sert d'indice et chaque changement est pénalisé (poids de stabilité).
+
+Le solveur ne pose que des postes travaillés non archivés et bien définis (amplitude, pause) ; une case vide est un repos. Une absence validée non posée l'est avec son code.
+
+Modèle CP-SAT (`model.py`) : une variable booléenne par case libre et poste travaillé autorisé (mode jour/nuit), au plus une par case. Chaque instance de règle dure reçoit un indicateur de violation au lieu d'être imposée : le modèle a toujours une solution, et l'objectif est lexicographique :
+
+1. le moins possible de violations dures (zéro, sauf si des cases fixées en imposent) ;
+2. le moins possible de manque de couverture sous les minimums ;
+3. la somme pondérée des contraintes souples (écart d'heures, souhaits, équité nuits / week-ends / fériés par grade, repos isolés, cibles de couverture, stabilité), avec les poids de `RuleSettings`.
+
+Le budget de 60 s est réparti 20 % / 30 % / 50 % entre les trois niveaux ; chaque niveau repart de la solution du précédent et en garde la valeur. Le calendrier Python (`calendar.py`) reproduit `api/calendar.ts` (fériés, changement d'heure). Écarts assumés avec le validateur, tous plus stricts ou propres à l'objectif : le repos de 36h est imposé par une condition suffisante (deux jours libres, ou un jour libre entre deux postes assez espacés) ; la cible d'heures du régime mixte vaut 1 607 h.
+
+Tests : les scénarios partagés (`fixtures/rule-scenarios/`) sont rejoués en pytest, grille figée, et le modèle doit trouver une violation dure exactement quand le validateur en trouve une (champ `hard`, vérifié par Vitest). `scripts/solver.e2e.test.ts` résout un mois du service fictif et passe la proposition au validateur : zéro violation dure.
 
 ## Feuille de route
 

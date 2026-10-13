@@ -14,12 +14,21 @@ import {
   plannings,
   ruleSettings,
   shiftTypes,
+  solveRuns,
 } from '../db/schema';
-import type { PlanningStatus } from '../domain';
+import type { AssignmentSource, PlanningStatus } from '../domain';
 import { type ApiError, notFound, ValidationError } from '../errors';
 import { planningAgents, type RuleInput } from '../rules/model';
 import { validatePlanning } from '../rules/validate';
-import { acceptViolationInput, cellsInput, idParam, monthParam, statusInput } from '../schemas';
+import {
+  acceptViolationInput,
+  cellsInput,
+  idParam,
+  monthParam,
+  solveInput,
+  statusInput,
+} from '../schemas';
+import { startSolve } from '../solver-client';
 import { validate } from '../validate';
 
 /** Days of the neighbouring months loaded with a month, for rules spanning two months. */
@@ -76,6 +85,67 @@ async function loadRuleInput(month: string): Promise<RuleInput> {
     overrides,
     requests,
   };
+}
+
+type Tx = Parameters<Parameters<typeof db.transactionWithRetry>[0]>[0];
+type CellWrite = { agentId: string; date: string; shiftTypeId: string | null; locked: boolean };
+
+/**
+ * Replaces cells inside a transaction: contract dates and archived shift types
+ * are checked, counted minutes computed (daylight saving time included).
+ */
+async function writeCells(
+  tx: Tx,
+  month: string,
+  cells: CellWrite[],
+  { updatedBy, source }: { updatedBy: string; source: AssignmentSource }
+) {
+  const shiftIds = [...new Set(cells.flatMap((cell) => cell.shiftTypeId ?? []))];
+  const agentIds = [...new Set(cells.map((cell) => cell.agentId))];
+  const [shiftRows, agentRows] = await Promise.all([
+    shiftIds.length
+      ? tx.select().from(shiftTypes).where(inArray(shiftTypes.id, shiftIds))
+      : Promise.resolve([]),
+    tx.select().from(agents).where(inArray(agents.id, agentIds)),
+  ]);
+  const shiftById = new Map(shiftRows.map((shift) => [shift.id, shift]));
+  const agentById = new Map(agentRows.map((agent) => [agent.id, agent]));
+
+  const rows = [];
+  for (const cell of cells) {
+    const agent = agentById.get(cell.agentId);
+    if (!agent) throw new ValidationError({ cells: ['Agent inconnu'] });
+    if (cell.date < agent.startDate || (agent.endDate && cell.date > agent.endDate)) {
+      throw new ValidationError({
+        cells: [`Hors contrat : ${agent.lastName} le ${cell.date}`],
+      });
+    }
+    if (!cell.shiftTypeId) continue;
+    const shift = shiftById.get(cell.shiftTypeId);
+    if (!shift || shift.archived)
+      throw new ValidationError({ cells: ['Poste inconnu ou archivé'] });
+    rows.push({
+      agentId: cell.agentId,
+      date: cell.date,
+      month,
+      shiftTypeId: shift.id,
+      countedMinutes: countedOn(cell.date, shift),
+      locked: cell.locked,
+      source,
+      updatedBy,
+    });
+  }
+
+  await tx
+    .delete(assignments)
+    .where(
+      or(
+        ...cells.map((cell) =>
+          and(eq(assignments.agentId, cell.agentId), eq(assignments.date, cell.date))
+        )
+      )
+    );
+  return rows.length ? tx.insert(assignments).values(rows).returning() : [];
 }
 
 /** Allowed status changes: validate, publish, reopen. */
@@ -185,52 +255,7 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
         .returning();
       if (!planning) return undefined;
 
-      const shiftIds = [...new Set(cells.flatMap((cell) => cell.shiftTypeId ?? []))];
-      const agentIds = [...new Set(cells.map((cell) => cell.agentId))];
-      const [shiftRows, agentRows] = await Promise.all([
-        shiftIds.length
-          ? tx.select().from(shiftTypes).where(inArray(shiftTypes.id, shiftIds))
-          : Promise.resolve([]),
-        tx.select().from(agents).where(inArray(agents.id, agentIds)),
-      ]);
-      const shiftById = new Map(shiftRows.map((shift) => [shift.id, shift]));
-      const agentById = new Map(agentRows.map((agent) => [agent.id, agent]));
-
-      const rows = [];
-      for (const cell of cells) {
-        const agent = agentById.get(cell.agentId);
-        if (!agent) throw new ValidationError({ cells: ['Agent inconnu'] });
-        if (cell.date < agent.startDate || (agent.endDate && cell.date > agent.endDate)) {
-          throw new ValidationError({
-            cells: [`Hors contrat : ${agent.lastName} le ${cell.date}`],
-          });
-        }
-        if (!cell.shiftTypeId) continue;
-        const shift = shiftById.get(cell.shiftTypeId);
-        if (!shift || shift.archived)
-          throw new ValidationError({ cells: ['Poste inconnu ou archivé'] });
-        rows.push({
-          agentId: cell.agentId,
-          date: cell.date,
-          month,
-          shiftTypeId: shift.id,
-          countedMinutes: countedOn(cell.date, shift),
-          locked: cell.locked,
-          source: 'MANUAL' as const,
-          updatedBy,
-        });
-      }
-
-      await tx
-        .delete(assignments)
-        .where(
-          or(
-            ...cells.map((cell) =>
-              and(eq(assignments.agentId, cell.agentId), eq(assignments.date, cell.date))
-            )
-          )
-        );
-      const inserted = rows.length ? await tx.insert(assignments).values(rows).returning() : [];
+      const inserted = await writeCells(tx, month, cells, { updatedBy, source: 'MANUAL' });
       return { version: planning.version, assignments: inserted };
     });
 
@@ -323,5 +348,102 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
         .where(and(eq(acceptedViolations.id, id), eq(acceptedViolations.month, month)))
         .returning({ id: acceptedViolations.id });
       return row ? c.body(null, 204) : c.json(notFound, 404);
+    }
+  )
+
+  /** Starts the solver on a draft; the run is followed with GET …/solve-runs/:id. */
+  .post(
+    '/:month/solve-runs',
+    validate('param', monthParam),
+    validate('json', solveInput),
+    async (c) => {
+      const { month } = c.req.valid('param');
+      const [planning] = await db.select().from(plannings).where(eq(plannings.month, month));
+      if (!planning) return c.json(notFound, 404);
+      if (planning.status !== 'DRAFT') return c.json(notDraft, 409);
+      const [run] = await db
+        .insert(solveRuns)
+        .values({
+          month,
+          mode: c.req.valid('json').mode,
+          planningVersion: planning.version,
+          createdBy: callerName(c.env.event),
+        })
+        .returning();
+      try {
+        await startSolve(run!.id);
+      } catch (error) {
+        await db
+          .update(solveRuns)
+          .set({ status: 'FAILED', error: String(error) })
+          .where(eq(solveRuns.id, run!.id));
+        throw error;
+      }
+      return c.json(run!, 202);
+    }
+  )
+
+  .get('/:month/solve-runs/:id', validate('param', monthParam.extend(idParam.shape)), async (c) => {
+    const { month, id } = c.req.valid('param');
+    const [run] = await db
+      .select()
+      .from(solveRuns)
+      .where(and(eq(solveRuns.id, id), eq(solveRuns.month, month)));
+    return run ? c.json(run, 200) : c.json(notFound, 404);
+  })
+
+  /**
+   * Applies a proposal in one transaction, if the planning is still at the
+   * version the solver read; bumps the version.
+   */
+  .post(
+    '/:month/solve-runs/:id/apply',
+    validate('param', monthParam.extend(idParam.shape)),
+    async (c) => {
+      const { month, id } = c.req.valid('param');
+      const updatedBy = callerName(c.env.event);
+      const outcome = await db.transactionWithRetry(async (tx) => {
+        const [run] = await tx
+          .select()
+          .from(solveRuns)
+          .where(and(eq(solveRuns.id, id), eq(solveRuns.month, month)));
+        if (!run) return 'not-found' as const;
+        if (run.status !== 'SUCCEEDED' || !run.result) return 'not-ready' as const;
+        const [planning] = await tx
+          .update(plannings)
+          .set({ version: sql`${plannings.version} + 1` })
+          .where(
+            and(
+              eq(plannings.month, month),
+              eq(plannings.version, run.planningVersion),
+              eq(plannings.status, 'DRAFT')
+            )
+          )
+          .returning();
+        if (!planning) return 'stale' as const;
+        if (run.result.cells.length) {
+          await writeCells(
+            tx,
+            month,
+            run.result.cells.map((cell) => ({ ...cell, locked: false })),
+            { updatedBy, source: 'SOLVER' }
+          );
+        }
+        await tx.update(solveRuns).set({ status: 'APPLIED' }).where(eq(solveRuns.id, id));
+        return { version: planning.version };
+      });
+      if (outcome === 'not-found') return c.json(notFound, 404);
+      if (outcome === 'not-ready') {
+        return c.json({ error: 'Aucune proposition à appliquer.' } satisfies ApiError, 409);
+      }
+      if (outcome === 'stale') {
+        return c.json(
+          {
+            error: 'Le planning a changé depuis le calcul : relancez le solveur.',
+          } satisfies ApiError,
+          409
+        );
+      }
+      return c.json(outcome, 200);
     }
   );

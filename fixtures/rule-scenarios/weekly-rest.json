@@ -21,5 +21,6 @@
     }
   },
   "rules": ["WEEKLY_REST"],
+  "hard": true,
   "expected": [{ "rule": "WEEKLY_REST", "agent": "A", "date": "2026-11-09" }]
 }

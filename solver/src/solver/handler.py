@@ -7,6 +7,8 @@ from importlib.metadata import version
 import aurora_dsql_psycopg as dsql
 from ortools.sat.python import cp_model
 
+from . import db, model
+
 
 def check_database() -> str:
     with (
@@ -32,8 +34,24 @@ def health() -> dict:
     }
 
 
+def solve_run(run_id: str) -> None:
+    """Solves a run's month and stores the proposal (or the error) in the run."""
+    with db.connect() as conn:
+        run = db.start_run(conn, run_id)
+        if run is None:  # already handled (duplicate invocation)
+            return
+        try:
+            problem = db.load_problem(conn, run["month"], run["mode"])
+            db.finish_run(conn, run_id, result=model.solve(problem))
+        except Exception as error:  # the run must never stay RUNNING
+            db.finish_run(conn, run_id, error=f"{type(error).__name__}: {error}")
+            raise
+
+
 def handler(event, context):
     action = event.get("action")
     if action == "health":
         return health()
+    if action == "solve":
+        return solve_run(event["runId"])
     raise ValueError(f"Unknown action: {action!r}")

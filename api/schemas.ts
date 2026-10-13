@@ -9,6 +9,7 @@ import {
   PLANNING_STATUSES,
   REQUEST_KINDS,
   SHIFT_KINDS,
+  SOLVE_MODES,
 } from './domain';
 
 z.config(z.locales.fr());
@@ -176,6 +177,8 @@ export const cellsInput = z.object({
     .min(1)
     .max(500),
 });
+
+export const solveInput = z.object({ mode: z.enum(SOLVE_MODES) });
 
 export const statusInput = z.object({ status: z.enum(PLANNING_STATUSES) });
 

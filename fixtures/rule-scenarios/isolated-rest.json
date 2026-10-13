@@ -12,5 +12,6 @@
     }
   },
   "rules": ["ISOLATED_REST"],
+  "hard": false,
   "expected": [{ "rule": "ISOLATED_REST", "agent": "A", "date": "2026-11-03" }]
 }

@@ -7,5 +7,6 @@
     "B": { "2026-11-02": "N", "2026-11-03": "N" }
   },
   "rules": ["DAILY_REST"],
+  "hard": true,
   "expected": [{ "rule": "DAILY_REST", "agent": "A", "date": "2026-11-03" }]
 }

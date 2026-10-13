@@ -41,6 +41,8 @@ interface Scenario {
     shift?: string;
   }>;
   rules: string[];
+  /** Whether the full validator finds a hard violation (the solver model must agree). */
+  hard: boolean;
   expected: Array<{ rule: string; agent?: string; date: string }>;
 }
 
@@ -112,5 +114,7 @@ describe('rule scenarios', () => {
       .map((violation) => key({ ...violation, agent: violation.agentId }))
       .sort();
     expect(found, scenario.description).toEqual(scenario.expected.map(key).sort());
+    const hard = validatePlanning(toInput(scenario)).some((v) => v.severity === 'HARD');
+    expect(hard, `${file}: hard`).toBe(scenario.hard);
   });
 });
