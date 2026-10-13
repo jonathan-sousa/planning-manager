@@ -1,0 +1,46 @@
+{
+  "description": "Une série commencée le mois précédent et prolongée en novembre est signalée le 1er : heures et repos sur 7 jours, jours d'affilée.",
+  "month": "2026-11",
+  "agents": [
+    {
+      "name": "A"
+    }
+  ],
+  "cells": {
+    "A": {
+      "2026-10-20": "J",
+      "2026-10-21": "J",
+      "2026-10-22": "J",
+      "2026-10-23": "J",
+      "2026-10-24": "J",
+      "2026-10-25": "J",
+      "2026-10-26": "J",
+      "2026-10-27": "J",
+      "2026-10-28": "J",
+      "2026-10-29": "J",
+      "2026-10-30": "J",
+      "2026-10-31": "J",
+      "2026-11-01": "J",
+      "2026-11-02": "J"
+    }
+  },
+  "rules": ["WEEKLY_HOURS", "WEEKLY_REST", "CONSECUTIVE_DAYS"],
+  "hard": true,
+  "expected": [
+    {
+      "rule": "WEEKLY_HOURS",
+      "agent": "A",
+      "date": "2026-11-01"
+    },
+    {
+      "rule": "WEEKLY_REST",
+      "agent": "A",
+      "date": "2026-11-01"
+    },
+    {
+      "rule": "CONSECUTIVE_DAYS",
+      "agent": "A",
+      "date": "2026-11-01"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "description": "Une absence validée qui déborde du contrat n'est exigée que pendant le contrat.",
+  "month": "2026-11",
+  "agents": [{ "name": "A", "endDate": "2026-11-17" }],
+  "cells": { "A": { "2026-11-16": "CA", "2026-11-17": "CA" } },
+  "requests": [
+    {
+      "agent": "A",
+      "startDate": "2026-11-16",
+      "endDate": "2026-11-20",
+      "kind": "ABSENCE_APPROVED",
+      "shift": "CA"
+    }
+  ],
+  "rules": ["APPROVED_ABSENCE"],
+  "hard": false,
+  "expected": []
+}

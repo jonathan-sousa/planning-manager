@@ -1,7 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
   addMonths,
+  countedOn,
+  isPublicHoliday,
+  parisMinute,
   monthLabel,
   weekdayLetter,
   dayKind,
@@ -50,5 +54,33 @@ describe('calendar', () => {
     expect(length('2026-10-24', '19:00', '07:00')).toBe(780); // clocks go back
     expect(length('2026-10-14', '14:00', '00:00')).toBe(600);
     expect(nominalMinutes('19:00', '07:00')).toBe(720);
+  });
+
+  it('credits night shifts their real length on daylight saving nights', () => {
+    const night = {
+      kind: 'WORK',
+      startTime: '19:00',
+      endTime: '07:00',
+      countedMinutes: 720,
+    };
+    expect(countedOn('2026-10-14', night)).toBe(720);
+    expect(countedOn('2026-10-24', night)).toBe(780);
+    expect(countedOn('2026-03-28', night)).toBe(660);
+    expect(countedOn('2026-03-28', { ...night, kind: 'ABSENCE' })).toBe(720);
+  });
+
+  it('matches the solver calendar (fixtures/calendar.json)', () => {
+    const shared = JSON.parse(readFileSync('fixtures/calendar.json', 'utf8')) as {
+      parisMinutes: { date: string; time: string; minute: number }[];
+      publicHolidays: string[];
+    };
+    for (const { date, time, minute } of shared.parisMinutes) {
+      expect(parisMinute(date, time), `${date} ${time}`).toBe(minute);
+    }
+    const holidays = [];
+    for (let date = '2026-01-01'; date < '2029-01-01'; date = addDays(date, 1)) {
+      if (isPublicHoliday(date)) holidays.push(date);
+    }
+    expect(holidays).toEqual(shared.publicHolidays);
   });
 });

@@ -43,5 +43,23 @@
     "breakMinutes": 0,
     "countedMinutes": 0,
     "isNight": false
+  },
+  {
+    "code": "S",
+    "kind": "WORK",
+    "startTime": "14:00",
+    "endTime": "00:00",
+    "breakMinutes": 20,
+    "countedMinutes": 600,
+    "isNight": false
+  },
+  {
+    "code": "E",
+    "kind": "WORK",
+    "startTime": "06:00",
+    "endTime": "14:00",
+    "breakMinutes": 20,
+    "countedMinutes": 480,
+    "isNight": false
   }
 ]

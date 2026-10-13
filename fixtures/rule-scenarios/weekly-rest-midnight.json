@@ -1,0 +1,28 @@
+{
+  "description": "Un poste de jour qui finit à minuit ne laisse pas commencer le repos de 36h dans la fenêtre qui s'achève ce jour-là.",
+  "month": "2026-03",
+  "agents": [
+    {
+      "name": "A"
+    }
+  ],
+  "cells": {
+    "A": {
+      "2026-02-28": "J",
+      "2026-03-02": "E",
+      "2026-03-03": "S",
+      "2026-03-05": "E",
+      "2026-03-06": "S",
+      "2026-03-07": "S"
+    }
+  },
+  "rules": ["WEEKLY_REST"],
+  "hard": true,
+  "expected": [
+    {
+      "rule": "WEEKLY_REST",
+      "agent": "A",
+      "date": "2026-03-07"
+    }
+  ]
+}

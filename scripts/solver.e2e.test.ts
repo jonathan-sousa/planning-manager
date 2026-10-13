@@ -1,29 +1,14 @@
 // End to end: the Python solver fills a month of the fictional department,
 // then the TypeScript validator must find no hard violation in its proposal.
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { countedOn } from '../api/calendar';
 import type { RuleInput } from '../api/rules/model';
 import { coverage, validatePlanning } from '../api/rules/validate';
 import { buildSeed } from './seed/build';
+import { solve } from './solve';
 
 const settings = JSON.parse(readFileSync('fixtures/rule-scenarios/_settings.json', 'utf8'));
-
-function solve(problem: unknown): {
-  cells: { agentId: string; date: string; shiftTypeId: string | null }[];
-  stats: Record<string, number | string>;
-} {
-  const output = execFileSync(
-    'uv',
-    ['run', '--directory', 'solver', 'python', '-m', 'solver.cli'],
-    {
-      input: JSON.stringify(problem),
-      encoding: 'utf8',
-      maxBuffer: 10 * 1024 * 1024,
-    }
-  );
-  return JSON.parse(output);
-}
 
 describe('solver', () => {
   it('proposes a month without hard violations', { timeout: 120_000 }, () => {
@@ -46,7 +31,7 @@ describe('solver', () => {
       requests: seed.agentRequests,
     };
 
-    const result = solve({ ...input, mode: 'COMPLETE', timeLimitSeconds: 20 });
+    const result = solve([{ ...input, mode: 'COMPLETE', timeLimitSeconds: 20 }])[0]!;
     const shiftById = new Map<string, (typeof seed.shiftTypes)[number]>(
       seed.shiftTypes.map((shift) => [shift.id, shift])
     );
@@ -56,7 +41,7 @@ describe('solver', () => {
             {
               ...cell,
               shiftTypeId: cell.shiftTypeId,
-              countedMinutes: shiftById.get(cell.shiftTypeId)!.countedMinutes,
+              countedMinutes: countedOn(cell.date, shiftById.get(cell.shiftTypeId)!),
             },
           ]
         : []

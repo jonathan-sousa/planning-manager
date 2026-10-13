@@ -25,6 +25,7 @@ from .calendar import (
     is_public_holiday,
     month_dates,
     nominal_minutes,
+    paris_minute,
     shift_interval,
 )
 
@@ -38,6 +39,10 @@ TARGET_GAP_WEIGHT = 1
 """Weight of a person missing to reach a need's target (below the minimum is level 2)."""
 
 Lit = Any  # a CP-SAT literal, or the constants True / False
+
+
+class SolveError(Exception):
+    """A failure whose message (French) is shown to the manager."""
 
 
 @dataclass
@@ -143,16 +148,20 @@ class PlanningModel:
                 if self.frozen:
                     self.slots[key] = Slot(fixed=cell["shiftTypeId"] if cell else None)
                     continue
-                if key in absences:
-                    # An approved absence holds its code, placed if missing.
-                    self.slots[key] = Slot(fixed=absences[key])
+                if cell and (self.p.mode == "COMPLETE" or cell.get("locked")):
+                    self.slots[key] = Slot(fixed=cell["shiftTypeId"])
                     continue
-                keep = cell and (
-                    self.p.mode == "COMPLETE"
-                    or cell.get("locked")
-                    or self.shifts.get(cell["shiftTypeId"], {}).get("kind") != "WORK"
-                )
-                if keep:
+                if key in absences:
+                    # An approved absence holds its code, placed if missing (an
+                    # archived code cannot be written: the cell stays as it is).
+                    archived = self.shifts.get(absences[key], {}).get("archived")
+                    current = cell["shiftTypeId"] if cell else None
+                    self.slots[key] = Slot(fixed=current if archived else absences[key])
+                    continue
+                if (
+                    cell
+                    and self.shifts.get(cell["shiftTypeId"], {}).get("kind") != "WORK"
+                ):
                     self.slots[key] = Slot(fixed=cell["shiftTypeId"])
                     continue
                 choices = {}
@@ -166,9 +175,10 @@ class PlanningModel:
                     )
                     choices[shift["id"]] = var
                 self.m.add_at_most_one(choices.values())
-                if cell:  # reoptimizing: start from the current draft
-                    for shift_id, var in choices.items():
-                        self.m.add_hint(var, shift_id == cell["shiftTypeId"])
+                # Start from the current draft (reoptimizing) or an empty cell:
+                # every hard rule has a violation indicator, so both are feasible.
+                for shift_id, var in choices.items():
+                    self.m.add_hint(var, bool(cell) and shift_id == cell["shiftTypeId"])
                 self.slots[key] = Slot(choices=choices)
 
     def assigned(self, agent_id: str, day: str, shift_id: str) -> Lit:
@@ -301,13 +311,13 @@ class PlanningModel:
                 )
                 # A long rest meets every 7-day window: one starting after the work of
                 # the 8 days before the window's last day, or after that day itself
-                # when its work ends before midnight.
+                # when its work ends before the window does (midnight).
                 starts = [
                     self.long_rest_after(a, add_days(end, -i)) for i in range(1, 9)
                 ]
                 starts.append(
                     self.both(
-                        self.long_rest_after(a, end), _negate(self.night_on(a, end))
+                        self.long_rest_after(a, end), _negate(self.ends_late(a, end))
                     )
                 )
                 self.clause(starts)
@@ -358,6 +368,18 @@ class PlanningModel:
         self.m.add(sum(literals) == 0).only_enforce_if(var)
         self.m.add(sum(literals) >= 1).only_enforce_if(var.Not())
         return var
+
+    def ends_late(self, agent_id: str, day: str) -> Lit:
+        """True when the work starting that day ends at or after the next midnight."""
+        midnight = paris_minute(add_days(day, 1), "00:00")
+        late = [
+            lit
+            for shift, lit in self.options(agent_id, day)
+            if shift_interval(day, shift["startTime"], shift["endTime"])[1] >= midnight
+        ]
+        if any(lit is True for lit in late):
+            return True
+        return _negate(self.off_from([lit for lit in late if lit is not False]))
 
     def night_on(self, agent_id: str, day: str) -> Lit:
         nights = [lit for shift, lit in self.options(agent_id, day) if shift["isNight"]]
@@ -483,7 +505,10 @@ class PlanningModel:
             # Isolated rest day between two worked days (an absence is not one).
             for day in self.dates:
                 slot = self.slots[(a, day)]
-                if not self._in_contract(agent, day) or (slot.fixed and not slot.free):
+                fixed = self.shifts.get(slot.fixed) if slot.fixed else None
+                if not self._in_contract(agent, day) or (
+                    fixed and fixed["kind"] != "REST"
+                ):
                     continue
                 isolated = self.both(
                     self.off(a, day),
@@ -587,7 +612,7 @@ class PlanningModel:
             ("soft", sum(soft)),
         ]
         shares = [0.2, 0.3, 0.5]
-        status = None
+        chosen: dict[int, bool] | None = None  # by variable index
         for (name, objective), share in zip(levels, shares, strict=True):
             if isinstance(objective, int):
                 stats[name] = objective
@@ -595,26 +620,31 @@ class PlanningModel:
             self.m.minimize(objective)
             solver.parameters.max_time_in_seconds = max(1.0, budget * share)
             status = solver.solve(self.m)
+            stats[f"{name}Status"] = solver.status_name(status)
             if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-                raise RuntimeError(
-                    f"Aucune solution trouvée ({solver.status_name(status)})"
-                )
+                if chosen is None:
+                    raise SolveError(
+                        "Aucune solution trouvée dans le temps imparti : relancez le calcul."
+                    )
+                break  # out of time: keep the previous level's solution
             value = round(solver.objective_value)
             stats[name] = value
-            stats[f"{name}Status"] = solver.status_name(status)
+            chosen = {
+                var.index: solver.boolean_value(var) for var in self._all_choice_vars()
+            }
             # Keep this level's best value, and start the next level from here.
             self.m.add(objective <= value)
             self.m.clear_hints()
             for var in self._all_choice_vars():
-                self.m.add_hint(var, solver.boolean_value(var))
+                self.m.add_hint(var, chosen[var.index])
         stats["hard"] = stats.get("hard", 0) + self.hard_constant
-        return {"cells": self._changes(solver), "stats": stats}
+        return {"cells": self._changes(chosen or {}), "stats": stats}
 
     def _all_choice_vars(self):
         for slot in self.slots.values():
             yield from slot.choices.values()
 
-    def _changes(self, solver: cp_model.CpSolver) -> list[dict]:
+    def _changes(self, values: dict[int, bool]) -> list[dict]:
         """Cells of the month whose content differs from the current draft."""
         current = {(c["agentId"], c["date"]): c["shiftTypeId"] for c in self.p.cells}
         changes = []
@@ -623,11 +653,7 @@ class PlanningModel:
                 continue
             if slot.free:
                 chosen = next(
-                    (
-                        sid
-                        for sid, var in slot.choices.items()
-                        if solver.boolean_value(var)
-                    ),
+                    (sid for sid, var in slot.choices.items() if values.get(var.index)),
                     None,
                 )
             else:

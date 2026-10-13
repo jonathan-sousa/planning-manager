@@ -17,6 +17,8 @@ interface Scenario {
     grade?: string;
     skills?: string[];
     nightMode?: RuleInput['agents'][number]['nightMode'];
+    startDate?: string;
+    endDate?: string;
   }>;
   cells: Record<string, Record<string, string>>;
   needs?: Array<{
@@ -70,8 +72,8 @@ function toInput(scenario: Scenario): RuleInput {
       workTimeRatio: 100,
       nightMode: agent.nightMode ?? 'MIXED',
       hoursRegime: 'MIXED_PRORATA',
-      startDate: '2020-01-01',
-      endDate: null,
+      startDate: agent.startDate ?? '2020-01-01',
+      endDate: agent.endDate ?? null,
     })),
     cells: Object.entries(scenario.cells).flatMap(([agentId, days]) =>
       Object.entries(days).map(([date, code]) => ({
