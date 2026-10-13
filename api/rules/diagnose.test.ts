@@ -88,6 +88,27 @@ describe('diagnoseCoverage', () => {
     expect(blockers('nightOnly')).toEqual(['NIGHT_MODE']);
   });
 
+  it('tells which minimum moving an agent would break', () => {
+    // Two M required on Tuesday 2026-11-10: moving onM leaves lockedM alone.
+    const withNeed = {
+      ...input,
+      needs: [
+        {
+          shiftTypeId: 'M',
+          gradeId: 'IDE',
+          skillId: null,
+          dayKind: 'WEEKDAY' as const,
+          minCount: 2,
+        },
+      ],
+    };
+    const onM = diagnoseCoverage(withNeed, slot, () => false).find((c) => c.agentId === 'onM')!;
+    expect(onM.status).toBe('ELSEWHERE');
+    expect(onM.uncovers).toMatchObject([{ shiftTypeId: 'M', count: 1, minCount: 2 }]);
+    const free = diagnoseCoverage(input, slot, () => false).find((c) => c.agentId === 'onM')!;
+    expect(free.uncovers).toEqual([]);
+  });
+
   it('puts agents without the required skill aside', () => {
     const result = diagnoseCoverage(input, { ...slot, skillId: 'SMUR' }, () => false);
     expect(result.every((c) => c.status === 'NO_SKILL')).toBe(true);

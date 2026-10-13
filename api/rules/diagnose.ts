@@ -1,8 +1,9 @@
 // Why a coverage minimum is not met: what stops each agent of the grade from
 // taking the shift that day. Reuses the validator, so it explains gaps left by
 // hand as well as by the solver.
+import { countedOn } from '../calendar';
 import type { RuleAgent, RuleInput, Violation } from './model';
-import { validatePlanning } from './validate';
+import { type CoverageSlot, coverage, validatePlanning } from './validate';
 
 export interface CoverageSlotKey {
   date: string;
@@ -16,7 +17,7 @@ export type CandidateStatus =
   | 'COUNTED'
   /** Empty or rest day, no hard rule broken by placing the shift. */
   | 'AVAILABLE'
-  /** On another work shift that could be swapped without breaking a hard rule. */
+  /** On another work shift, movable without breaking a hard rule. */
   | 'ELSEWHERE'
   /** Placing the shift breaks at least one hard rule. */
   | 'BLOCKED'
@@ -32,6 +33,8 @@ export interface Candidate {
   shiftTypeId?: string;
   /** Hard violations the placement would add (BLOCKED). */
   blockers: Violation[];
+  /** Minimums of the day the move would break (ELSEWHERE). */
+  uncovers: CoverageSlot[];
 }
 
 const violationKey = (v: Violation) => `${v.rule}|${v.date}|${v.message}`;
@@ -70,6 +73,7 @@ export function diagnoseCoverage(
         status,
         shiftTypeId: current?.shiftTypeId,
         blockers,
+        uncovers: [],
       });
 
       if (slot.skillId && !agent.skillIds.includes(slot.skillId)) return result('NO_SKILL');
@@ -88,19 +92,37 @@ export function diagnoseCoverage(
       if (current && locked(agent.id, slot.date)) return result('LOCKED');
 
       const before = new Set(hardViolations(input, agent, cells).map(violationKey));
-      const placed = [
-        ...cells.filter((cell) => cell.date !== slot.date),
-        {
-          agentId: agent.id,
-          date: slot.date,
-          shiftTypeId: slot.shiftTypeId,
-          countedMinutes: shift?.countedMinutes ?? 0,
-        },
-      ];
+      const moved = {
+        agentId: agent.id,
+        date: slot.date,
+        shiftTypeId: slot.shiftTypeId,
+        countedMinutes: shift ? countedOn(slot.date, shift) : 0,
+      };
+      const placed = [...cells.filter((cell) => cell.date !== slot.date), moved];
       const added = hardViolations(input, agent, placed).filter(
         (violation) => !before.has(violationKey(violation))
       );
       if (added.length) return result('BLOCKED', added);
-      return result(held?.kind === 'WORK' ? 'ELSEWHERE' : 'AVAILABLE');
+      if (held?.kind !== 'WORK') return result('AVAILABLE');
+      return { ...result('ELSEWHERE'), uncovers: uncoveredBy(input, current!, moved) };
     });
 }
+
+/** Minimums of the day met with the agent's current cell and missed once it is moved. */
+function uncoveredBy(
+  input: RuleInput,
+  from: RuleInput['cells'][number],
+  to: RuleInput['cells'][number]
+): CoverageSlot[] {
+  const day = input.cells.filter((cell) => cell.date === from.date);
+  const short = (cells: RuleInput['cells']) =>
+    coverage({ ...input, cells }).filter(
+      (item) => item.date === from.date && item.count < item.minCount
+    );
+  const before = new Set(short(day).map((item) => slotKey(item)));
+  return short([...day.filter((cell) => cell !== from), to]).filter(
+    (item) => !before.has(slotKey(item))
+  );
+}
+
+const slotKey = (item: CoverageSlot) => `${item.shiftTypeId}|${item.gradeId}|${item.skillId}`;
