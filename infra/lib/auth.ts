@@ -6,12 +6,14 @@ import {
   ManagedLoginVersion,
   OAuthScope,
   UserPool,
+  UserPoolEmail,
   type UserPoolClient,
   type UserPoolDomain,
   type UserPoolGroup,
 } from 'aws-cdk-lib/aws-cognito';
 import { Construct } from 'constructs';
 import { bootstrapManager } from './bootstrap-manager';
+import { MAIL_DOMAIN, MAIL_FROM } from './mail';
 
 export interface AuthProps {
   readonly stage: string;
@@ -45,6 +47,25 @@ export class Auth extends Construct {
       autoVerify: { email: true },
       standardAttributes: { email: { required: true, mutable: true } },
       accountRecovery: AccountRecovery.EMAIL_ONLY,
+      // SES with the shared sending domain (MailStack), not Cognito's default
+      // sender, which is capped and lands in spam.
+      email: UserPoolEmail.withSES({
+        fromEmail: MAIL_FROM,
+        fromName: 'Planning Manager',
+        sesRegion: Stack.of(this).region,
+        sesVerifiedDomain: MAIL_DOMAIN,
+      }),
+      userInvitation: {
+        emailSubject: 'Votre accès à Planning Manager',
+        emailBody:
+          'Bonjour,<br><br>Un compte Planning Manager vient de vous être ouvert.<br>' +
+          'Identifiant : {username}<br>Mot de passe temporaire : {####}<br><br>' +
+          'Vous choisirez votre mot de passe à la première connexion.',
+      },
+      userVerification: {
+        emailSubject: 'Votre code Planning Manager',
+        emailBody: 'Votre code de vérification : {####}',
+      },
       deletionProtection: props.isProd,
       removalPolicy: props.removalPolicy,
     });
