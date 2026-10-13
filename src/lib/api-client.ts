@@ -42,7 +42,11 @@ async function throwIfFailed(response: Response): Promise<void> {
 
 /** JSON body of the successful (2xx) variant of a Hono RPC response. */
 type SuccessBody<R> =
-  R extends ClientResponse<infer T, infer S, 'json'> ? (S extends 200 | 201 ? T : never) : never;
+  R extends ClientResponse<infer T, infer S, 'json'>
+    ? S extends 200 | 201 | 202
+      ? T
+      : never
+    : never;
 
 /** Unwraps a Hono RPC response, throwing an ApiRequestError on non-2xx status. */
 export async function unwrap<R extends ClientResponse<unknown>>(

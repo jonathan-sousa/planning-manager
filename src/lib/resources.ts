@@ -1,6 +1,6 @@
 import { type QueryKey, queryOptions } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
-import type { PlanningStatus } from '../../api/domain';
+import type { PlanningStatus, SolveMode } from '../../api/domain';
 import type {
   AcceptViolationInput,
   AgentInput,
@@ -113,6 +113,16 @@ export const plannings = {
     api.plannings[':month'].status.$put({ param: { month }, json: { status } }).then(unwrap),
   acceptViolation: (month: string, json: AcceptViolationInput) =>
     api.plannings[':month']['accepted-violations'].$post({ param: { month }, json }).then(unwrap),
+  solve: (month: string, mode: SolveMode) =>
+    api.plannings[':month']['solve-runs'].$post({ param: { month }, json: { mode } }).then(unwrap),
+  solveRun: (month: string, id: string) =>
+    queryOptions({
+      queryKey: ['solve-runs', id],
+      queryFn: () =>
+        api.plannings[':month']['solve-runs'][':id'].$get({ param: { month, id } }).then(unwrap),
+    }),
+  applySolveRun: (month: string, id: string) =>
+    api.plannings[':month']['solve-runs'][':id'].apply.$post({ param: { month, id } }).then(unwrap),
   removeAccepted: (month: string, id: string) =>
     api.plannings[':month']['accepted-violations'][':id']
       .$delete({ param: { month, id } })
