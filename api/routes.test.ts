@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiError } from './errors';
 
@@ -161,5 +162,71 @@ describe('planning cells', () => {
     expect(countedOn('2026-10-14', row)).toBe(720);
     expect(countedOn('2026-10-24', row)).toBe(780);
     expect(countedOn('2026-03-28', row)).toBe(660);
+  });
+});
+
+describe('planning status', () => {
+  const settings: unknown = JSON.parse(
+    readFileSync('fixtures/rule-scenarios/_settings.json', 'utf8')
+  );
+  const agentRow = {
+    id: uuid(1),
+    firstName: 'Inès',
+    lastName: 'Joly',
+    gradeId: uuid(3),
+    workTimeRatio: 100,
+    nightMode: 'MIXED',
+    hoursRegime: 'MIXED_PRORATA',
+    active: true,
+    startDate: '2020-01-01',
+    endDate: null,
+  };
+  const absence = {
+    ...shift,
+    id: uuid(2),
+    code: 'CA',
+    kind: 'ABSENCE',
+    startTime: null,
+    endTime: null,
+  };
+  const request = {
+    agentId: uuid(1),
+    startDate: '2026-11-03',
+    endDate: '2026-11-03',
+    kind: 'ABSENCE_APPROVED',
+    shiftTypeId: uuid(2),
+  };
+  const setStatus = (status: string) => send('PUT', '/plannings/2026-11/status', { status });
+  // Queries of a validation: planning, then the validator inputs, then the accepted violations.
+  const validationQueries = (accepted: unknown[]) => [
+    [{ month: '2026-11', status: 'DRAFT', version: 2 }],
+    [agentRow],
+    [],
+    [absence],
+    [],
+    [],
+    [],
+    [request],
+    [settings],
+    accepted,
+  ];
+
+  it('refuses a transition that skips a step', async () => {
+    results.push([{ month: '2026-11', status: 'DRAFT', version: 2 }]);
+    expect((await setStatus('PUBLISHED')).status).toBe(409);
+  });
+
+  it('refuses to validate with an open hard violation', async () => {
+    results.push(...validationQueries([]));
+    const response = await setStatus('VALIDATED');
+    expect(response.status).toBe(409);
+    expect(((await response.json()) as ApiError).error).toMatch(/1 violation/);
+  });
+
+  it('validates once the hard violation is accepted', async () => {
+    const accepted = [{ agentId: uuid(1), date: '2026-11-03', rule: 'APPROVED_ABSENCE' }];
+    results.push(...validationQueries(accepted), [{ month: '2026-11', status: 'VALIDATED' }]);
+    const response = await setStatus('VALIDATED');
+    expect(response.status).toBe(200);
   });
 });

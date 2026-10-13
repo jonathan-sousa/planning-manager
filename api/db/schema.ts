@@ -214,6 +214,26 @@ export const assignments = pgTable(
   ]
 );
 
+/** A hard violation the manager keeps, with a justification (required to validate the month). */
+export const acceptedViolations = pgTable(
+  'accepted_violations',
+  {
+    ...id,
+    month: text()
+      .notNull()
+      .references(() => plannings.month, { onDelete: 'restrict' }),
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'restrict' }),
+    date: day('date').notNull(),
+    rule: text().notNull(),
+    comment: text().notNull(),
+    acceptedBy: text('accepted_by').notNull(),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex('accepted_violations_key_idx').on(table.agentId, table.date, table.rule)]
+);
+
 /**
  * Single row (id 'default', inserted by the migration). Defaults follow the
  * FPH rules (décret 2002-9); durations in minutes.

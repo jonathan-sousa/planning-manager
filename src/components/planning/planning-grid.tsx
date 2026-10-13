@@ -16,12 +16,16 @@ export interface CoverageRow {
 }
 
 interface PlanningGridProps {
+  /** Last days of the previous month, shown read-only for continuity. */
+  contextDates: string[];
   dates: string[];
   agents: Agent[];
   gradeCode: Map<string, string>;
   shifts: ShiftType[];
   cells: Map<string, GridCell>;
   violations: Violation[];
+  /** Keys `agentId|date|rule` of hard violations accepted with a justification. */
+  accepted: Set<string>;
   counters: Map<string, AgentCounters>;
   coverage: CoverageRow[];
   readOnly: boolean;
@@ -41,12 +45,14 @@ const inContract = (agent: Agent, date: string) =>
  * unlocks, Cmd/Ctrl+C/V copy and paste codes, Cmd/Ctrl+Z undoes.
  */
 export function PlanningGrid({
+  contextDates,
   dates,
   agents,
   gradeCode,
   shifts,
   cells,
   violations,
+  accepted,
   counters,
   coverage,
   readOnly,
@@ -250,6 +256,15 @@ export function PlanningGrid({
             <th className="bg-background sticky left-0 z-30 min-w-44 border-b px-2 text-left">
               Agent
             </th>
+            {contextDates.map((date) => (
+              <th
+                key={date}
+                className="text-muted-foreground/70 w-8 min-w-8 border-b border-l py-1 font-normal"
+              >
+                <div>{weekdayLetter(date)}</div>
+                <div>{Number(date.slice(8))}</div>
+              </th>
+            ))}
             {dates.map((date) => (
               <th
                 key={date}
@@ -276,11 +291,27 @@ export function PlanningGrid({
                   <span className="font-medium">{agent.lastName}</span> {agent.firstName}{' '}
                   <span className="text-muted-foreground">{gradeCode.get(agent.gradeId)}</span>
                 </th>
+                {contextDates.map((date) => {
+                  const cell = cells.get(cellKey(agent.id, date));
+                  return (
+                    <td
+                      key={date}
+                      className="text-muted-foreground/70 bg-muted/40 h-8 border-b border-l text-center"
+                    >
+                      {cell && shiftById.get(cell.shiftTypeId)?.code}
+                    </td>
+                  );
+                })}
                 {dates.map((date, col) => {
                   const cell = cells.get(cellKey(agent.id, date));
                   const shift = cell && shiftById.get(cell.shiftTypeId);
                   const issues = violationsByCell.get(cellKey(agent.id, date)) ?? [];
-                  const hard = issues.some((issue) => issue.severity === 'HARD');
+                  const open = issues.filter(
+                    (issue) =>
+                      issue.severity === 'SOFT' ||
+                      !accepted.has(`${issue.agentId}|${issue.date}|${issue.rule}`)
+                  );
+                  const hard = open.some((issue) => issue.severity === 'HARD');
                   const selected = isSelected(row, col);
                   const focused = focus.row === row && focus.col === col;
                   return (
@@ -296,7 +327,10 @@ export function PlanningGrid({
                         !inContract(agent, date) &&
                           'bg-[repeating-linear-gradient(45deg,var(--muted),var(--muted)_4px,transparent_4px,transparent_8px)]',
                         hard && 'ring-destructive ring-2 ring-inset',
-                        !hard && issues.length > 0 && 'ring-2 ring-amber-500 ring-inset',
+                        !hard && open.length > 0 && 'ring-2 ring-amber-500 ring-inset',
+                        open.length === 0 &&
+                          issues.length > 0 &&
+                          'outline-muted-foreground/60 outline-1 -outline-offset-4 outline-dashed',
                         selected && 'bg-primary/15',
                         focused && 'outline-primary outline-2 -outline-offset-2'
                       )}
@@ -333,6 +367,9 @@ export function PlanningGrid({
               <th className="bg-background sticky left-0 z-30 border-t px-2 text-left font-normal whitespace-nowrap">
                 {line.label}
               </th>
+              {contextDates.map((date) => (
+                <td key={date} className="border-t border-l" />
+              ))}
               {dates.map((date) => {
                 const need = line.byDate.get(date);
                 return (

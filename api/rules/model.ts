@@ -1,6 +1,14 @@
 // Input and output of the planning rules. Structural types: the API rows and
 // their JSON form (frontend) both fit, so the same validator runs on both sides.
-import type { DayKind, HoursRegime, NightMode, RequestKind, ShiftKind } from '../domain';
+import {
+  type DayKind,
+  type HoursRegime,
+  type NightMode,
+  type RequestKind,
+  type RuleCode,
+  RULES,
+  type ShiftKind,
+} from '../domain';
 
 export interface RuleShift {
   id: string;
@@ -84,23 +92,9 @@ export interface RuleInput {
   requests: RuleRequest[];
 }
 
-export const RULES = {
-  APPROVED_ABSENCE: 'HARD',
-  DAILY_REST: 'HARD',
-  SHIFT_AMPLITUDE: 'HARD',
-  SHIFT_BREAK: 'HARD',
-  WEEKLY_HOURS: 'HARD',
-  WEEKLY_REST: 'HARD',
-  FORTNIGHT_REST: 'HARD',
-  CONSECUTIVE_DAYS: 'HARD',
-  NIGHT_MODE: 'HARD',
-  COVERAGE: 'SOFT',
-  MONTHLY_HOURS: 'SOFT',
-  WISH: 'SOFT',
-  ISOLATED_REST: 'SOFT',
-} as const;
+export { RULES };
+export type { RuleCode };
 
-export type RuleCode = keyof typeof RULES;
 export type Severity = (typeof RULES)[RuleCode];
 
 export interface Violation {
@@ -123,4 +117,21 @@ export interface AgentCounters {
   nights: number;
   weekendDays: number;
   holidays: number;
+}
+
+/** Agents of a month's grid: under contract during the month, and active or holding cells in it. */
+export function planningAgents<
+  A extends { id: string; startDate: string; endDate: string | null; active: boolean },
+>(agents: A[], cells: { agentId: string; date: string }[], month: string): A[] {
+  const first = `${month}-01`;
+  const last = `${month}-31`;
+  const withCells = new Set(
+    cells.filter((cell) => cell.date.startsWith(month)).map((cell) => cell.agentId)
+  );
+  return agents.filter(
+    (agent) =>
+      agent.startDate <= last &&
+      (!agent.endDate || agent.endDate >= first) &&
+      (agent.active || withCells.has(agent.id))
+  );
 }

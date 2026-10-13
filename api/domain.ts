@@ -26,3 +26,25 @@ export type PlanningStatus = (typeof PLANNING_STATUSES)[number];
 
 export const ASSIGNMENT_SOURCES = ['MANUAL', 'SOLVER', 'REQUEST'] as const;
 export type AssignmentSource = (typeof ASSIGNMENT_SOURCES)[number];
+
+/** Planning rules and their severity (api/rules/ applies them). */
+export const RULES = {
+  APPROVED_ABSENCE: 'HARD',
+  DAILY_REST: 'HARD',
+  SHIFT_AMPLITUDE: 'HARD',
+  SHIFT_BREAK: 'HARD',
+  WEEKLY_HOURS: 'HARD',
+  WEEKLY_REST: 'HARD',
+  FORTNIGHT_REST: 'HARD',
+  CONSECUTIVE_DAYS: 'HARD',
+  NIGHT_MODE: 'HARD',
+  COVERAGE: 'SOFT',
+  MONTHLY_HOURS: 'SOFT',
+  WISH: 'SOFT',
+  ISOLATED_REST: 'SOFT',
+} as const;
+
+export type RuleCode = keyof typeof RULES;
+export const HARD_RULES = (Object.keys(RULES) as RuleCode[]).filter(
+  (rule) => RULES[rule] === 'HARD'
+);

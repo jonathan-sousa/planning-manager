@@ -1,7 +1,15 @@
 // Input schemas of the API, also used by the frontend forms: one validation
 // definition for both sides. Depends on zod and ./domain only.
 import { z } from 'zod';
-import { DAY_KINDS, HOURS_REGIMES, NIGHT_MODES, REQUEST_KINDS, SHIFT_KINDS } from './domain';
+import {
+  DAY_KINDS,
+  HARD_RULES,
+  HOURS_REGIMES,
+  NIGHT_MODES,
+  PLANNING_STATUSES,
+  REQUEST_KINDS,
+  SHIFT_KINDS,
+} from './domain';
 
 z.config(z.locales.fr());
 
@@ -169,6 +177,16 @@ export const cellsInput = z.object({
     .max(500),
 });
 
+export const statusInput = z.object({ status: z.enum(PLANNING_STATUSES) });
+
+/** A hard violation kept on purpose: the justification is required. */
+export const acceptViolationInput = z.object({
+  agentId: ref,
+  date: isoDate,
+  rule: z.enum(HARD_RULES as [string, ...string[]]),
+  comment: z.string().trim().min(3, 'Justification requise').max(500),
+});
+
 export const ruleSettingsInput = z.object({
   minDailyRestMinutes: minutes(24 * 60),
   maxShiftAmplitudeMinutes: minutes(24 * 60),
@@ -201,4 +219,5 @@ export type CoverageNeedInput = z.input<typeof coverageNeedInput>;
 export type CoverageOverrideInput = z.input<typeof coverageOverrideInput>;
 export type AgentRequestInput = z.input<typeof agentRequestInput>;
 export type CellsInput = z.input<typeof cellsInput>;
+export type AcceptViolationInput = z.input<typeof acceptViolationInput>;
 export type RuleSettingsInput = z.input<typeof ruleSettingsInput>;
