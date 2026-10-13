@@ -39,7 +39,8 @@ export const validationLogic = revalidateLogic();
 /**
  * Runs an API write from the form's `onSubmitAsync` validator. Returns null on
  * success, or the API errors in TanStack Form's shape: per field when the API
- * names fields, at form level otherwise.
+ * names fields, at form level otherwise. `fields` must always be present: it is
+ * what marks the object as a form-level error rather than a raw error value.
  */
 export async function submitToApi(write: () => Promise<unknown>) {
   try {
@@ -50,8 +51,8 @@ export async function submitToApi(write: () => Promise<unknown>) {
       const fields = Object.fromEntries(
         Object.entries(error.fields).map(([name, messages]) => [name, messages.join(' ')])
       );
-      return { fields };
+      return { form: undefined, fields };
     }
-    return { form: error instanceof Error ? error.message : String(error) };
+    return { form: error instanceof Error ? error.message : String(error), fields: {} };
   }
 }

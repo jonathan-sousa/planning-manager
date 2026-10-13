@@ -82,21 +82,35 @@ function ShiftTypeForm({ row, onSaved }: { row: ShiftType | undefined; onSaved: 
     onSubmit: onSaved,
   });
 
-  // Proposes the counted time of a work shift: its span minus the break.
-  const proposeCountedMinutes = () => {
+  // On a new work shift, proposes the counted time (span minus break) and the
+  // night flag (crossing midnight). An existing shift keeps what was saved.
+  const proposeTiming = () => {
     const { kind, startTime, endTime, breakMinutes } = form.state.values;
-    if (kind === 'WORK' && startTime && endTime && Number.isInteger(breakMinutes)) {
-      form.setFieldValue('countedMinutes', shiftMinutes(startTime, endTime) - breakMinutes);
-    }
+    if (row || kind !== 'WORK' || !startTime || !endTime) return;
+    form.setFieldValue('isNight', endTime < startTime);
+    const counted = shiftMinutes(startTime, endTime) - breakMinutes;
+    if (counted > 0) form.setFieldValue('countedMinutes', counted);
   };
-  const timing = { onChange: proposeCountedMinutes };
+  const timing = { onChange: proposeTiming };
 
   return (
     <form.AppForm>
       <FormShell>
         <form.AppField name="code">{(field) => <field.TextField label="Code" />}</form.AppField>
         <form.AppField name="label">{(field) => <field.TextField label="Libellé" />}</form.AppField>
-        <form.AppField name="kind">
+        <form.AppField
+          name="kind"
+          listeners={{
+            // Absences and rest days have no hours, break or night flag.
+            onChange: ({ value }) => {
+              if (value === 'WORK') return;
+              form.setFieldValue('startTime', null);
+              form.setFieldValue('endTime', null);
+              form.setFieldValue('breakMinutes', 0);
+              form.setFieldValue('isNight', false);
+            },
+          }}
+        >
           {(field) => <field.SelectField label="Type" options={optionsOf(shiftKindLabels)} />}
         </form.AppField>
         <form.AppField name="color">

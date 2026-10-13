@@ -97,8 +97,9 @@ function AgentRequestForm({
         <form.AppField
           name="startDate"
           listeners={{
-            // Single-day requests are the common case.
-            onChange: ({ value }) =>
+            // Single-day requests are the common case. On blur: date inputs
+            // report partial years while being typed.
+            onBlur: ({ value }) =>
               !form.getFieldValue('endDate') && form.setFieldValue('endDate', value),
           }}
         >

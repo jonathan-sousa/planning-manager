@@ -85,10 +85,10 @@ export function CrudPage<Row extends { id: string }, Input>({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows?.length === 0 && (
+          {(rows?.length === 0 || (!rows && !error)) && (
             <TableRow>
               <TableCell colSpan={columns.length + 1} className="text-muted-foreground">
-                Aucun élément.
+                {rows ? 'Aucun élément.' : 'Chargement…'}
               </TableCell>
             </TableRow>
           )}

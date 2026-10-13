@@ -21,7 +21,10 @@ export function useReferences(keep: { shiftTypeId?: string | null; agentId?: str
     agentName: new Map(
       agentList.map((agent) => [agent.id, `${agent.lastName} ${agent.firstName}`])
     ),
-    gradeOptions: gradeList.map((grade) => ({ value: grade.id, label: grade.code })),
+    gradeOptions: gradeList.map((grade) => ({
+      value: grade.id,
+      label: `${grade.code} — ${grade.label}`,
+    })),
     skillOptions: skillList.map((skill) => ({ value: skill.id, label: skill.code })),
     shiftOptions: shiftList
       .filter((shift) => !shift.archived || shift.id === keep.shiftTypeId)

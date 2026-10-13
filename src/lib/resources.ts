@@ -6,6 +6,7 @@ import type {
   CoverageNeedInput,
   CoverageOverrideInput,
   GradeInput,
+  RuleSettingsInput,
   ShiftTypeInput,
   SkillInput,
 } from '../../api/schemas';
@@ -93,6 +94,7 @@ export const ruleSettings = {
     queryKey: ['rule-settings'],
     queryFn: () => api['rule-settings'].$get().then(unwrap),
   }),
+  update: (json: RuleSettingsInput) => api['rule-settings'].$put({ json }).then(unwrap),
 };
 
 export type Grade = InferResponseType<typeof api.grades.$get, 200>[number];
