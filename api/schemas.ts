@@ -1,5 +1,5 @@
 // Input schemas of the API, also used by the frontend forms: one validation
-// definition for both sides. Depends on zod only.
+// definition for both sides. Depends on zod and ./domain only.
 import { z } from 'zod';
 import { DAY_KINDS, HOURS_REGIMES, NIGHT_MODES, REQUEST_KINDS, SHIFT_KINDS } from './domain';
 
@@ -15,6 +15,21 @@ const minutes = (max: number) => z.int({ error: 'Durée requise' }).min(0).max(m
 const weight = integer().min(0).max(100);
 /** Reference to another row, chosen in a select. */
 const ref = z.uuid({ error: 'Choix requis' });
+
+const isText = (value: unknown): value is string => typeof value === 'string' && value !== '';
+const isNumber = (value: unknown): value is number => Number.isInteger(value);
+
+/**
+ * Cross-field rules also run when other fields are invalid, so every error
+ * shows at once; they must then tolerate malformed values (hence isText and
+ * isNumber), but never a non-object body.
+ */
+const evenWithFieldErrors = {
+  when: ({ value }: { value: unknown }) => typeof value === 'object' && value !== null,
+};
+
+/** Minutes of a 'HH:mm' time; inputs are already validated. */
+const timeMinutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
 
 export const idParam = z.object({ id: z.uuid() });
 
@@ -35,10 +50,11 @@ export const agentInput = z
     startDate: isoDate,
     endDate: isoDate.nullable(),
   })
-  .refine((agent) => !agent.endDate || agent.endDate >= agent.startDate, {
-    path: ['endDate'],
-    message: 'Fin antérieure au début',
-  });
+  .refine(
+    (agent) =>
+      !isText(agent.endDate) || !isText(agent.startDate) || agent.endDate >= agent.startDate,
+    { path: ['endDate'], message: 'Fin antérieure au début', ...evenWithFieldErrors }
+  );
 
 export const shiftTypeInput = z
   .object({
@@ -53,25 +69,30 @@ export const shiftTypeInput = z
     color: z.string().regex(/^#[0-9a-f]{6}$/i, 'Couleur au format #rrggbb'),
     archived: z.boolean(),
   })
-  .superRefine(
-    (shift, ctx) => {
-      const timed = shift.kind === 'WORK';
-      for (const field of ['startTime', 'endTime'] as const) {
-        if (timed && !shift[field]) {
-          ctx.addIssue({
-            code: 'custom',
-            path: [field],
-            message: 'Requis pour un poste travaillé',
-          });
-        }
-        if (!timed && shift[field]) {
-          ctx.addIssue({ code: 'custom', path: [field], message: 'Réservé aux postes travaillés' });
-        }
-      }
-      // Also when other fields are invalid, so that every error shows at once.
-    },
-    { when: () => true }
-  );
+  .superRefine((shift, ctx) => {
+    const issue = (field: string, message: string) =>
+      ctx.addIssue({ code: 'custom', path: [field], message });
+    if (shift.kind !== 'WORK') {
+      // Absences and rest days have no hours.
+      if (shift.startTime) issue('startTime', 'Réservé aux postes travaillés');
+      if (shift.endTime) issue('endTime', 'Réservé aux postes travaillés');
+      if (shift.breakMinutes) issue('breakMinutes', 'Réservé aux postes travaillés');
+      if (shift.isNight) issue('isNight', 'Réservé aux postes travaillés');
+      return;
+    }
+    if (!shift.startTime) issue('startTime', 'Requis pour un poste travaillé');
+    if (!shift.endTime) issue('endTime', 'Requis pour un poste travaillé');
+    if (!isText(shift.startTime) || !isText(shift.endTime)) return;
+    const start = timeMinutes(shift.startTime);
+    const end = timeMinutes(shift.endTime);
+    if (start === end) return issue('endTime', 'Identique au début');
+    const crossesMidnight = end < start;
+    const span = crossesMidnight ? end + 24 * 60 - start : end - start;
+    if (crossesMidnight && !shift.isNight) issue('isNight', 'Le poste passe minuit');
+    if (isNumber(shift.breakMinutes) && shift.breakMinutes >= span) {
+      issue('breakMinutes', 'Pause plus longue que le poste');
+    }
+  }, evenWithFieldErrors);
 
 export const coverageNeedInput = z
   .object({
@@ -82,10 +103,11 @@ export const coverageNeedInput = z
     minCount: count,
     targetCount: count.nullable(),
   })
-  .refine((need) => need.targetCount === null || need.targetCount >= need.minCount, {
-    path: ['targetCount'],
-    message: 'Cible inférieure au minimum',
-  });
+  .refine(
+    (need) =>
+      !isNumber(need.targetCount) || !isNumber(need.minCount) || need.targetCount >= need.minCount,
+    { path: ['targetCount'], message: 'Cible inférieure au minimum', ...evenWithFieldErrors }
+  );
 
 export const coverageOverrideInput = z.object({
   date: isoDate,
@@ -104,16 +126,25 @@ export const agentRequestInput = z
     shiftTypeId: ref.nullable(),
     comment: z.string().trim().max(500).nullable(),
   })
-  .refine((request) => request.endDate >= request.startDate, {
-    path: ['endDate'],
-    message: 'Fin antérieure au début',
-  })
+  .refine(
+    (request) =>
+      !isText(request.endDate) ||
+      !isText(request.startDate) ||
+      request.endDate >= request.startDate,
+    { path: ['endDate'], message: 'Fin antérieure au début', ...evenWithFieldErrors }
+  )
   // An approved absence locks the cell with its absence code; a shift wish
   // names the shift; a day-off wish has none.
-  .refine((request) => (request.kind === 'WISH_OFF') === (request.shiftTypeId === null), {
-    path: ['shiftTypeId'],
-    message: 'Requis, sauf pour un souhait de repos',
-  });
+  .refine(
+    (request) =>
+      (request.kind === 'WISH_OFF') ===
+      (request.shiftTypeId === null || request.shiftTypeId === ''),
+    {
+      path: ['shiftTypeId'],
+      message: 'Requis, sauf pour un souhait de repos',
+      ...evenWithFieldErrors,
+    }
+  );
 
 export const ruleSettingsInput = z.object({
   minDailyRestMinutes: minutes(24 * 60),

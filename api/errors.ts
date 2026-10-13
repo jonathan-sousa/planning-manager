@@ -1,3 +1,5 @@
+import { HTTPException } from 'hono/http-exception';
+
 /** JSON body of every API error response. `fields` maps a form field to its messages. */
 export type ApiError = { error: string; fields?: Record<string, string[]> };
 
@@ -39,11 +41,18 @@ const uniqueViolations: Record<string, { field?: string; message: string }> = {
   },
 };
 
+/** Names of the unique constraints mapped to a message (checked against the migrations). */
+export const uniqueConstraintNames = Object.keys(uniqueViolations);
+
 /** Maps an error to its HTTP status and body; undefined for unexpected errors (500). */
 export function toErrorResponse(
   error: unknown,
   method: string
 ): { status: 400 | 409; body: ApiError } | undefined {
+  // Raised by Hono's validator on a body that is not JSON.
+  if (error instanceof HTTPException && error.status === 400) {
+    return { status: 400, body: { error: 'Requête invalide' } };
+  }
   if (error instanceof ValidationError) {
     return { status: 400, body: { error: error.message, fields: error.fields } };
   }

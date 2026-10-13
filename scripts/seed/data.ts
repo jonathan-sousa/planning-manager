@@ -1,7 +1,7 @@
 /**
  * Fictional emergency department used to fill a development stage. Every
  * name is invented; no real person or absence reason appears here.
- * References between rows use codes and full names, resolved by db-seed.ts.
+ * References between rows use codes and full names, resolved by build.ts.
  */
 import type {
   AgentInput,
@@ -146,8 +146,12 @@ export const agents: SeedAgent[] = [
   agent('Thomas', 'Fabre', 'IDE', 'MIXED'),
   agent('Manon', 'Garnier', 'IDE', 'NIGHT_ONLY', { skills: ['IOA'] }),
   agent('Hugo', 'Hamon', 'IDE', 'MIXED', { skills: ['SAUV'], workTimeRatio: 90 }),
-  agent('Inès', 'Joly', 'IDE', 'MIXED', { startDate: '2026-01-05', endDate: '2026-12-31' }),
+  agent('Inès', 'Joly', 'IDE', 'MIXED', { startDate: '2026-01-05', endDate: '2027-12-31' }),
   agent('Lucas', 'Klein', 'IDE', 'DAY_ONLY'),
+  agent('Mathis', 'Lacroix', 'IDE', 'MIXED', { skills: ['SAUV'] }),
+  agent('Clara', 'Morel', 'IDE', 'MIXED', { skills: ['IOA'] }),
+  agent('Raphaël', 'Navarro', 'IDE', 'NIGHT_ONLY'),
+  agent('Anna', 'Pons', 'IDE', 'MIXED', { workTimeRatio: 80 }),
   agent('Chloé', 'Lemaire', 'IDE', 'MIXED', { active: false, endDate: '2026-06-30' }),
   agent('Emma', 'Marchand', 'AS', 'MIXED'),
   agent('Théo', 'Noël', 'AS', 'MIXED', { workTimeRatio: 80 }),
@@ -157,6 +161,8 @@ export const agents: SeedAgent[] = [
   agent('Arthur', 'Schmitt', 'AS', 'MIXED'),
   agent('Alice', 'Texier', 'AS', 'NIGHT_ONLY'),
   agent('Gabriel', 'Vidal', 'AS', 'MIXED'),
+  agent('Lina', 'Roux', 'AS', 'MIXED'),
+  agent('Nathan', 'Simon', 'AS', 'NIGHT_ONLY'),
   agent('Rose', 'Weber', 'ASH', 'DAY_ONLY'),
   agent('Paul', 'Xavier', 'ASH', 'DAY_ONLY'),
 ];
@@ -169,9 +175,11 @@ type SeedNeed = Ref<
 
 const allDays = ['WEEKDAY', 'SATURDAY', 'SUNDAY_HOLIDAY'] as const;
 
+// Minimums sized on the staff above: about 4 IDE and 3 AS shifts a day,
+// against a capacity of ~10.6 twelve-hour shifts per full-time agent a month.
 export const coverageNeeds: SeedNeed[] = [
   ...allDays.flatMap((dayKind): SeedNeed[] => [
-    { dayKind, shift: 'J', grade: 'IDE', minCount: 3, targetCount: 4 },
+    { dayKind, shift: 'J', grade: 'IDE', minCount: 2, targetCount: 3 },
     { dayKind, shift: 'J', grade: 'IDE', skill: 'IOA', minCount: 1, targetCount: null },
     { dayKind, shift: 'J', grade: 'AS', minCount: 2, targetCount: 3 },
     { dayKind, shift: 'N', grade: 'IDE', minCount: 2, targetCount: null },

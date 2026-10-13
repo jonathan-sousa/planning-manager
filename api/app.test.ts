@@ -54,6 +54,16 @@ describe('API', () => {
     });
   });
 
+  it('answers malformed bodies with 400', async () => {
+    const malformed = await app.request(
+      '/grades',
+      { method: 'POST', body: '{bad', headers: { 'Content-Type': 'application/json' } },
+      managerEnv('[MANAGERS]')
+    );
+    expect(malformed.status).toBe(400);
+    expect((await post('/shift-types', null)).status).toBe(400);
+  });
+
   it('rejects malformed ids before querying', async () => {
     const response = await app.request(
       '/grades/not-a-uuid',

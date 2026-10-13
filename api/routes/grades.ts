@@ -4,12 +4,13 @@ import { db } from '../db/client';
 import { grades } from '../db/schema';
 import { notFound } from '../errors';
 import { gradeInput, idParam } from '../schemas';
+import { compareFr } from '../sort';
 import { validate } from '../validate';
 
 export const gradeRoutes = new Hono()
   .get('/', async (c) => {
-    const rows = await db.select().from(grades).orderBy(grades.sortOrder, grades.code);
-    return c.json(rows);
+    const rows = await db.select().from(grades);
+    return c.json(rows.sort((a, b) => a.sortOrder - b.sortOrder || compareFr(a.code, b.code)));
   })
 
   .post('/', validate('json', gradeInput), async (c) => {
