@@ -46,3 +46,9 @@ Le décret laisse de la marge sur ces points ; le validateur retient une lecture
 - **Vitest** (`api/rules/scenarios.test.ts`) : le validateur produit exactement les violations attendues pour les règles que le scénario déclare.
 - **pytest** (`solver/tests/test_scenarios.py`) : le modèle CP-SAT, toutes les cases figées comme dans le scénario, trouve une violation dure exactement quand le validateur en trouve une (champ `hard` du scénario, vérifié par Vitest).
 - **Bout en bout** (`scripts/solver.e2e.test.ts`) : une proposition du solveur sur le service fictif repasse dans le validateur, qui ne trouve aucune violation dure.
+- **Mois aléatoires** (`scripts/solver.random.test.ts`) : de petits mois générés (changement d'heure, cases de contexte et verrouillées, absences, contrats partiels, poste finissant à minuit, deux modes) ; quand le solveur annonce zéro violation dure, le validateur doit être d'accord.
+
+Écarts assumés du solveur, tous plus stricts que le validateur ou propres à l'objectif :
+
+- le repos de 36h est imposé par une condition suffisante : deux jours sans poste, ou un jour sans poste entre deux postes assez espacés. Avec les postes usuels, elle couvre un minimum jusqu'à environ 41 h ; au-delà (48 h par exemple), elle ne suffit plus et le solveur peut proposer des violations que le validateur signalera ;
+- la cible d'heures du régime mixte vaut 1 607 h dans l'objectif (le validateur la module selon la part de nuit).

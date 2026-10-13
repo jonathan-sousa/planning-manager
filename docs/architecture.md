@@ -23,7 +23,7 @@
 | Auth                | Cognito user pool (Essentials) + Managed Login (page hébergée, code + PKCE), domaine Cognito par stage | Parcours complets (mot de passe temporaire, oubli, MFA et passkeys activables) sans code ni Amplify UI ; inscription fermée ; premier manager créé au déploiement. Un domaine personnalisé exige un certificat ACM en `us-east-1`. |
 | Emails              | Amazon SES, sous-domaine d'envoi dédié (DKIM, SPF, DMARC)                                              | Expéditeur Cognito par défaut plafonné (~50 emails/jour) et classé en spam.                                                                                                                                                        |
 | API                 | API Gateway HTTP API + authorizer JWT Cognito → une Lambda Node 24 ARM64 (Hono)                        | 1 $/M requêtes, auth native ; l'appartenance au groupe est vérifiée dans l'app.                                                                                                                                                    |
-| Données             | Aurora DSQL (PostgreSQL distribué, serverless, sans VPC), Drizzle ORM, `eu-west-3`                     | Domaine relationnel, transactions jusqu'à 3 000 lignes (le diff du solveur devient atomique), 0 DPU au repos, free tier permanent.                                                                                                 |
+| Données             | Aurora DSQL (PostgreSQL distribué, serverless, sans VPC), Drizzle ORM, `eu-west-3`                     | Domaine relationnel, transactions jusqu'à 3 000 lignes (une proposition du solveur s'applique d'un bloc), 0 DPU au repos, free tier permanent.                                                                                     |
 | Sauvegarde          | AWS Backup, plan quotidien, rétention 35 jours, stage `prod` uniquement                                | Sauvegardes complètes du cluster ; restauration vers un nouveau cluster. Les stages de dev restent jetables (un coffre non vide ne se supprime pas).                                                                               |
 | Solveur             | Lambda Python 3.14 ARM64 + OR-Tools CP-SAT, projet `uv`, connecteur DSQL psycopg                       | Référence pour le planning sous contraintes ; 6 Go, 90 s, sans relance automatique.                                                                                                                                                |
 | Tests               | Vitest (TS), pytest (Python), scénarios JSON partagés                                                  | Voir « Un seul validateur » dans [scheduling-rules.md](scheduling-rules.md).                                                                                                                                                       |
@@ -97,17 +97,17 @@ Limite Lambda : 250 Mo décompressés. OR-Tools tire numpy, pandas (43 Mo) et pr
 
 ## Solveur
 
-1. Le manager lance le solveur sur un brouillon : `POST /plannings/:month/solve-runs` avec un mode. L'API crée le `SolveRun` (`PENDING`, version du planning lue) et invoque la Lambda solveur en asynchrone (`InvocationType=Event`).
-2. La Lambda (`solver/src/solver/`, timeout 90 s, pas de relance, 6 Go, graine fixe, 60 s de recherche) passe le run en `RUNNING`, lit le mois et ses 13 jours de contexte dans DSQL (`db.py`), construit et résout le modèle (`model.py`), puis écrit la proposition (cases à changer) dans `result` (`SUCCEEDED`) ou l'erreur (`FAILED`).
-3. Le client interroge `GET /plannings/:month/solve-runs/:id`, affiche la proposition en différence avec les violations recalculées par le validateur.
-4. `POST /plannings/:month/solve-runs/:id/apply` applique la proposition dans **une seule transaction** : version du planning identique à celle lue par le solveur (sinon 409), écriture des cases (source `SOLVER`), incrément de version.
+1. Le manager lance le solveur sur un brouillon : `POST /plannings/:month/solve-runs` avec un mode. L'API refuse un second calcul en cours sur le mois (409), crée le `SolveRun` (`PENDING`, version du planning lue à ce moment) et invoque la Lambda solveur en asynchrone (`InvocationType=Event`).
+2. La Lambda (`solver/src/solver/`, timeout 90 s, pas de relance, 6 Go) passe le run en `RUNNING`, lit le mois et ses 13 jours de contexte dans DSQL (`db.py`), construit et résout le modèle (`model.py`, au plus 60 s de recherche, moins si le temps restant de la Lambda ne le permet pas), puis écrit la proposition (cases à changer) dans `result` (`SUCCEEDED`) ou un message d'erreur en français (`FAILED`, détail dans les journaux).
+3. Le client interroge `GET /plannings/:month/solve-runs/:id` toutes les 2 s et affiche la proposition en différence, avec les violations recalculées par le validateur. Un run encore en cours 3 min après sa création (Lambda tuée par son timeout ou sa mémoire) est renvoyé en `FAILED`.
+4. `POST /plannings/:month/solve-runs/:id/apply` applique la proposition dans **une seule transaction** : planning toujours en brouillon et à la version lue à la création du run (sinon 409), écriture des cases (source `SOLVER`), incrément de version. Les absences, besoins et contrats ne sont pas versionnés : une demande validée pendant le calcul apparaît comme violation dure dans la grille après application.
 
 Modes :
 
 - **Compléter** : toutes les cases déjà saisies sont gardées, les vides sont remplies ;
-- **Réoptimiser** : seules les cases verrouillées et les absences sont gardées ; le brouillon sert d'indice et chaque changement est pénalisé (poids de stabilité).
+- **Réoptimiser** : les cases verrouillées et les codes non travaillés (absences, repos) sont gardés, les postes travaillés non verrouillés sont recalculés ; le brouillon sert d'indice et chaque changement est pénalisé (poids de stabilité).
 
-Le solveur ne pose que des postes travaillés non archivés et bien définis (amplitude, pause) ; une case vide est un repos. Une absence validée non posée l'est avec son code.
+Dans les deux modes, une absence validée est posée avec son code sur une case libre (vide, ou poste non verrouillé en réoptimisation) ; une case verrouillée qui la contredit est gardée et reste une violation dure visible. Le solveur ne pose que des postes travaillés non archivés et bien définis (amplitude, pause) ; une case vide est un repos.
 
 Modèle CP-SAT (`model.py`) : une variable booléenne par case libre et poste travaillé autorisé (mode jour/nuit), au plus une par case. Chaque instance de règle dure reçoit un indicateur de violation au lieu d'être imposée : le modèle a toujours une solution, et l'objectif est lexicographique :
 
@@ -115,9 +115,7 @@ Modèle CP-SAT (`model.py`) : une variable booléenne par case libre et poste tr
 2. le moins possible de manque de couverture sous les minimums ;
 3. la somme pondérée des contraintes souples (écart d'heures, souhaits, équité nuits / week-ends / fériés par grade, repos isolés, cibles de couverture, stabilité), avec les poids de `RuleSettings`.
 
-Le budget de 60 s est réparti 20 % / 30 % / 50 % entre les trois niveaux ; chaque niveau repart de la solution du précédent et en garde la valeur. Le calendrier Python (`calendar.py`) reproduit `api/calendar.ts` (fériés, changement d'heure). Écarts assumés avec le validateur, tous plus stricts ou propres à l'objectif : le repos de 36h est imposé par une condition suffisante (deux jours libres, ou un jour libre entre deux postes assez espacés) ; la cible d'heures du régime mixte vaut 1 607 h.
-
-Tests : les scénarios partagés (`fixtures/rule-scenarios/`) sont rejoués en pytest, grille figée, et le modèle doit trouver une violation dure exactement quand le validateur en trouve une (champ `hard`, vérifié par Vitest). `scripts/solver.e2e.test.ts` résout un mois du service fictif et passe la proposition au validateur : zéro violation dure.
+Le budget de recherche est réparti 20 % / 30 % / 50 % entre les trois niveaux ; le premier part d'une grille vide (ou du brouillon en réoptimisation), chaque niveau repart de la solution du précédent et en garde la valeur. Si le temps manque à un niveau, la solution du niveau précédent est gardée ; sans aucune solution, le run échoue avec un message. Le calendrier Python (`calendar.py`) reproduit `api/calendar.ts` (fériés, changement d'heure, vérifiés sur `fixtures/calendar.json` des deux côtés). Les écarts assumés avec le validateur et les tests croisés sont décrits dans [scheduling-rules.md](scheduling-rules.md#un-seul-validateur).
 
 ## Feuille de route
 
