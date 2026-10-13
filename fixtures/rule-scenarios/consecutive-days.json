@@ -1,0 +1,17 @@
+{
+  "description": "Six jours travaillés d'affilée dépassent le maximum de cinq ; signalé sur le sixième.",
+  "month": "2026-11",
+  "agents": [{ "name": "A" }],
+  "cells": {
+    "A": {
+      "2026-11-09": "M",
+      "2026-11-10": "M",
+      "2026-11-11": "M",
+      "2026-11-12": "M",
+      "2026-11-13": "M",
+      "2026-11-14": "M"
+    }
+  },
+  "rules": ["CONSECUTIVE_DAYS"],
+  "expected": [{ "rule": "CONSECUTIVE_DAYS", "agent": "A", "date": "2026-11-14" }]
+}

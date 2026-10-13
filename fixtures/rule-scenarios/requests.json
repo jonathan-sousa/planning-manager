@@ -1,0 +1,21 @@
+{
+  "description": "Une absence validée doit porter son code chaque jour ; un souhait de repos non respecté est une violation souple.",
+  "month": "2026-11",
+  "agents": [{ "name": "A" }],
+  "cells": { "A": { "2026-11-16": "CA", "2026-11-17": "J", "2026-11-20": "J" } },
+  "requests": [
+    {
+      "agent": "A",
+      "startDate": "2026-11-16",
+      "endDate": "2026-11-17",
+      "kind": "ABSENCE_APPROVED",
+      "shift": "CA"
+    },
+    { "agent": "A", "startDate": "2026-11-20", "endDate": "2026-11-20", "kind": "WISH_OFF" }
+  ],
+  "rules": ["APPROVED_ABSENCE", "WISH"],
+  "expected": [
+    { "rule": "APPROVED_ABSENCE", "agent": "A", "date": "2026-11-17" },
+    { "rule": "WISH", "agent": "A", "date": "2026-11-20" }
+  ]
+}

@@ -105,7 +105,7 @@ L'existant est décrit dans le [README](../README.md#usage). Phases restantes :
 
 | Phase               | Contenu                                                                                                                                                                                                                                                                                                                    |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2 — Grille manuelle | Grille agents × jours, saisie clavier, verrouillage, compteurs, validation en temps réel (`src/lib/rules/`), statuts et publication, continuité entre mois ; horaires et décompte d'un poste figés dès qu'il apparaît dans un planning.                                                                                    |
+| 2 — Grille manuelle | Grille agents × jours, saisie clavier, verrouillage, compteurs, validation en temps réel (`api/rules/`), statuts et publication, continuité entre mois ; horaires et décompte d'un poste figés dès qu'il apparaît dans un planning.                                                                                        |
 | 3 — Solveur         | `SolveRun`, proposition en diff, application transactionnelle protégée par version, diagnostic des trous de couverture.                                                                                                                                                                                                    |
 | 4 — Diffusion       | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations (avec notification des rebonds et plaintes SES), hébergement S3 + CloudFront (+ WAF) sur `planning-manager.lab.jonathan-sousa.com`, domaine de connexion `auth.planning-manager.lab.jonathan-sousa.com` (certificat ACM en `us-east-1`). |
 
@@ -114,6 +114,8 @@ L'existant est décrit dans le [README](../README.md#usage). Phases restantes :
 Technique : rôle de base de données dédié (`dsql:DbConnect` + `AWS IAM GRANT`) à la place d'`admin` pour les Lambdas.
 
 À clarifier avec le cadre de santé :
+
+- **Interprétations du validateur** : voir [scheduling-rules.md](scheduling-rules.md#interprétations-à-valider) (repos de 36h glissant, absences comptées comme repos dans la quinzaine, mois voisin vide, cible d'heures).
 
 - **Protocole temps de travail local** :
   - dérogation 12h ;

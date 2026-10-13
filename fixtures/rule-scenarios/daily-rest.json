@@ -1,0 +1,11 @@
+{
+  "description": "Une nuit suivie d'un jour viole le repos quotidien ; deux nuits de suite laissent exactement 12 h, ce qui est légal.",
+  "month": "2026-11",
+  "agents": [{ "name": "A" }, { "name": "B" }],
+  "cells": {
+    "A": { "2026-11-02": "N", "2026-11-03": "J" },
+    "B": { "2026-11-02": "N", "2026-11-03": "N" }
+  },
+  "rules": ["DAILY_REST"],
+  "expected": [{ "rule": "DAILY_REST", "agent": "A", "date": "2026-11-03" }]
+}

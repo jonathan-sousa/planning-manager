@@ -1,0 +1,14 @@
+{
+  "description": "Un agent de jour placé de nuit, un agent de nuit placé de jour.",
+  "month": "2026-11",
+  "agents": [
+    { "name": "Jour", "nightMode": "DAY_ONLY" },
+    { "name": "Nuit", "nightMode": "NIGHT_ONLY" }
+  ],
+  "cells": { "Jour": { "2026-11-05": "N" }, "Nuit": { "2026-11-06": "J" } },
+  "rules": ["NIGHT_MODE"],
+  "expected": [
+    { "rule": "NIGHT_MODE", "agent": "Jour", "date": "2026-11-05" },
+    { "rule": "NIGHT_MODE", "agent": "Nuit", "date": "2026-11-06" }
+  ]
+}

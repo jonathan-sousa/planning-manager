@@ -1,0 +1,8 @@
+{
+  "description": "Le repos quotidien se vérifie à travers le changement de mois : une nuit du 31 octobre puis un jour le 1er novembre.",
+  "month": "2026-11",
+  "agents": [{ "name": "A" }],
+  "cells": { "A": { "2026-10-31": "N", "2026-11-01": "J" } },
+  "rules": ["DAILY_REST"],
+  "expected": [{ "rule": "DAILY_REST", "agent": "A", "date": "2026-11-01" }]
+}
