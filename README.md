@@ -7,8 +7,7 @@ Outil de construction et d'optimisation des plannings mensuels du personnel para
 ```bash
 npm install
 cp .envrc.example .envrc && direnv allow              # BOOTSTRAP_MANAGER_EMAIL + profil AWS
-npm run infra:deploy:mail                             # une fois par compte : domaine d'envoi SES (vérification DKIM en quelques minutes)
-npm run infra:deploy                                  # déploie le stage perso (-- -c stage=<nom> pour un autre), écrit .env.local, migre la base
+npm run infra:deploy                                  # déploie ton stage (-- <stage> pour un autre, -- prod pour la production), migre la base, écrit .env.local
 npm run dev                                           # http://localhost:5173
 ```
 
@@ -22,10 +21,11 @@ Connexion via Cognito Managed Login, page d'accueil avec vérification de la bas
 
 - **AWS** : compte JS Consulting, région `eu-west-3`, CDK bootstrappé. Le déploiement écrit dans AWS : il se lance avec un profil disposant des droits d'écriture (`jsconsulting-jsousa-dev`).
 - **Stage** : une stack CloudFormation `PlanningManager-<stage>` par développeur ou environnement, choisie avec `-c stage=<nom>` (minuscules, chiffres et tirets ; défaut : le nom d'utilisateur du poste). `prod` active la protection contre la suppression, la rétention des ressources, les sauvegardes et l'hébergement sur le domaine ; les autres stages tournent avec le serveur Vite local.
-- **Emails** : Cognito envoie par SES depuis `no-reply@planning-manager.lab.jonathan-sousa.com`. Le domaine d'envoi est la stack `PlanningManagerMail`, commune à tous les stages, à déployer avant le premier stage (`npm run infra:deploy:mail`) ; un stage échoue tant que le domaine n'est pas vérifié.
+- **Emails** : Cognito envoie par SES depuis `no-reply@planning-manager.lab.jonathan-sousa.com`. Le domaine d'envoi est la stack `PlanningManagerMail`, commune à tous les stages et déployée avec chacun d'eux ; au tout premier déploiement, la vérification DKIM prend quelques minutes, et le stage échoue tant que le domaine n'est pas vérifié (relancer la commande).
 - **`BOOTSTRAP_MANAGER_EMAIL`** (obligatoire) : email du premier manager créé à chaque déploiement d'un stage neuf. Il est lu à la synthèse, et le déploiement échoue s'il manque. En local, dans un `.envrc` non versionné (`source_up` puis `export BOOTSTRAP_MANAGER_EMAIL=…`). Changer l'email crée un nouveau manager sans supprimer l'ancien.
-- **`.env.local`** : généré par `npm run env:write` à partir des sorties CDK (`cdk-outputs.json`), non versionné, requis par `npm run dev` (le serveur Vite en sert les valeurs comme `/config.json`). `db:migrate` et `db:seed` lisent directement les sorties CDK (`CDK_OUTPUTS=cdk-outputs.prod.json` pour la production).
-- **Production** : `npm run infra:deploy:prod` construit l'app puis déploie `PlanningManagerEdge-prod` (us-east-1) et `PlanningManager-prod`, servie sur <https://planning-manager.lab.jonathan-sousa.com> (connexion sur `auth.planning-manager.lab.jonathan-sousa.com`), puis migre sa base. Données fictives exclues : le seed refuse `prod`.
+- **Sorties CDK** : `cdk-outputs.<stage>.json`, écrit par `npm run infra:deploy`, non versionné. Les scripts de base (`db:migrate`, `db:status`, `db:seed`) le lisent pour ton stage, ou pour celui de `STAGE` (`STAGE=prod npm run db:status`).
+- **`.env.local`** : écrit par `npm run infra:deploy` pour un stage de développement (ou `npm run env:write`), non versionné, requis par `npm run dev` (le serveur Vite en sert les valeurs comme `/config.json`).
+- **Production** : `npm run infra:deploy -- prod` construit l'app puis déploie `PlanningManagerEdge-prod` (us-east-1) et `PlanningManager-prod`, servie sur <https://planning-manager.lab.jonathan-sousa.com> (connexion sur `auth.planning-manager.lab.jonathan-sousa.com`), puis migre sa base. Données fictives exclues : le seed refuse `prod`.
 - **Runtimes** : Node 24 (`.nvmrc`), Python 3.14 pour le solveur (`solver/.python-version`), `uv` installé.
 
 ## Development

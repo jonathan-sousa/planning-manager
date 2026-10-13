@@ -7,6 +7,7 @@ import { APP_DOMAIN, AUTH_DOMAIN, parentZone } from './dns';
 import { EmailEvents } from './email-events';
 import type { EdgeStack } from './edge';
 import { Solver } from './solver';
+import { PROD_STAGE } from './stage';
 import { Web } from './web';
 
 export interface PlanningManagerStackProps extends StackProps {
@@ -20,7 +21,7 @@ export class PlanningManagerStack extends Stack {
     super(scope, id, { ...props, crossRegionReferences: props.edge !== undefined });
 
     const { stage } = props;
-    const isProd = stage === 'prod';
+    const isProd = stage === PROD_STAGE;
     const removalPolicy = isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY;
 
     const bootstrapManagerEmail = process.env.BOOTSTRAP_MANAGER_EMAIL;

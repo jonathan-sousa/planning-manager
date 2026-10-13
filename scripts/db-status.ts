@@ -3,7 +3,7 @@
  * of those in api/db/migrations, and the DSQL asynchronous jobs in progress
  * (indexes, constraint validations), which the migrator waits for.
  *
- * Usage: npm run db:status [-- --watch]   (CDK_OUTPUTS for another stage)
+ * Usage: [STAGE=<stage>] npm run db:status [-- --watch]
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { drizzle } from '@aws/aurora-dsql-drizzle';

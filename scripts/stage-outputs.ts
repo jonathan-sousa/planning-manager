@@ -1,22 +1,25 @@
 /**
- * Outputs of the stage stack deployed last, read from the CDK outputs file:
- * `cdk-outputs.json` (development stage) unless CDK_OUTPUTS names another
- * (`cdk-outputs.prod.json`, written by `npm run infra:deploy:prod`).
+ * Outputs of a stage stack, read from `cdk-outputs.<stage>.json` (written by
+ * `npm run infra:deploy`). The stage comes from STAGE, or is the developer's
+ * personal stage.
  */
 import { readFileSync } from 'node:fs';
+import { resolveStage } from '../infra/lib/stage';
 
 export interface StageOutputs {
   stage: string;
   outputs: Record<string, string>;
 }
 
-export function readStageOutputs(
-  file = process.env.CDK_OUTPUTS ?? 'cdk-outputs.json'
-): StageOutputs {
-  const all: Record<string, Record<string, string>> = JSON.parse(readFileSync(file, 'utf8'));
-  const stackName = Object.keys(all).find((name) => name.startsWith('PlanningManager-'));
-  if (!stackName) throw new Error(`No PlanningManager stack in ${file}`);
-  return { stage: stackName.slice('PlanningManager-'.length), outputs: all[stackName]! };
+export const outputsFile = (stage: string) => `cdk-outputs.${stage}.json`;
+
+export function readStageOutputs(stage = resolveStage(process.env.STAGE)): StageOutputs {
+  const all: Record<string, Record<string, string>> = JSON.parse(
+    readFileSync(outputsFile(stage), 'utf8')
+  );
+  const outputs = all[`PlanningManager-${stage}`];
+  if (!outputs) throw new Error(`No PlanningManager-${stage} stack in ${outputsFile(stage)}`);
+  return { stage, outputs };
 }
 
 /** An output of the stage stack; throws when it is missing. */

@@ -14,18 +14,15 @@
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "solver:test": "uv run --directory solver pytest",
     "infra:synth": "cdk synth --quiet",
-    "infra:deploy": "cdk deploy 'PlanningManager-*' --outputs-file cdk-outputs.json",
+    "infra:deploy": "tsx scripts/deploy.ts",
     "infra:watch": "cdk watch 'PlanningManager-*'",
     "infra:destroy": "cdk destroy 'PlanningManager-*'",
     "env:write": "tsx scripts/write-env.ts",
     "db:generate": "aurora-dsql-drizzle generate --out ./api/db/migrations -- --config drizzle.config.ts",
     "db:migrate": "tsx scripts/db-migrate.ts",
     "db:status": "tsx scripts/db-status.ts",
-    "postinfra:deploy": "npm run env:write && npm run db:migrate",
     "infra:size": "tsx scripts/asset-sizes.ts",
-    "db:seed": "tsx scripts/db-seed.ts",
-    "infra:deploy:mail": "cdk deploy PlanningManagerMail",
-    "infra:deploy:prod": "npm run build && cdk deploy -c stage=prod PlanningManager-prod --outputs-file cdk-outputs.prod.json && CDK_OUTPUTS=cdk-outputs.prod.json tsx scripts/db-migrate.ts"
+    "db:seed": "tsx scripts/db-seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1150.0",

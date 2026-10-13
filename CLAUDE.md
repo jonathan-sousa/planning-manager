@@ -12,7 +12,7 @@ Liste complète dans le [README](README.md#development) : `npm run check` avant 
 
 ## Déploiement AWS
 
-`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie (`npm run infra:deploy:mail` une fois par compte, puis `npm run infra:deploy` pour un stage de développement, soit `cdk deploy` suivi, via le hook `postinfra:deploy`, de `env:write` et `db:migrate` (migrations, puis rôle IAM du solveur relié au rôle de base `solver`) ; `-- -c stage=<nom>` pour un autre stage ; `npm run infra:deploy:prod` pour la production hébergée). Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc` ; aucun identifiant AWS requis) et inspecte `cdk.out/`. Rôle de `.env.local` : voir le README (§ Configuration).
+`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie, avec une seule commande : `npm run infra:deploy` pour son stage, `npm run infra:deploy -- <stage>` pour un autre (`prod` compris). `scripts/deploy.ts` construit l'app pour la production, lance `cdk deploy` (avec les stacks dont le stage dépend : `PlanningManagerMail`, et `PlanningManagerEdge-prod` en production), écrit `cdk-outputs.<stage>.json`, migre la base (puis relie le rôle IAM du solveur au rôle de base `solver`) et écrit `.env.local` pour un stage de développement. Les scripts de base lisent le stage dans `STAGE` (`STAGE=prod npm run db:status`). Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc` ; aucun identifiant AWS requis) et inspecte `cdk.out/`. Rôle de `.env.local` : voir le README (§ Configuration).
 
 ## Structure
 
@@ -48,7 +48,7 @@ api/                        Hono (tsconfig.api.json, projet référencé par le 
   db/client.ts              drizzle() du connecteur DSQL (jeton IAM, pool)
   solver-client.ts          invocation de la Lambda solveur
 solver/                     Python (uv) : handler.py (actions health, solve), model.py (CP-SAT), db.py (DSQL), calendar.py (miroir de api/calendar.ts), cli.py ; tests/
-scripts/                    stage-outputs.ts (sorties CDK du stage), write-env.ts (sorties → .env.local), db-migrate.ts, db-status.ts (avancement des migrations), db-seed.ts + seed/ (service fictif), asset-sizes.ts (infra:size), solver.e2e.test.ts (mois résolu puis validé)
+scripts/                    deploy.ts (infra:deploy), stage-outputs.ts (sorties CDK du stage), write-env.ts (sorties → .env.local), db-migrate.ts, db-status.ts (avancement des migrations), db-seed.ts + seed/ (service fictif), asset-sizes.ts (infra:size), solver.e2e.test.ts (mois résolu puis validé)
 src/                        frontend
   config.ts                 /config.json du stage (ids Cognito, URL de l'API), lu au démarrage
   main.tsx                  Amplify.configure (Auth + OAuth), QueryClient, router

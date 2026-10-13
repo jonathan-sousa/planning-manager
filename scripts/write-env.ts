@@ -1,8 +1,9 @@
 /**
- * Writes `.env.local` from the CDK outputs of the development stage: the Vite
- * dev server serves these values as /config.json (vite.config.ts).
+ * Writes `.env.local` from the CDK outputs of a development stage (STAGE, or
+ * the developer's own): the Vite dev server serves these values as
+ * /config.json (vite.config.ts). Run by `npm run infra:deploy`.
  *
- * Usage: tsx scripts/write-env.ts
+ * Usage: npm run env:write
  */
 import { writeFileSync } from 'node:fs';
 import { output, readStageOutputs } from './stage-outputs';
