@@ -1,24 +1,39 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gte, lte, ne } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../db/client';
-import { agentRequests, shiftTypes } from '../db/schema';
+import { agentRequests } from '../db/schema';
 import { notFound, ValidationError } from '../errors';
 import { type AgentRequestInput, idParam, agentRequestInput } from '../schemas';
+import { ABSENCE_CODE, requireShiftKind, WORK_SHIFT } from '../shift-checks';
 import { validate } from '../validate';
 
-/** A shift wish names a work shift; an approved absence, an absence or rest code. */
-async function checkShiftKind({ kind, shiftTypeId }: AgentRequestInput): Promise<void> {
-  if (!shiftTypeId) return;
-  const [shift] = await db
-    .select({ kind: shiftTypes.kind })
-    .from(shiftTypes)
-    .where(eq(shiftTypes.id, shiftTypeId));
-  if (!shift) return; // the foreign key reports it
-  if (kind === 'WISH_SHIFT' && shift.kind !== 'WORK') {
-    throw new ValidationError({ shiftTypeId: ['Un poste travaillé est attendu'] });
+/**
+ * Checks against other rows: the code's kind (a shift wish names a work shift,
+ * an approved absence an absence or rest code), and no overlap between two
+ * approved absences of the same agent, which would lock a day twice.
+ */
+async function checkRequest(input: AgentRequestInput, id?: string): Promise<void> {
+  const { kind, shiftTypeId } = input;
+  if (kind === 'WISH_SHIFT') {
+    await requireShiftKind(shiftTypeId, WORK_SHIFT.kinds, WORK_SHIFT.message);
   }
-  if (kind === 'ABSENCE_APPROVED' && shift.kind === 'WORK') {
-    throw new ValidationError({ shiftTypeId: ["Un code d'absence ou de repos est attendu"] });
+  if (kind !== 'ABSENCE_APPROVED') return;
+  await requireShiftKind(shiftTypeId, ABSENCE_CODE.kinds, ABSENCE_CODE.message);
+  const [overlap] = await db
+    .select({ id: agentRequests.id })
+    .from(agentRequests)
+    .where(
+      and(
+        eq(agentRequests.agentId, input.agentId),
+        eq(agentRequests.kind, 'ABSENCE_APPROVED'),
+        lte(agentRequests.startDate, input.endDate),
+        gte(agentRequests.endDate, input.startDate),
+        id ? ne(agentRequests.id, id) : undefined
+      )
+    )
+    .limit(1);
+  if (overlap) {
+    throw new ValidationError({ startDate: ['Chevauche une autre absence validée de cet agent'] });
   }
 }
 
@@ -29,13 +44,13 @@ export const agentRequestRoutes = new Hono()
   })
 
   .post('/', validate('json', agentRequestInput), async (c) => {
-    await checkShiftKind(c.req.valid('json'));
+    await checkRequest(c.req.valid('json'));
     const [row] = await db.insert(agentRequests).values(c.req.valid('json')).returning();
     return c.json(row, 201);
   })
 
   .put('/:id', validate('param', idParam), validate('json', agentRequestInput), async (c) => {
-    await checkShiftKind(c.req.valid('json'));
+    await checkRequest(c.req.valid('json'), c.req.valid('param').id);
     const [row] = await db
       .update(agentRequests)
       .set(c.req.valid('json'))

@@ -2,11 +2,36 @@ import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { SHIFT_KINDS } from '../domain';
 import { db } from '../db/client';
-import { shiftTypes } from '../db/schema';
-import { notFound } from '../errors';
+import { agentRequests, coverageNeeds, coverageOverrides, shiftTypes } from '../db/schema';
+import { type ApiError, notFound } from '../errors';
 import { idParam, shiftTypeInput } from '../schemas';
 import { compareFr } from '../sort';
 import { validate } from '../validate';
+
+/** What defines the time worked: frozen once the shift type is referenced. */
+const TIMING_FIELDS = [
+  'kind',
+  'startTime',
+  'endTime',
+  'breakMinutes',
+  'countedMinutes',
+  'isNight',
+] as const;
+
+const inUse: ApiError = {
+  error:
+    'Poste déjà utilisé : son type, ses horaires et son décompte ne se modifient plus. Archivez-le et créez-en un nouveau.',
+};
+
+/** Whether any row refers to the shift type. */
+async function isReferenced(id: string): Promise<boolean> {
+  const results = await Promise.all(
+    [coverageNeeds, coverageOverrides, agentRequests].map((table) =>
+      db.select({ id: table.id }).from(table).where(eq(table.shiftTypeId, id)).limit(1)
+    )
+  );
+  return results.some((rows) => rows.length > 0);
+}
 
 export const shiftTypeRoutes = new Hono()
   .get('/', async (c) => {
@@ -28,12 +53,14 @@ export const shiftTypeRoutes = new Hono()
   })
 
   .put('/:id', validate('param', idParam), validate('json', shiftTypeInput), async (c) => {
-    const [row] = await db
-      .update(shiftTypes)
-      .set(c.req.valid('json'))
-      .where(eq(shiftTypes.id, c.req.valid('param').id))
-      .returning();
-    return row ? c.json(row, 200) : c.json(notFound, 404);
+    const { id } = c.req.valid('param');
+    const input = c.req.valid('json');
+    const [current] = await db.select().from(shiftTypes).where(eq(shiftTypes.id, id));
+    if (!current) return c.json(notFound, 404);
+    const retimed = TIMING_FIELDS.some((field) => current[field] !== input[field]);
+    if (retimed && (await isReferenced(id))) return c.json(inUse, 409);
+    const [row] = await db.update(shiftTypes).set(input).where(eq(shiftTypes.id, id)).returning();
+    return c.json(row!, 200);
   })
 
   .delete('/:id', validate('param', idParam), async (c) => {

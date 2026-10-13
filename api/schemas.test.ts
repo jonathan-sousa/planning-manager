@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agentInput, agentRequestInput, ruleSettingsInput } from './schemas';
+import { agentInput, agentRequestInput, ruleSettingsInput, shiftTypeInput } from './schemas';
 
 const agent = {
   firstName: ' Camille ',
@@ -20,6 +20,12 @@ describe('agentInput', () => {
     const parsed = agentInput.parse({ ...agent, skillIds: [skill, skill] });
     expect(parsed.firstName).toBe('Camille');
     expect(parsed.skillIds).toEqual([skill]);
+  });
+
+  it('reports cross-field errors together with field errors', () => {
+    const result = agentInput.safeParse({ ...agent, firstName: '', endDate: '2025-12-31' });
+    const paths = result.error?.issues.map((issue) => issue.path[0]);
+    expect(paths).toEqual(['firstName', 'endDate']);
   });
 
   it('rejects an end date before the start date', () => {
@@ -57,5 +63,39 @@ describe('ruleSettingsInput', () => {
     const shape = ruleSettingsInput.shape.fortnightAnchorDate;
     expect(shape.safeParse('2026-01-05').success).toBe(true);
     expect(shape.safeParse('2026-01-06').success).toBe(false);
+  });
+});
+
+describe('shiftTypeInput', () => {
+  const night = {
+    code: 'N',
+    label: 'Nuit',
+    kind: 'WORK',
+    startTime: '19:00',
+    endTime: '07:00',
+    breakMinutes: 20,
+    countedMinutes: 720,
+    isNight: true,
+    color: '#4f46e5',
+    archived: false,
+  };
+  const errors = (input: unknown) =>
+    shiftTypeInput.safeParse(input).error?.issues.map((issue) => issue.path[0]);
+
+  it('accepts a consistent night shift', () => {
+    expect(shiftTypeInput.safeParse(night).success).toBe(true);
+  });
+
+  it('requires the night flag across midnight, and a break shorter than the shift', () => {
+    expect(errors({ ...night, isNight: false })).toEqual(['isNight']);
+    expect(errors({ ...night, endTime: '19:00' })).toEqual(['endTime']);
+    expect(errors({ ...night, startTime: '07:00', endTime: '07:20', isNight: false })).toEqual([
+      'breakMinutes',
+    ]);
+  });
+
+  it('keeps hours, break and night flag for work shifts only', () => {
+    const absence = { ...night, kind: 'ABSENCE', countedMinutes: 420 };
+    expect(errors(absence)).toEqual(['startTime', 'endTime', 'breakMinutes', 'isNight']);
   });
 });

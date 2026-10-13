@@ -4,6 +4,7 @@ import { db } from '../db/client';
 import { coverageOverrides } from '../db/schema';
 import { notFound } from '../errors';
 import { idParam, coverageOverrideInput } from '../schemas';
+import { requireShiftKind, WORK_SHIFT } from '../shift-checks';
 import { validate } from '../validate';
 
 export const coverageOverrideRoutes = new Hono()
@@ -13,14 +14,18 @@ export const coverageOverrideRoutes = new Hono()
   })
 
   .post('/', validate('json', coverageOverrideInput), async (c) => {
-    const [row] = await db.insert(coverageOverrides).values(c.req.valid('json')).returning();
+    const input = c.req.valid('json');
+    await requireShiftKind(input.shiftTypeId, WORK_SHIFT.kinds, WORK_SHIFT.message);
+    const [row] = await db.insert(coverageOverrides).values(input).returning();
     return c.json(row, 201);
   })
 
   .put('/:id', validate('param', idParam), validate('json', coverageOverrideInput), async (c) => {
+    const input = c.req.valid('json');
+    await requireShiftKind(input.shiftTypeId, WORK_SHIFT.kinds, WORK_SHIFT.message);
     const [row] = await db
       .update(coverageOverrides)
-      .set(c.req.valid('json'))
+      .set(input)
       .where(eq(coverageOverrides.id, c.req.valid('param').id))
       .returning();
     return row ? c.json(row, 200) : c.json(notFound, 404);

@@ -4,7 +4,7 @@ import { buildSeed } from './build';
 describe('buildSeed', () => {
   it('validates every row and resolves every reference', () => {
     const seed = buildSeed('2026-10');
-    expect(seed.agents).toHaveLength(21);
+    expect(seed.agents).toHaveLength(27);
     expect(seed.agentRequests.every((request) => request.startDate.startsWith('2026-11'))).toBe(
       true
     );
