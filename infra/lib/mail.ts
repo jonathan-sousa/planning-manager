@@ -1,4 +1,4 @@
-import { Duration, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
+import { Duration, Stack, type StackProps } from 'aws-cdk-lib';
 import { CnameRecord, HostedZone, MxRecord, TxtRecord } from 'aws-cdk-lib/aws-route53';
 import { EmailIdentity, Identity } from 'aws-cdk-lib/aws-ses';
 import type { Construct } from 'constructs';
@@ -26,7 +26,6 @@ export class MailStack extends Stack {
       identity: Identity.domain(MAIL_DOMAIN),
       mailFromDomain,
     });
-    identity.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
     // Identity.publicHostedZone() would verify the zone apex; the subdomain's
     // records are written here instead.

@@ -9,13 +9,15 @@ import { compareFr } from '../sort';
 import { validate } from '../validate';
 
 /**
- * Needs, overrides and requests depend on the kind (work shift vs absence or
- * rest code): it is frozen once they refer to the shift type. Hours, break and
- * counted time stay editable: these rows follow the current definition.
+ * Needs, overrides and requests depend on whether a shift type is worked or
+ * not (absence and rest codes are interchangeable for them): that is frozen
+ * once they refer to it. Hours, break and counted time stay editable: these
+ * rows follow the current definition.
  */
 const kindInUse: ApiError = {
-  error: 'Poste déjà utilisé par des besoins ou des demandes : son type ne se modifie plus.',
-  fields: { kind: ['Type figé : poste déjà utilisé'] },
+  error:
+    "Poste déjà utilisé par des besoins ou des demandes : il ne peut plus passer de travaillé à non travaillé, ni l'inverse.",
+  fields: { kind: ['Travaillé ou non : figé, poste déjà utilisé'] },
 };
 
 /** Whether any row refers to the shift type. */
@@ -52,7 +54,10 @@ export const shiftTypeRoutes = new Hono()
     const input = c.req.valid('json');
     const [current] = await db.select().from(shiftTypes).where(eq(shiftTypes.id, id));
     if (!current) return c.json(notFound, 404);
-    if (current.kind !== input.kind && (await isReferenced(id))) return c.json(kindInUse, 409);
+    const worked = (kind: string) => kind === 'WORK';
+    if (worked(current.kind) !== worked(input.kind) && (await isReferenced(id))) {
+      return c.json(kindInUse, 409);
+    }
     const [row] = await db.update(shiftTypes).set(input).where(eq(shiftTypes.id, id)).returning();
     return c.json(row!, 200);
   })

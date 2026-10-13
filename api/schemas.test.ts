@@ -94,6 +94,12 @@ describe('shiftTypeInput', () => {
     ]);
   });
 
+  it('does not treat a shift ending at 00:00 as crossing midnight', () => {
+    expect(
+      errors({ ...night, startTime: '14:00', endTime: '00:00', isNight: false })
+    ).toBeUndefined();
+  });
+
   it('keeps hours, break and night flag for work shifts only', () => {
     const absence = { ...night, kind: 'ABSENCE', countedMinutes: 420 };
     expect(errors(absence)).toEqual(['startTime', 'endTime', 'breakMinutes', 'isNight']);
