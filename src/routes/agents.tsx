@@ -7,7 +7,8 @@ import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/format';
 import { hoursRegimeLabels, nightModeLabels, optionsOf } from '@/lib/labels';
-import { type Agent, agents, grades, skills } from '@/lib/resources';
+import { useReferences } from '@/lib/options';
+import { type Agent, agents } from '@/lib/resources';
 
 export const Route = createFileRoute('/agents')({
   component: AgentsPage,
@@ -15,10 +16,7 @@ export const Route = createFileRoute('/agents')({
 
 function AgentsPage() {
   const { data, error } = useQuery(agents.query);
-  const gradeList = useQuery(grades.query).data ?? [];
-  const skillList = useQuery(skills.query).data ?? [];
-  const gradeCode = new Map(gradeList.map((grade) => [grade.id, grade.code]));
-  const skillCode = new Map(skillList.map((skill) => [skill.id, skill.code]));
+  const { gradeCode, skillCode } = useReferences();
 
   return (
     <CrudPage
@@ -79,14 +77,7 @@ const emptyAgent: AgentInput = {
 };
 
 function AgentForm({ row, onSaved }: { row: Agent | undefined; onSaved: () => void }) {
-  const gradeOptions = (useQuery(grades.query).data ?? []).map((grade) => ({
-    value: grade.id,
-    label: `${grade.code} — ${grade.label}`,
-  }));
-  const skillOptions = (useQuery(skills.query).data ?? []).map((skill) => ({
-    value: skill.id,
-    label: skill.code,
-  }));
+  const { gradeOptions, skillOptions } = useReferences();
 
   const form = useAppForm({
     defaultValues: row ? toInput(row) : emptyAgent,

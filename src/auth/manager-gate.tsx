@@ -16,12 +16,29 @@ async function fetchGroups(): Promise<string[]> {
 
 /** Blocks signed-in users that are not managers. The API enforces the same rule. */
 export function ManagerGate({ children }: { children: ReactNode }) {
-  const { data: groups, isPending } = useQuery({
+  const {
+    data: groups,
+    isPending,
+    error,
+  } = useQuery({
     queryKey: ['auth-groups'],
     queryFn: fetchGroups,
   });
 
   if (isPending) return null;
+
+  // A failed session read is not a missing group: say so rather than deny.
+  if (error) {
+    return (
+      <main className="flex min-h-svh flex-col items-center justify-center gap-4 p-6 text-center">
+        <h1 className="text-xl font-semibold">Connexion impossible</h1>
+        <p className="text-muted-foreground max-w-md text-sm">{error.message}</p>
+        <button className="text-sm underline" onClick={() => window.location.reload()}>
+          Réessayer
+        </button>
+      </main>
+    );
+  }
 
   if (!groups?.includes(MANAGER_GROUP)) {
     return (

@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import { ruleSettingsInput, type RuleSettingsInput } from '../../api/schemas';
 import { FormShell } from '@/components/form-fields';
 import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';
-import { api, unwrap } from '@/lib/api-client';
 import { type RuleSettings, ruleSettings } from '@/lib/resources';
 
 export const Route = createFileRoute('/rule-settings')({
@@ -48,7 +47,7 @@ function RuleSettingsForm({ settings }: { settings: RuleSettings }) {
       onDynamic: ruleSettingsInput,
       onSubmitAsync: ({ value }) =>
         submitToApi(async () => {
-          const saved = await api['rule-settings'].$put({ json: value }).then(unwrap);
+          const saved = await ruleSettings.update(value);
           queryClient.setQueryData(ruleSettings.query.queryKey, saved);
         }),
     },

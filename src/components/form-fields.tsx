@@ -40,7 +40,9 @@ function FieldShell({
   const { field, errors, invalid } = useFieldErrors();
   return (
     <Field data-invalid={invalid} orientation={orientation}>
-      <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+      <FieldLabel id={`${field.name}-label`} htmlFor={field.name}>
+        {label}
+      </FieldLabel>
       {children}
       {description && <FieldDescription>{description}</FieldDescription>}
       <FieldError errors={errors} />
@@ -97,7 +99,9 @@ export function NumberField({ nullable, ...props }: FieldProps & { nullable?: bo
         type="number"
         {...noAutofill}
         inputMode="numeric"
-        value={field.state.value ?? ''}
+        value={
+          field.state.value === null || Number.isNaN(field.state.value) ? '' : field.state.value
+        }
         onBlur={field.handleBlur}
         onChange={(e) =>
           field.handleChange(nullable && !e.target.value ? null : e.target.valueAsNumber)
@@ -114,9 +118,11 @@ export function DurationField(props: FieldProps) {
   const { value } = field.state;
   const [text, setText] = useState(() => durationText(value));
   const parsed = parseDuration(text);
-  // Value set from elsewhere (e.g. a computed proposal): show it.
-  if (parsed !== value && !(Number.isNaN(parsed) && Number.isNaN(value))) {
-    setText(durationText(value));
+  // Value set from elsewhere (e.g. a computed proposal): show it. Comparing
+  // the texts also stops a value that has no text form (negative) from looping.
+  const synced = durationText(value);
+  if (parsed !== value && !(Number.isNaN(parsed) && Number.isNaN(value)) && synced !== text) {
+    setText(synced);
   }
   const malformed = text !== '' && Number.isNaN(parsed);
   return (
@@ -152,7 +158,10 @@ export function SelectField<V extends string>({
       <Select
         items={items}
         value={field.state.value || null}
-        onValueChange={(value) => field.handleChange(value as V | null)}
+        // Base UI also reports a click on the current item: not a change.
+        onValueChange={(value) =>
+          value !== field.state.value && field.handleChange(value as V | null)
+        }
       >
         <SelectTrigger
           id={field.name}
@@ -184,7 +193,11 @@ export function CheckboxListField({
     );
   return (
     <FieldShell {...props}>
-      <div className="flex flex-wrap gap-x-4 gap-y-2">
+      <div
+        role="group"
+        aria-labelledby={`${field.name}-label`}
+        className="flex flex-wrap gap-x-4 gap-y-2"
+      >
         {options.length === 0 && <span className="text-muted-foreground text-sm">Aucune</span>}
         {options.map((option) => (
           <label key={option.value} className="flex items-center gap-2 text-sm">
