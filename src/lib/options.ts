@@ -26,9 +26,6 @@ export function useReferences(keep: { shiftTypeId?: string | null; agentId?: str
       label: `${grade.code} — ${grade.label}`,
     })),
     skillOptions: skillList.map((skill) => ({ value: skill.id, label: skill.code })),
-    shiftOptions: shiftList
-      .filter((shift) => !shift.archived || shift.id === keep.shiftTypeId)
-      .map((shift) => ({ value: shift.id, label: `${shift.code} — ${shift.label}` })),
     workShiftOptions: shiftList
       .filter(
         (shift) => shift.kind === 'WORK' && (!shift.archived || shift.id === keep.shiftTypeId)

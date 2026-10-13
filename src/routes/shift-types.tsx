@@ -82,16 +82,18 @@ function ShiftTypeForm({ row, onSaved }: { row: ShiftType | undefined; onSaved: 
     onSubmit: onSaved,
   });
 
-  // On a new work shift, proposes the counted time (span minus break) and the
-  // night flag (crossing midnight). An existing shift keeps what was saved.
-  const proposeTiming = () => {
+  // On a new work shift, proposes the counted time (span minus break) and,
+  // when the hours change, the night flag (crossing midnight; ending at 00:00
+  // does not cross it). An existing shift keeps what was saved.
+  const proposeTiming = (hoursChanged: boolean) => {
     const { kind, startTime, endTime, breakMinutes } = form.state.values;
     if (row || kind !== 'WORK' || !startTime || !endTime) return;
-    form.setFieldValue('isNight', endTime < startTime);
+    if (hoursChanged) form.setFieldValue('isNight', endTime < startTime && endTime !== '00:00');
     const counted = shiftMinutes(startTime, endTime) - breakMinutes;
     if (counted > 0) form.setFieldValue('countedMinutes', counted);
   };
-  const timing = { onChange: proposeTiming };
+  const hours = { onChange: () => proposeTiming(true) };
+  const timing = { onChange: () => proposeTiming(false) };
 
   return (
     <form.AppForm>
@@ -116,10 +118,10 @@ function ShiftTypeForm({ row, onSaved }: { row: ShiftType | undefined; onSaved: 
         <form.AppField name="color">
           {(field) => <field.ColorField label="Couleur" />}
         </form.AppField>
-        <form.AppField name="startTime" listeners={timing}>
+        <form.AppField name="startTime" listeners={hours}>
           {(field) => <field.TextField label="Début" type="time" nullable />}
         </form.AppField>
-        <form.AppField name="endTime" listeners={timing}>
+        <form.AppField name="endTime" listeners={hours}>
           {(field) => <field.TextField label="Fin" type="time" nullable />}
         </form.AppField>
         <form.AppField name="breakMinutes" listeners={timing}>

@@ -72,6 +72,8 @@ export const shiftTypeInput = z
   .superRefine((shift, ctx) => {
     const issue = (field: string, message: string) =>
       ctx.addIssue({ code: 'custom', path: [field], message });
+    // An invalid kind or time already has its own error.
+    if (!SHIFT_KINDS.includes(shift.kind)) return;
     if (shift.kind !== 'WORK') {
       // Absences and rest days have no hours.
       if (shift.startTime) issue('startTime', 'Réservé aux postes travaillés');
@@ -82,15 +84,15 @@ export const shiftTypeInput = z
     }
     if (!shift.startTime) issue('startTime', 'Requis pour un poste travaillé');
     if (!shift.endTime) issue('endTime', 'Requis pour un poste travaillé');
-    if (!isText(shift.startTime) || !isText(shift.endTime)) return;
-    const start = timeMinutes(shift.startTime);
-    const end = timeMinutes(shift.endTime);
+    if (!time.safeParse(shift.startTime).success || !time.safeParse(shift.endTime).success) return;
+    const start = timeMinutes(shift.startTime!);
+    const end = timeMinutes(shift.endTime!);
     if (start === end) return issue('endTime', 'Identique au début');
-    const crossesMidnight = end < start;
-    const span = crossesMidnight ? end + 24 * 60 - start : end - start;
-    if (crossesMidnight && !shift.isNight) issue('isNight', 'Le poste passe minuit');
+    const span = end > start ? end - start : end + 24 * 60 - start;
+    // Ending at 00:00 is not crossing midnight.
+    if (end < start && end !== 0 && !shift.isNight) issue('isNight', 'Le poste passe minuit');
     if (isNumber(shift.breakMinutes) && shift.breakMinutes >= span) {
-      issue('breakMinutes', 'Pause plus longue que le poste');
+      issue('breakMinutes', 'La pause doit être plus courte que le poste');
     }
   }, evenWithFieldErrors);
 
@@ -137,8 +139,8 @@ export const agentRequestInput = z
   // names the shift; a day-off wish has none.
   .refine(
     (request) =>
-      (request.kind === 'WISH_OFF') ===
-      (request.shiftTypeId === null || request.shiftTypeId === ''),
+      !REQUEST_KINDS.includes(request.kind) ||
+      (request.kind === 'WISH_OFF') === (request.shiftTypeId === null),
     {
       path: ['shiftTypeId'],
       message: 'Requis, sauf pour un souhait de repos',
