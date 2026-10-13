@@ -57,11 +57,13 @@ export class Auth extends Construct {
   constructor(scope: Construct, id: string, props: AuthProps) {
     super(scope, id);
 
-    this.userPool = new UserPool(this, 'UserPool', {
+    // Stable logical id, never to rename: a new id recreates the pool and its
+    // accounts (case sensitivity and MFA requirement cannot change in place).
+    this.userPool = new UserPool(this, 'Pool', {
       featurePlan: FeaturePlan.ESSENTIALS,
       selfSignUpEnabled: false,
       signInAliases: { email: true },
-      // Jean.Dupont@… signs in as jean.dupont@… (fixed at the pool's creation).
+      // Jean.Dupont@… signs in as jean.dupont@….
       signInCaseSensitive: false,
       // Health-sector data: an authenticator app code at every sign-in,
       // enrolled by Managed Login at the first one.
