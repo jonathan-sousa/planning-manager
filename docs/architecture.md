@@ -3,7 +3,7 @@
 ## Contexte
 
 - **Client** : un service d'urgences d'hôpital public. Une équipe, un site, pas de multi-tenant.
-- **Utilisateurs** : les cadres de santé (groupe Cognito `MANAGERS`). Les agents sont des fiches, pas des comptes.
+- **Utilisateurs** : les cadres de santé (groupe Cognito `MANAGERS`), dont des admins (groupe `ADMINS`, aussi managers) qui gèrent les comptes et les règles de planification. Les agents sont des fiches, pas des comptes.
 - **Population planifiée** : paramédicaux (IDE, AS, ASH…), environ 5 à 20 agents.
 - **Postes** : 24h/24 en 12h (jour / nuit), plus des postes courts de renfort. Équipes mixtes : fixes jour, fixes nuit ou alternants.
 - **Planning** : mensuel, construit aujourd'hui à la main. L'outil aide à le construire (validation en temps réel) et à l'optimiser (solveur CP-SAT).
@@ -72,6 +72,8 @@ Production (`npm run infra:deploy:prod` : build, `cdk deploy -c stage=prod`, sor
   - 404 : identifiant inconnu ;
   - 409 : doublon (contrainte unique, rattachée au champ `code` quand c'est lui), suppression d'une ligne encore référencée, ou type d'un poste utilisé.
 - Tri des libellés en français dans l'API (`api/sort.ts`), jamais par `ORDER BY` sur du texte.
+- Comptes (`api/routes/accounts.ts`, admins seulement, comme `PUT /rule-settings`) : les utilisateurs Cognito du groupe `MANAGERS` (`api/accounts.ts`), avec le dernier rebond ou la dernière plainte SES de leur email. `POST /accounts` invite (Cognito envoie le mot de passe temporaire), `PUT /accounts/:username` change le nom et le rôle admin, `POST /accounts/:username/resend` renvoie une invitation non utilisée, `/disable` et `/enable` coupent ou rendent l'accès (un compte n'est jamais supprimé). Un admin ne peut ni se désactiver ni se retirer le rôle admin. Un compte désactivé ne se reconnecte plus et ses jetons de rafraîchissement sont révoqués ; son jeton d'accès reste valable jusqu'à son expiration (une heure au plus).
+- Rebonds et plaintes : chaque stage a un jeu de configuration SES (`planning-manager-<stage>`), utilisé par les emails de son user pool ; ses événements `BOUNCE` et `COMPLAINT` passent par SNS à une Lambda (`api/email-events.ts`, `infra/lib/email-events.ts`) qui les enregistre dans `email_events`.
 
 ## Grille de planning
 
@@ -131,9 +133,9 @@ Le budget de recherche est réparti 20 % / 30 % / 50 % entre les trois niveaux ;
 
 L'existant est décrit dans le [README](../README.md#usage). Phases restantes :
 
-| Phase         | Contenu                                                                                                                            |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| 4 — Diffusion | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations (avec notification des rebonds et plaintes SES). |
+| Phase         | Contenu                                            |
+| ------------- | -------------------------------------------------- |
+| 4 — Diffusion | Export PDF A3 et CSV, clôture des soldes d'heures. |
 
 ## Points ouverts
 

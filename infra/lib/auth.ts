@@ -30,6 +30,8 @@ export interface AuthProps {
   readonly bootstrapManagerEmail: string;
   /** Browser origins of the SPA, used as OAuth callback and sign-out URLs. */
   readonly appOrigins: string[];
+  /** SES configuration set of the user pool's emails (bounces and complaints recorded). */
+  readonly configurationSetName: string;
   readonly isProd: boolean;
   readonly removalPolicy: RemovalPolicy;
 }
@@ -43,6 +45,7 @@ export class Auth extends Construct {
   readonly userPool: UserPool;
   readonly userPoolClient: UserPoolClient;
   readonly managersGroup: UserPoolGroup;
+  readonly adminsGroup: UserPoolGroup;
   readonly domain: UserPoolDomain;
   /** Host name of the Managed Login pages, without scheme. */
   readonly authDomain: string;
@@ -64,6 +67,7 @@ export class Auth extends Construct {
         fromName: 'Planning Manager',
         sesRegion: Stack.of(this).region,
         sesVerifiedDomain: MAIL_DOMAIN,
+        configurationSetName: props.configurationSetName,
       }),
       userInvitation: {
         emailSubject: 'Votre accès à Planning Manager',
@@ -123,10 +127,15 @@ export class Auth extends Construct {
       description: 'Cadres de santé autorisés à gérer les plannings',
     });
 
+    this.adminsGroup = this.userPool.addGroup('Admins', {
+      groupName: 'ADMINS',
+      description: 'Managers qui gèrent les comptes et les règles de planification',
+    });
+
     bootstrapManager(
       this,
       this.userPool,
-      this.managersGroup,
+      [this.managersGroup, this.adminsGroup],
       props.bootstrapManagerEmail,
       props.removalPolicy
     );

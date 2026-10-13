@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { ruleSettingsInput, type RuleSettingsInput } from '../../api/schemas';
+import { useIsAdmin } from '@/auth/groups';
 import { FormShell } from '@/components/form-fields';
 import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';
 import { type RuleSettings, ruleSettings } from '@/lib/resources';
@@ -13,6 +14,7 @@ export const Route = createFileRoute('/rule-settings')({
 
 function RuleSettingsPage() {
   const { data, error } = useQuery(ruleSettings.query);
+  const isAdmin = useIsAdmin();
   return (
     <div className="max-w-3xl space-y-6">
       <div className="space-y-1">
@@ -23,7 +25,12 @@ function RuleSettingsPage() {
         </p>
       </div>
       {error && <p className="text-destructive text-sm">{error.message}</p>}
-      {data && <RuleSettingsForm settings={data} />}
+      {!isAdmin && (
+        <p className="text-muted-foreground text-sm">
+          Lecture seule : seuls les admins modifient les règles.
+        </p>
+      )}
+      {data && <RuleSettingsForm settings={data} readOnly={!isAdmin} />}
     </div>
   );
 }
@@ -37,7 +44,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function RuleSettingsForm({ settings }: { settings: RuleSettings }) {
+function RuleSettingsForm({ settings, readOnly }: { settings: RuleSettings; readOnly: boolean }) {
   const queryClient = useQueryClient();
   const { id: _id, updatedAt: _updatedAt, ...defaultValues } = settings;
   const form = useAppForm({
@@ -58,7 +65,7 @@ function RuleSettingsForm({ settings }: { settings: RuleSettings }) {
 
   return (
     <form.AppForm>
-      <FormShell>
+      <FormShell readOnly={readOnly}>
         <Section title="Durées (h:mm)">
           <form.AppField name="minDailyRestMinutes">
             {(field) => <field.DurationField label="Repos quotidien minimal" />}

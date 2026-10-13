@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
+import { requireAdmin } from '../auth';
 import { db } from '../db/client';
 import { ruleSettings } from '../db/schema';
 import { ruleSettingsInput } from '../schemas';
@@ -14,7 +15,8 @@ export const ruleSettingsRoutes = new Hono()
     return c.json(row!);
   })
 
-  .put('/', validate('json', ruleSettingsInput), async (c) => {
+  // Every manager reads the rules; admins change them.
+  .put('/', requireAdmin, validate('json', ruleSettingsInput), async (c) => {
     const [row] = await db
       .update(ruleSettings)
       .set(c.req.valid('json'))

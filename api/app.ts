@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { type Bindings, requireManager } from './auth';
 import { db } from './db/client';
 import { toErrorResponse } from './errors';
+import { accountRoutes } from './routes/accounts';
 import { agentRequestRoutes } from './routes/agent-requests';
 import { agentRoutes } from './routes/agents';
 import { coverageNeedRoutes } from './routes/coverage-needs';
@@ -39,7 +40,8 @@ const app = new Hono<{ Bindings: Bindings }>()
   .route('/coverage-overrides', coverageOverrideRoutes)
   .route('/agent-requests', agentRequestRoutes)
   .route('/rule-settings', ruleSettingsRoutes)
-  .route('/plannings', planningRoutes);
+  .route('/plannings', planningRoutes)
+  .route('/accounts', accountRoutes);
 
 export type AppType = typeof app;
 export default app;
