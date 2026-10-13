@@ -13,5 +13,6 @@
     }
   },
   "rules": ["CONSECUTIVE_DAYS"],
+  "hard": true,
   "expected": [{ "rule": "CONSECUTIVE_DAYS", "agent": "A", "date": "2026-11-14" }]
 }

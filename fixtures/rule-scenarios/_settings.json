@@ -9,5 +9,12 @@
   "fortnightAnchorDate": "2026-01-05",
   "maxConsecutiveWorkDays": 5,
   "restDayExcludesPreviousNight": true,
-  "monthlyHoursToleranceMinutes": 720
+  "monthlyHoursToleranceMinutes": 720,
+  "hoursDeviationWeight": 10,
+  "wishWeight": 5,
+  "weekendFairnessWeight": 3,
+  "nightFairnessWeight": 3,
+  "holidayFairnessWeight": 3,
+  "isolatedRestDayWeight": 2,
+  "stabilityWeight": 1
 }

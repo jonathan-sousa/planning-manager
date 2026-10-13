@@ -40,7 +40,7 @@ api/                        Hono (tsconfig.api.json, projet référencé par le 
   db/schema.ts              schéma Drizzle ; db/migrations/ généré, committé
   db/client.ts              drizzle() du connecteur DSQL (jeton IAM, pool)
   solver-client.ts          invocation de la Lambda solveur
-solver/                     Python (uv) : src/solver/handler.py, tests/
+solver/                     Python (uv) : handler.py (actions health, solve), model.py (CP-SAT), db.py (DSQL), calendar.py (miroir de api/calendar.ts), cli.py ; tests/
 scripts/                    write-env.ts (cdk-outputs.json → .env.local), db-migrate.ts, db-seed.ts + seed/ (service fictif), asset-sizes.ts (infra:size)
 src/                        frontend
   main.tsx                  Amplify.configure (Auth + OAuth), QueryClient, router

@@ -4,5 +4,6 @@
   "agents": [{ "name": "A" }],
   "cells": { "A": { "2026-10-31": "N", "2026-11-01": "J" } },
   "rules": ["DAILY_REST"],
+  "hard": true,
   "expected": [{ "rule": "DAILY_REST", "agent": "A", "date": "2026-11-01" }]
 }

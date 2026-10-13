@@ -4,5 +4,6 @@
   "agents": [{ "name": "A" }],
   "cells": { "A": { "2026-10-24": "N", "2026-10-25": "N" } },
   "rules": ["SHIFT_AMPLITUDE", "DAILY_REST"],
+  "hard": false,
   "expected": []
 }

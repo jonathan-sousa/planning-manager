@@ -14,6 +14,7 @@
     { "agent": "A", "startDate": "2026-11-20", "endDate": "2026-11-20", "kind": "WISH_OFF" }
   ],
   "rules": ["APPROVED_ABSENCE", "WISH"],
+  "hard": true,
   "expected": [
     { "rule": "APPROVED_ABSENCE", "agent": "A", "date": "2026-11-17" },
     { "rule": "WISH", "agent": "A", "date": "2026-11-20" }

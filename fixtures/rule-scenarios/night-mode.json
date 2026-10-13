@@ -7,6 +7,7 @@
   ],
   "cells": { "Jour": { "2026-11-05": "N" }, "Nuit": { "2026-11-06": "J" } },
   "rules": ["NIGHT_MODE"],
+  "hard": true,
   "expected": [
     { "rule": "NIGHT_MODE", "agent": "Jour", "date": "2026-11-05" },
     { "rule": "NIGHT_MODE", "agent": "Nuit", "date": "2026-11-06" }

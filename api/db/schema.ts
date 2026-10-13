@@ -8,6 +8,7 @@ import {
   timestamp,
   unique,
   index,
+  jsonb,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -20,6 +21,8 @@ import {
   PLANNING_STATUSES,
   REQUEST_KINDS,
   SHIFT_KINDS,
+  SOLVE_MODES,
+  SOLVE_STATUSES,
 } from '../domain';
 
 // Aurora DSQL: random UUID primary keys, timestamps in UTC, no SERIAL, no
@@ -232,6 +235,35 @@ export const acceptedViolations = pgTable(
     ...timestamps,
   },
   (table) => [uniqueIndex('accepted_violations_key_idx').on(table.agentId, table.date, table.rule)]
+);
+
+/** Proposed cells of a solve run: the cells to change, `shiftTypeId: null` empties one. */
+export interface SolveResult {
+  cells: { agentId: string; date: string; shiftTypeId: string | null }[];
+  /** Solver statistics (status, objective terms, wall time…). */
+  stats: Record<string, number | string>;
+}
+
+/** One run of the solver on a month: options, then the proposal (diff) or the error. */
+export const solveRuns = pgTable(
+  'solve_runs',
+  {
+    ...id,
+    month: text()
+      .notNull()
+      .references(() => plannings.month, { onDelete: 'restrict' }),
+    mode: text({ enum: SOLVE_MODES }).notNull(),
+    status: text({ enum: SOLVE_STATUSES }).notNull().default('PENDING'),
+    /** Planning version the proposal is based on: applying it requires the same. */
+    planningVersion: integer('planning_version').notNull(),
+    result: jsonb().$type<SolveResult>(),
+    error: text(),
+    createdBy: text('created_by').notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'string' }),
+    finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'string' }),
+    ...timestamps,
+  },
+  (table) => [index('solve_runs_month_idx').on(table.month)]
 );
 
 /**
