@@ -14,7 +14,8 @@ function requireEnv(name: string): string {
 export const db = drizzle({
   connection: {
     host: requireEnv('DATABASE_ENDPOINT'),
-    user: 'admin',
+    // admin for the API, a least-privilege role for the other Lambdas.
+    user: requireEnv('DATABASE_USER'),
     max: 1,
     idleTimeoutMillis: 10_000,
   },

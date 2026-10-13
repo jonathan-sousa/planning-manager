@@ -1,6 +1,6 @@
 // TanStack Form field and form components bound to shadcn/ui; assembled
 // into `useAppForm` by src/hooks/form.ts.
-import { type ReactNode, useState } from 'react';
+import { createContext, type ReactNode, useContext, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
@@ -187,6 +187,7 @@ export function CheckboxListField({
   ...props
 }: FieldProps & { options: Option<string>[] }) {
   const field = useFieldContext<string[]>();
+  const readOnly = useContext(ReadOnlyContext);
   const toggle = (value: string, checked: boolean) =>
     field.handleChange(
       checked ? [...field.state.value, value] : field.state.value.filter((v) => v !== value)
@@ -202,6 +203,7 @@ export function CheckboxListField({
         {options.map((option) => (
           <label key={option.value} className="flex items-center gap-2 text-sm">
             <Checkbox
+              disabled={readOnly}
               checked={field.state.value.includes(option.value)}
               onCheckedChange={(checked) => toggle(option.value, checked)}
             />
@@ -215,10 +217,12 @@ export function CheckboxListField({
 
 export function SwitchField(props: FieldProps) {
   const field = useFieldContext<boolean>();
+  const readOnly = useContext(ReadOnlyContext);
   return (
     <FieldShell {...props} orientation="horizontal">
       <Switch
         id={field.name}
+        disabled={readOnly}
         checked={field.state.value}
         onCheckedChange={(checked) => field.handleChange(checked)}
       />
@@ -270,9 +274,20 @@ export function FormError() {
   );
 }
 
-/** <form> with the fields in a responsive grid, the form-level error and the submit button. */
-/** `readOnly` disables every field (native fieldset) and hides the submit button. */
-export function FormShell({ children, readOnly }: { children: ReactNode; readOnly?: boolean }) {
+/** Set by a read-only FormShell: Base UI switches and checkboxes ignore a disabled fieldset. */
+const ReadOnlyContext = createContext(false);
+
+/**
+ * <form> with the fields in a responsive grid, the form-level error and the
+ * submit button. `readOnly` disables every field and hides the button.
+ */
+export function FormShell({
+  children,
+  readOnly = false,
+}: {
+  children: ReactNode;
+  readOnly?: boolean;
+}) {
   const form = useFormContext();
   return (
     <form
@@ -281,11 +296,11 @@ export function FormShell({ children, readOnly }: { children: ReactNode; readOnl
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!readOnly) void form.handleSubmit();
+        void form.handleSubmit();
       }}
     >
       <fieldset disabled={readOnly} className="grid min-w-0 gap-4 sm:grid-cols-2">
-        {children}
+        <ReadOnlyContext value={readOnly}>{children}</ReadOnlyContext>
       </fieldset>
       <FormError />
       {!readOnly && (

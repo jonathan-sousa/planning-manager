@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { fetchAuthSession } from 'aws-amplify/auth';
 import { Mail, Pencil, Plus, UserCheck, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { accountInput, accountUpdateInput } from '../../api/schemas';
-import { useIsAdmin } from '@/auth/groups';
+import { useIsAdmin, useSession } from '@/auth/session';
 import { FormShell } from '@/components/form-fields';
 import {
   AlertDialog,
@@ -36,24 +35,13 @@ export const Route = createFileRoute('/accounts')({
   component: AccountsPage,
 });
 
-/** Cognito username of the signed-in user: their own account cannot be disabled or demoted. */
-function useOwnUsername() {
-  return useQuery({
-    queryKey: ['auth-username'],
-    queryFn: async () => {
-      const { tokens } = await fetchAuthSession();
-      return String(tokens?.accessToken.payload.username ?? '');
-    },
-  }).data;
-}
-
 const day = (timestamp: string) => formatDate(timestamp.slice(0, 10));
 
 function AccountsPage() {
   const isAdmin = useIsAdmin();
   const queryClient = useQueryClient();
   const { data, error } = useQuery({ ...accounts.query, enabled: isAdmin });
-  const own = useOwnUsername();
+  const own = useSession()?.username;
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
   const [disabling, setDisabling] = useState<Account | null>(null);
   const reload = () => queryClient.invalidateQueries({ queryKey: accounts.query.queryKey });
@@ -187,7 +175,6 @@ function AccountsPage() {
             <InviteForm
               onSaved={() => {
                 setEditing(null);
-                toast.success('Invitation envoyée');
                 void reload();
               }}
             />
@@ -235,7 +222,12 @@ function InviteForm({ onSaved }: { onSaved: () => void }) {
     validationLogic,
     validators: {
       onDynamic: accountInput,
-      onSubmitAsync: ({ value }) => submitToApi(() => accounts.invite(value)),
+      onSubmitAsync: ({ value }) =>
+        submitToApi(async () => {
+          const { created } = await accounts.invite(value);
+          // An existing account outside the app only gets its access back.
+          toast.success(created ? 'Invitation envoyée' : 'Accès rétabli pour ce compte existant');
+        }),
     },
     onSubmit: onSaved,
   });

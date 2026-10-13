@@ -49,10 +49,20 @@ export const uniqueConstraintNames = Object.keys(uniqueViolations);
 export function toErrorResponse(
   error: unknown,
   method: string
-): { status: 400 | 409; body: ApiError } | undefined {
+): { status: 400 | 401 | 404 | 409 | 429; body: ApiError } | undefined {
   // Raised by Hono's validator on a body that is not JSON.
   if (error instanceof HTTPException && error.status === 400) {
     return { status: 400, body: { error: 'Requête invalide' } };
+  }
+  if (error instanceof HTTPException && error.status === 401) {
+    return { status: 401, body: { error: 'Non authentifié' } };
+  }
+  // Cognito (accounts): an unknown user, or throttling.
+  if (error instanceof Error && error.name === 'UserNotFoundException') {
+    return { status: 404, body: { error: 'Compte introuvable' } };
+  }
+  if (error instanceof Error && error.name === 'TooManyRequestsException') {
+    return { status: 429, body: { error: 'Trop de demandes : réessayez dans un instant.' } };
   }
   if (error instanceof ValidationError) {
     return { status: 400, body: { error: error.message, fields: error.fields } };

@@ -1,6 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { fetchAuthSession, signOut } from 'aws-amplify/auth';
+import { signOut } from 'aws-amplify/auth';
 import {
   Award,
   CalendarClock,
@@ -15,7 +14,7 @@ import {
   UserCog,
   Users,
 } from 'lucide-react';
-import { useIsAdmin } from '@/auth/groups';
+import { useIsAdmin, useSession } from '@/auth/session';
 import {
   Sidebar,
   SidebarContent,
@@ -64,13 +63,7 @@ const navigation = [
 
 export function AppSidebar() {
   const isAdmin = useIsAdmin();
-  const { data: email } = useQuery({
-    queryKey: ['user-email'],
-    queryFn: async () => {
-      const { tokens } = await fetchAuthSession();
-      return String(tokens?.idToken?.payload.email ?? '');
-    },
-  });
+  const email = useSession()?.email;
 
   return (
     <Sidebar>

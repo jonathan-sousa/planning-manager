@@ -5,23 +5,35 @@ import type { ApiError } from './errors';
 let app: (typeof import('./app'))['default'];
 beforeAll(async () => {
   process.env.DATABASE_ENDPOINT = 'test.dsql.eu-west-3.on.aws';
+  process.env.DATABASE_USER = 'admin';
   app = (await import('./app')).default;
 });
 
-const managerEnv = (groups: string) => ({
-  event: { requestContext: { authorizer: { jwt: { claims: { 'cognito:groups': groups } } } } },
+const managerEnv = (groups: string, tokenUse = 'access') => ({
+  event: {
+    requestContext: {
+      authorizer: {
+        jwt: { claims: { 'cognito:groups': groups, token_use: tokenUse, username: 'u' } },
+      },
+    },
+  },
 });
 
-const post = (path: string, body: unknown, groups = '[MANAGERS]') =>
+const post = (path: string, body: unknown, groups = '[MANAGERS]', tokenUse = 'access') =>
   app.request(
     path,
     { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } },
-    managerEnv(groups)
+    managerEnv(groups, tokenUse)
   );
 
 describe('API', () => {
   it('rejects callers outside the managers group', async () => {
     const response = await post('/grades', { code: 'IDE', label: 'Infirmier' }, '[OTHERS]');
+    expect(response.status).toBe(403);
+  });
+
+  it('rejects ID tokens, which the authorizer also accepts', async () => {
+    const response = await post('/grades', { code: 'IDE', label: 'Infirmier' }, '[MANAGERS]', 'id');
     expect(response.status).toBe(403);
   });
 

@@ -3,6 +3,8 @@
 import {
   AdminAddUserToGroupCommand,
   AdminCreateUserCommand,
+  AdminGetUserCommand,
+  AdminListGroupsForUserCommand,
   AdminDisableUserCommand,
   AdminEnableUserCommand,
   AdminRemoveUserFromGroupCommand,
@@ -13,7 +15,9 @@ import {
   ListUsersInGroupCommand,
   type UserType,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { ADMIN_GROUP, MANAGER_GROUP } from './auth';
+import { createMiddleware } from 'hono/factory';
+import { type Bindings, callerName } from './auth';
+import { ADMIN_GROUP, MANAGER_GROUP } from './domain';
 
 const cognito = new CognitoIdentityProviderClient({});
 const userPoolId = () => process.env.USER_POOL_ID;
@@ -75,6 +79,33 @@ export async function listAccounts(): Promise<Account[]> {
   return accounts;
 }
 
+/** Groups and enabled flag of a user, read live from Cognito (not from a token). */
+async function liveState(username: string) {
+  const [user, groups] = await Promise.all([
+    cognito.send(new AdminGetUserCommand({ UserPoolId: userPoolId(), Username: username })),
+    cognito.send(
+      new AdminListGroupsForUserCommand({ UserPoolId: userPoolId(), Username: username })
+    ),
+  ]);
+  const names = new Set(groups.Groups?.map((group) => group.GroupName));
+  return {
+    username: user.Username!,
+    enabled: user.Enabled ?? false,
+    manager: names.has(MANAGER_GROUP),
+    admin: names.has(ADMIN_GROUP),
+  };
+}
+
+/**
+ * Admin routes check the caller live: an access token keeps its groups up to
+ * an hour, so a demoted or disabled admin could otherwise undo it.
+ */
+export const requireActiveAdmin = createMiddleware<{ Bindings: Bindings }>(async (c, next) => {
+  const caller = await liveState(callerName(c.env.event));
+  if (!caller.enabled || !caller.admin) return c.json({ error: 'Forbidden' }, 403);
+  await next();
+});
+
 async function setGroup(username: string, group: string, member: boolean) {
   const Command = member ? AdminAddUserToGroupCommand : AdminRemoveUserFromGroupCommand;
   await cognito.send(
@@ -82,24 +113,42 @@ async function setGroup(username: string, group: string, member: boolean) {
   );
 }
 
-/** Creates the account; Cognito emails the invitation with a temporary password. */
-export async function inviteAccount(input: { email: string; name: string; admin: boolean }) {
-  const { User } = await cognito.send(
-    new AdminCreateUserCommand({
-      UserPoolId: userPoolId(),
-      Username: input.email,
-      UserAttributes: [
-        { Name: 'email', Value: input.email },
-        { Name: 'email_verified', Value: 'true' },
-        { Name: 'name', Value: input.name },
-      ],
-      DesiredDeliveryMediums: ['EMAIL'],
-    })
-  );
-  const username = User!.Username!;
+/**
+ * Creates the account; Cognito emails the invitation with a temporary
+ * password. An existing user outside the managers group (an invitation that
+ * failed halfway) gets its groups instead; `created` tells which.
+ */
+export async function inviteAccount(input: {
+  email: string;
+  name: string;
+  admin: boolean;
+}): Promise<{ username: string; created: boolean } | 'exists'> {
+  let username: string;
+  let created = true;
+  try {
+    const { User } = await cognito.send(
+      new AdminCreateUserCommand({
+        UserPoolId: userPoolId(),
+        Username: input.email,
+        UserAttributes: [
+          { Name: 'email', Value: input.email },
+          { Name: 'email_verified', Value: 'true' },
+          { Name: 'name', Value: input.name },
+        ],
+        DesiredDeliveryMediums: ['EMAIL'],
+      })
+    );
+    username = User!.Username!;
+  } catch (error) {
+    if (!(error instanceof Error && error.name === 'UsernameExistsException')) throw error;
+    const existing = await liveState(input.email);
+    if (existing.manager) return 'exists';
+    ({ username } = existing);
+    created = false;
+  }
   await setGroup(username, MANAGER_GROUP, true);
   if (input.admin) await setGroup(username, ADMIN_GROUP, true);
-  return username;
+  return { username, created };
 }
 
 /** Sends the invitation again, with a new temporary password. */

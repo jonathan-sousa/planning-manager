@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { signOut } from 'aws-amplify/auth';
-import { groupsQuery, MANAGER_GROUP } from './groups';
+import { MANAGER_GROUP } from '../../api/domain';
+import { sessionQuery } from './session';
 
 /** Blocks signed-in users that are not managers. The API enforces the same rule. */
 export function ManagerGate({ children }: { children: ReactNode }) {
-  const { data: groups, isPending, error } = useQuery(groupsQuery);
+  const { data: session, isPending, error } = useQuery(sessionQuery);
 
   if (isPending) return null;
 
@@ -22,7 +23,7 @@ export function ManagerGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!groups?.includes(MANAGER_GROUP)) {
+  if (!session?.groups.includes(MANAGER_GROUP)) {
     return (
       <main className="flex min-h-svh flex-col items-center justify-center gap-4 p-6 text-center">
         <h1 className="text-xl font-semibold">Accès refusé</h1>

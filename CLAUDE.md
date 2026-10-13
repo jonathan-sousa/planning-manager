@@ -43,7 +43,7 @@ api/                        Hono (tsconfig.api.json, projet référencé par le 
   validate.ts               zValidator qui lève une ValidationError (400 par champ)
   auth.ts                   middlewares : 403 hors de MANAGERS, ou hors d'ADMINS (claim cognito:groups)
   accounts.ts               comptes Cognito (liste, invitation, rôle admin, désactivation)
-  email-events.ts           Lambda SNS : rebonds et plaintes SES → table email_events
+  email-events.ts           Lambda SNS : remises, rebonds et plaintes SES → table email_events (rôle mailer)
   db/schema.ts              schéma Drizzle ; db/migrations/ généré, committé
   db/client.ts              drizzle() du connecteur DSQL (jeton IAM, pool)
   solver-client.ts          invocation de la Lambda solveur
@@ -53,7 +53,7 @@ src/                        frontend
   config.ts                 /config.json du stage (ids Cognito, URL de l'API), lu au démarrage
   main.tsx                  Amplify.configure (Auth + OAuth), QueryClient, router
   auth/auth-gate.tsx        redirige vers Managed Login (signInWithRedirect) tant qu'il n'y a pas de session
-  auth/groups.ts            groupes du jeton d'accès, useIsAdmin
+  auth/session.ts           utilisateur connecté (username, email, groupes du jeton d'accès), useIsAdmin
   auth/manager-gate.tsx     « Accès refusé » hors du groupe MANAGERS (l'API refuse aussi)
   lib/api-client.ts         hc<AppType> avec le jeton d'accès Cognito ; unwrap() lève ApiRequestError
   lib/resources.ts          requêtes et écritures de chaque ressource, types des lignes
@@ -72,7 +72,7 @@ docs/                       architecture, modèle de domaine, règles de planifi
 ## Conventions
 
 - **Versions** : toujours la dernière stable, vérifiée sur le registre (`npm view`, PyPI). Ne jamais se fier à la mémoire. Un écart se justifie par une incompatibilité constatée et se documente dans `docs/architecture.md`.
-- **Schéma et DSQL** : toute modification de `api/db/schema.ts` passe par `npm run db:generate` et le SQL généré est committé, sans jamais retoucher une migration déjà appliquée (le générateur réécrit 0001 et 0006 : les restaurer avec `git checkout`). Règles DSQL (FK `NOT VALID` + validation, tri, OCC, 3 000 lignes, rôle `solver` à qui accorder toute nouvelle table qu'il lit) : `docs/architecture.md` § Base de données.
+- **Schéma et DSQL** : toute modification de `api/db/schema.ts` passe par `npm run db:generate` et le SQL généré est committé, sans jamais retoucher une migration déjà appliquée (le générateur réécrit 0001, 0006 et 0008 : les restaurer avec `git checkout`). Règles DSQL (FK `NOT VALID` + validation, tri, OCC, 3 000 lignes, rôles `solver` et `mailer` à qui accorder toute nouvelle table qu'ils utilisent) : `docs/architecture.md` § Base de données.
 - **Données, dates, identifiants** : `docs/domain-model.md` § Conventions. Données fictives uniquement tant que l'hôpital n'a pas validé l'hébergement (jeu de démonstration : `scripts/seed/data.ts`).
 - **Authentification** : Cognito Managed Login ; `aws-amplify` ne sert qu'à la redirection OAuth et aux jetons. Pas de formulaire de connexion dans l'app, pas d'Amplify UI.
 - **Formulaires** : TanStack Form validé par les schémas de `api/schemas.ts` (`onDynamic` + `revalidateLogic` : validation à la soumission, puis à chaque frappe), écriture dans `onSubmitAsync` via `submitToApi`. Pas de second schéma côté client.

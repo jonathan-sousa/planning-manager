@@ -46,7 +46,8 @@ export const monthParam = z.object({
   month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mois au format AAAA-MM'),
 });
 
-export const usernameParam = z.object({ username: z.string().min(1).max(128) });
+/** Cognito usernames are generated UUIDs; the email alias is refused, so self checks hold. */
+export const usernameParam = z.object({ username: z.uuid() });
 
 export const accountInput = z.object({
   email: z
