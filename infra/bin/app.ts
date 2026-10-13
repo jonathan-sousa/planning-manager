@@ -27,7 +27,7 @@ const edge =
     : undefined;
 
 const stageStack = new PlanningManagerStack(app, `PlanningManager-${stage}`, { stage, env, edge });
-stageStack.addDependency(mail);
+stageStack.addStackDependency(mail);
 
 // Cost and inventory: every resource carries its project and stage (cost
 // allocation tags, to activate once in Billing).
