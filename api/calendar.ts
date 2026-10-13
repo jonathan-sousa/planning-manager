@@ -40,11 +40,12 @@ export const monthLabel = (month: string): string => monthFormat.format(toUtc(`$
 /** 'L', 'M', 'M', 'J', 'V', 'S', 'D' */
 export const weekdayLetter = (date: string): string => weekdayFormat.format(toUtc(date));
 
+/** Today in Paris, 'YYYY-MM-DD'. */
+export const today = (): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+
 /** Current month in Paris. */
-export const currentMonth = (): string =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit' })
-    .format(new Date())
-    .slice(0, 7);
+export const currentMonth = (): string => today().slice(0, 7);
 
 /** Every date of a 'YYYY-MM' month. */
 export function monthDates(month: string): string[] {

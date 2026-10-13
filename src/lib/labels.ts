@@ -1,4 +1,11 @@
-import type { DayKind, HoursRegime, NightMode, RequestKind, ShiftKind } from '../../api/domain';
+import type {
+  DayKind,
+  HoursRegime,
+  NightMode,
+  PlanningStatus,
+  RequestKind,
+  ShiftKind,
+} from '../../api/domain';
 
 export const nightModeLabels: Record<NightMode, string> = {
   DAY_ONLY: 'Jour uniquement',
@@ -29,6 +36,12 @@ export const requestKindLabels: Record<RequestKind, string> = {
   ABSENCE_APPROVED: 'Absence validée',
   WISH_OFF: 'Souhait de repos',
   WISH_SHIFT: 'Souhait de poste',
+};
+
+export const planningStatusLabels: Record<PlanningStatus, string> = {
+  DRAFT: 'Brouillon',
+  VALIDATED: 'Validé',
+  PUBLISHED: 'Publié',
 };
 
 /** Select options from a label map. */

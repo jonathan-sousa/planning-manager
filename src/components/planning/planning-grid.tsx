@@ -4,8 +4,7 @@ import { toast } from 'sonner';
 import { dayOfWeek, isPublicHoliday, weekdayLetter } from '../../../api/calendar';
 import type { AgentCounters, Violation } from '../../../api/rules/model';
 import { cn } from 'cn';
-import type { CellEdit, GridCell } from './use-planning-editor';
-import { cellKey } from './use-planning-editor';
+import { type CellEdit, cellKey, type GridCell } from './cells';
 import { formatMinutes } from '@/lib/format';
 import type { Agent, ShiftType } from '@/lib/resources';
 

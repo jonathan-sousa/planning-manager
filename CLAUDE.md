@@ -66,7 +66,7 @@ src/                        frontend
   hooks/form.ts             useAppForm (TanStack Form) ; submitToApi reporte les erreurs de l'API sur les champs
   components/form-fields.tsx champs de formulaire liés à shadcn, FormShell
   components/crud-page.tsx  liste + fenêtres de création, modification, suppression
-  components/planning/      grille mensuelle (saisie clavier, sauvegarde automatique versionnée, validation en direct, revue des propositions du solveur, diagnostic de couverture)
+  components/planning/      grille mensuelle (saisie clavier, sauvegarde automatique versionnée, validation en direct, revue des propositions du solveur, diagnostic de couverture, exports PDF et CSV ; cells.ts : types partagés)
   routes/                   routes file-based (routeTree.gen.ts est généré, ne pas éditer)
   components/ui/            shadcn (générés via `npx shadcn@latest add`)
   styles/shadcn-tailwind.css preset Tailwind de shadcn, copié depuis le paquet (variants data-*, keyframes)
