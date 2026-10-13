@@ -1,8 +1,10 @@
 import { desc, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 import {
+  type Account,
   inviteAccount,
   listAccounts,
+  requireActiveAdmin,
   resendInvitation,
   setAccountEnabled,
   updateAccount,
@@ -15,20 +17,20 @@ import { accountInput, accountUpdateInput, usernameParam } from '../schemas';
 import { compareFr } from '../sort';
 import { validate } from '../validate';
 
-const errorName = (error: unknown) => (error instanceof Error ? error.name : '');
+const refused = (error: string): ApiError => ({ error });
 
-const notSelf = (action: string): ApiError => ({
-  error: `Vous ne pouvez pas ${action} votre propre compte.`,
-});
+/** True when the change would leave no enabled admin. */
+const lastAdmin = (accounts: Account[], username: string) =>
+  !accounts.some((account) => account.admin && account.enabled && account.username !== username);
 
 /** Accounts of the app, for admins only: invitations, admin role, access. */
 export const accountRoutes = new Hono<{ Bindings: Bindings }>()
-  .use('*', requireAdmin)
+  .use('*', requireAdmin, requireActiveAdmin)
 
-  /** Accounts with the last SES bounce or complaint on their email. */
+  /** Accounts, with their email flagged when its last SES event is a bounce or a complaint. */
   .get('/', async (c) => {
     const accounts = await listAccounts();
-    const emails = accounts.map((account) => account.email);
+    const emails = accounts.map((account) => account.email.toLowerCase());
     const events = emails.length
       ? await db
           .select()
@@ -41,12 +43,13 @@ export const accountRoutes = new Hono<{ Bindings: Bindings }>()
     return c.json(
       accounts
         .map((account) => {
-          const event = lastEvent.get(account.email);
+          const event = lastEvent.get(account.email.toLowerCase());
           return {
             ...account,
-            emailIssue: event
-              ? { kind: event.kind, detail: event.detail, occurredAt: event.occurredAt }
-              : null,
+            emailIssue:
+              event && event.kind !== 'DELIVERY'
+                ? { kind: event.kind, detail: event.detail, occurredAt: event.occurredAt }
+                : null,
           };
         })
         .sort((a, b) => compareFr(a.name || a.email, b.name || b.email)),
@@ -55,16 +58,12 @@ export const accountRoutes = new Hono<{ Bindings: Bindings }>()
   })
 
   .post('/', validate('json', accountInput), async (c) => {
-    try {
-      const username = await inviteAccount(c.req.valid('json'));
-      return c.json({ username }, 201);
-    } catch (error) {
-      if (errorName(error) === 'UsernameExistsException') {
-        const message = 'Un compte existe déjà avec cet email';
-        return c.json({ error: message, fields: { email: [message] } } satisfies ApiError, 409);
-      }
-      throw error;
+    const outcome = await inviteAccount(c.req.valid('json'));
+    if (outcome === 'exists') {
+      const message = 'Un compte existe déjà avec cet email';
+      return c.json({ error: message, fields: { email: [message] } } satisfies ApiError, 409);
     }
+    return c.json(outcome, outcome.created ? 201 : 200);
   })
 
   .put(
@@ -74,8 +73,13 @@ export const accountRoutes = new Hono<{ Bindings: Bindings }>()
     async (c) => {
       const { username } = c.req.valid('param');
       const input = c.req.valid('json');
-      if (!input.admin && username === callerName(c.env.event)) {
-        return c.json(notSelf('retirer le rôle admin de'), 409);
+      if (!input.admin) {
+        if (username === callerName(c.env.event)) {
+          return c.json(refused('Vous ne pouvez pas retirer votre propre rôle admin.'), 409);
+        }
+        if (lastAdmin(await listAccounts(), username)) {
+          return c.json(refused('Il faut au moins un admin actif.'), 409);
+        }
       }
       await updateAccount(username, input);
       return c.body(null, 204);
@@ -86,9 +90,9 @@ export const accountRoutes = new Hono<{ Bindings: Bindings }>()
     const account = (await listAccounts()).find(
       (item) => item.username === c.req.valid('param').username
     );
-    if (!account) return c.json({ error: 'Introuvable' } satisfies ApiError, 404);
-    if (account.status !== 'FORCE_CHANGE_PASSWORD') {
-      return c.json({ error: 'Invitation déjà utilisée' } satisfies ApiError, 409);
+    if (!account) return c.json(refused('Introuvable'), 404);
+    if (!account.enabled || account.status !== 'FORCE_CHANGE_PASSWORD') {
+      return c.json(refused('Aucune invitation en attente pour ce compte'), 409);
     }
     await resendInvitation(account.email);
     return c.body(null, 204);
@@ -96,7 +100,12 @@ export const accountRoutes = new Hono<{ Bindings: Bindings }>()
 
   .post('/:username/disable', validate('param', usernameParam), async (c) => {
     const { username } = c.req.valid('param');
-    if (username === callerName(c.env.event)) return c.json(notSelf('désactiver'), 409);
+    if (username === callerName(c.env.event)) {
+      return c.json(refused('Vous ne pouvez pas désactiver votre propre compte.'), 409);
+    }
+    if (lastAdmin(await listAccounts(), username)) {
+      return c.json(refused('Il faut au moins un admin actif.'), 409);
+    }
     await setAccountEnabled(username, false);
     return c.body(null, 204);
   })

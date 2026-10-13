@@ -72,8 +72,8 @@ Production (`npm run infra:deploy -- prod`) :
   - 404 : identifiant inconnu ;
   - 409 : doublon (contrainte unique, rattachée au champ `code` quand c'est lui), suppression d'une ligne encore référencée, ou type d'un poste utilisé.
 - Tri des libellés en français dans l'API (`api/sort.ts`), jamais par `ORDER BY` sur du texte.
-- Comptes (`api/routes/accounts.ts`, admins seulement, comme `PUT /rule-settings`) : les utilisateurs Cognito du groupe `MANAGERS` (`api/accounts.ts`), avec le dernier rebond ou la dernière plainte SES de leur email. `POST /accounts` invite (Cognito envoie le mot de passe temporaire), `PUT /accounts/:username` change le nom et le rôle admin, `POST /accounts/:username/resend` renvoie une invitation non utilisée, `/disable` et `/enable` coupent ou rendent l'accès (un compte n'est jamais supprimé). Un admin ne peut ni se désactiver ni se retirer le rôle admin. Un compte désactivé ne se reconnecte plus et ses jetons de rafraîchissement sont révoqués ; son jeton d'accès reste valable jusqu'à son expiration (une heure au plus).
-- Rebonds et plaintes : chaque stage a un jeu de configuration SES (`planning-manager-<stage>`), utilisé par les emails de son user pool ; ses événements `BOUNCE` et `COMPLAINT` passent par SNS à une Lambda (`api/email-events.ts`, `infra/lib/email-events.ts`) qui les enregistre dans `email_events`.
+- Comptes (`api/routes/accounts.ts`, admins seulement, comme `PUT /rule-settings`) : les utilisateurs Cognito du groupe `MANAGERS` (`api/accounts.ts`), avec l'état de leur email. `POST /accounts` invite (Cognito envoie le mot de passe temporaire ; un utilisateur existant hors du groupe `MANAGERS`, invitation interrompue, récupère ses groupes), `PUT /accounts/:username` change le nom et le rôle admin, `POST /accounts/:username/resend` renvoie une invitation en attente, `/disable` et `/enable` coupent ou rendent l'accès (un compte n'est jamais supprimé). `:username` est l'UUID Cognito, jamais l'email. Ces routes revérifient l'appelant dans Cognito (actif et dans `ADMINS`) : le jeton d'accès garde ses groupes jusqu'à une heure. Un admin ne peut ni se désactiver ni se retirer le rôle admin, et il reste toujours un admin actif. Un compte désactivé ne se reconnecte plus et ses jetons de rafraîchissement sont révoqués ; son jeton d'accès reste valable pour les données jusqu'à son expiration (une heure au plus). L'API n'accepte que les jetons d'accès (l'authorizer accepte aussi les jetons d'identité).
+- Remises, rebonds et plaintes : chaque stage a un jeu de configuration SES (`planning-manager-<stage>`), utilisé par les emails de son user pool ; ses événements `DELIVERY`, `BOUNCE` et `COMPLAINT` passent par SNS à une Lambda (`api/email-events.ts`, `infra/lib/email-events.ts`) qui les enregistre dans `email_events`. La page Comptes signale un email dont le dernier événement est un rebond ou une plainte : une remise réussie efface l'alerte.
 
 ## Grille de planning
 
@@ -94,7 +94,7 @@ Production (`npm run infra:deploy -- prod`) :
 - Le migrateur officiel applique un DDL par transaction et attend les index asynchrones.
 - Clés primaires UUID (`gen_random_uuid()`, exceptions dans [domain-model.md](domain-model.md#conventions)), horodatages `timestamptz` en UTC.
 - Concurrence optimiste : les écritures multi-lignes passent par `db.transactionWithRetry`.
-- Rôles : l'API et les scripts se connectent en `admin` ; le solveur en `solver` (migration 0006), qui ne peut que lire les tables du mois et mettre à jour `solve_runs`. Son rôle IAM n'a que `dsql:DbConnect`, et `npm run db:migrate` le relie au rôle de base (`AWS IAM GRANT`, ARN lu dans les sorties CDK). Une table que le solveur doit lire reçoit son `GRANT SELECT … TO solver` dans sa migration.
+- Rôles : l'API et les scripts se connectent en `admin` ; deux Lambdas ont un rôle limité, créé par migration : `solver` (0006, lecture des tables du mois et mise à jour de `solve_runs`) et `mailer` (0008, insertion dans `email_events`). Leurs rôles IAM n'ont que `dsql:DbConnect`, et `npm run db:migrate` les relie aux rôles de base (`AWS IAM GRANT`, ARN lus dans les sorties CDK). Une table qu'un de ces rôles doit lire ou écrire reçoit son `GRANT` dans sa migration.
 - Collation `C` : tri des libellés côté application.
 
 ## Solveur : bundling
@@ -139,7 +139,7 @@ L'existant est décrit dans le [README](../README.md#usage). Phases restantes :
 
 ## Points ouverts
 
-Technique : l'API se connecte encore en `admin` (le solveur a son rôle `solver`) ; un rôle dédié limité au DML lui retirerait le DDL.
+Technique : l'API se connecte en `admin` ; un rôle limité au DML lui retirerait le DDL.
 
 À clarifier avec le cadre de santé :
 

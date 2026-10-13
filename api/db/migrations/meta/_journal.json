@@ -57,6 +57,13 @@
       "when": 1791913736389,
       "tag": "0007_steady_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791916379035,
+      "tag": "0008_mailer_role",
+      "breakpoints": true
     }
   ]
 }

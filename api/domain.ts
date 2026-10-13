@@ -30,12 +30,16 @@ export type AssignmentSource = (typeof ASSIGNMENT_SOURCES)[number];
 export const SOLVE_MODES = ['COMPLETE', 'REOPTIMIZE'] as const;
 export type SolveMode = (typeof SOLVE_MODES)[number];
 
-/** SES events recorded for the accounts page: rejected address, spam report. */
-export const EMAIL_EVENT_KINDS = ['BOUNCE', 'COMPLAINT'] as const;
-export type EmailEventKind = (typeof EMAIL_EVENT_KINDS)[number];
+/** Cognito groups: every user is a manager; admins also manage accounts and rules. */
+export const MANAGER_GROUP = 'MANAGERS';
+export const ADMIN_GROUP = 'ADMINS';
 
 export const SOLVE_STATUSES = ['PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED', 'APPLIED'] as const;
 export type SolveStatus = (typeof SOLVE_STATUSES)[number];
+
+/** SES events recorded for the accounts page: the last one of an email tells whether it is reachable. */
+export const EMAIL_EVENT_KINDS = ['DELIVERY', 'BOUNCE', 'COMPLAINT'] as const;
+export type EmailEventKind = (typeof EMAIL_EVENT_KINDS)[number];
 
 /** Planning rules and their severity (api/rules/ applies them). */
 export const RULES = {

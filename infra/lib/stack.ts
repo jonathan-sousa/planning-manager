@@ -24,7 +24,7 @@ export class PlanningManagerStack extends Stack {
     const isProd = stage === PROD_STAGE;
     const removalPolicy = isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY;
 
-    const bootstrapManagerEmail = process.env.BOOTSTRAP_MANAGER_EMAIL;
+    const bootstrapManagerEmail = process.env.BOOTSTRAP_MANAGER_EMAIL?.trim().toLowerCase();
     if (!bootstrapManagerEmail) {
       throw new Error(
         'BOOTSTRAP_MANAGER_EMAIL is not set: it is the email of the first manager created on this stage (see README).'
@@ -86,5 +86,6 @@ export class PlanningManagerStack extends Stack {
     new CfnOutput(this, 'ApiUrl', { value: api.httpApi.apiEndpoint });
     new CfnOutput(this, 'DatabaseEndpoint', { value: database.cluster.clusterEndpoint });
     new CfnOutput(this, 'SolverRoleArn', { value: solver.function.role!.roleArn });
+    new CfnOutput(this, 'MailerRoleArn', { value: emailEvents.function.role!.roleArn });
   }
 }

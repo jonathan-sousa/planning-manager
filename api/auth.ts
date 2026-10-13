@@ -1,14 +1,11 @@
 import type { LambdaEvent } from '@hono/aws-lambda';
 import { createMiddleware } from 'hono/factory';
+import { HTTPException } from 'hono/http-exception';
+import { ADMIN_GROUP, MANAGER_GROUP } from './domain';
 
 export type Bindings = {
   event: LambdaEvent;
 };
-
-/** Every user of the app; admins are managers too. */
-export const MANAGER_GROUP = 'MANAGERS';
-/** Manage the accounts and the planning rules. */
-export const ADMIN_GROUP = 'ADMINS';
 
 /**
  * The HTTP API JWT authorizer serialises array claims as "[A B]" rather than
@@ -34,16 +31,16 @@ function jwtClaims(event: LambdaEvent): Record<string, unknown> | undefined {
 
 /** Cognito username of the caller (access token `username` claim). */
 export function callerName(event: LambdaEvent): string {
-  return String(jwtClaims(event)?.username ?? 'inconnu');
-}
-
-function callerGroups(event: LambdaEvent): string[] {
-  return parseGroups(jwtClaims(event)?.['cognito:groups']);
+  const username = jwtClaims(event)?.username;
+  if (typeof username !== 'string' || !username) throw new HTTPException(401);
+  return username;
 }
 
 const requireGroup = (group: string) =>
   createMiddleware<{ Bindings: Bindings }>(async (c, next) => {
-    if (!callerGroups(c.env.event).includes(group)) {
+    const claims = jwtClaims(c.env.event);
+    // The authorizer also accepts ID tokens (same audience): access tokens only.
+    if (claims?.token_use !== 'access' || !parseGroups(claims['cognito:groups']).includes(group)) {
       return c.json({ error: 'Forbidden' }, 403);
     }
     await next();

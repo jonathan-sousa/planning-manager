@@ -15,6 +15,7 @@ import type { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { ARecord, type IHostedZone, RecordTarget } from 'aws-cdk-lib/aws-route53';
 import { UserPoolDomainTarget } from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
+import { ADMIN_GROUP, MANAGER_GROUP } from '../../api/domain';
 import { bootstrapManager } from './bootstrap-manager';
 import { MAIL_DOMAIN, MAIL_FROM } from './mail';
 
@@ -123,12 +124,12 @@ export class Auth extends Construct {
     });
 
     this.managersGroup = this.userPool.addGroup('Managers', {
-      groupName: 'MANAGERS',
+      groupName: MANAGER_GROUP,
       description: 'Cadres de santé autorisés à gérer les plannings',
     });
 
     this.adminsGroup = this.userPool.addGroup('Admins', {
-      groupName: 'ADMINS',
+      groupName: ADMIN_GROUP,
       description: 'Managers qui gèrent les comptes et les règles de planification',
     });
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('./db/client', () => ({ db: {} }));
-const { toRows } = await import('./email-events');
+const { parseMessage, toRows } = await import('./email-events');
 
 describe('SES events', () => {
   it('records a bounce per recipient', () => {
@@ -36,6 +36,29 @@ describe('SES events', () => {
         },
       })
     ).toMatchObject([{ kind: 'COMPLAINT', detail: 'abuse' }]);
-    expect(toRows({ eventType: 'Delivery' })).toEqual([]);
+    expect(toRows({ eventType: 'Open' })).toEqual([]);
+  });
+
+  it('records a delivery, which clears an earlier bounce on the accounts page', () => {
+    expect(
+      toRows({
+        eventType: 'Delivery',
+        delivery: { timestamp: '2026-10-14T09:00:00.000Z', recipients: ['A@example.org'] },
+      })
+    ).toEqual([
+      {
+        email: 'a@example.org',
+        kind: 'DELIVERY',
+        detail: null,
+        occurredAt: '2026-10-14T09:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('ignores the plain text message SES sends to validate the topic', () => {
+    expect(
+      parseMessage('Successfully validated SNS topic for Amazon SES event publishing.')
+    ).toBeNull();
+    expect(parseMessage('{"eventType":"Bounce"}')).toEqual({ eventType: 'Bounce' });
   });
 });

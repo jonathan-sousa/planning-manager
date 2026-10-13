@@ -26,7 +26,11 @@ const { default: app } = await import('./app');
 
 const env = {
   event: {
-    requestContext: { authorizer: { jwt: { claims: { 'cognito:groups': '[MANAGERS]' } } } },
+    requestContext: {
+      authorizer: {
+        jwt: { claims: { 'cognito:groups': '[MANAGERS]', token_use: 'access', username: 'u' } },
+      },
+    },
   },
 };
 const send = (method: string, path: string, body?: unknown) =>

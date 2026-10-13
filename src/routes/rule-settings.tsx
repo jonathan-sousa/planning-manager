@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { ruleSettingsInput, type RuleSettingsInput } from '../../api/schemas';
-import { useIsAdmin } from '@/auth/groups';
+import { useIsAdmin } from '@/auth/session';
 import { FormShell } from '@/components/form-fields';
 import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';
 import { type RuleSettings, ruleSettings } from '@/lib/resources';

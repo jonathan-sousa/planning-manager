@@ -40,6 +40,7 @@ export class Api extends Construct {
       removalPolicy: props.removalPolicy,
       environment: {
         DATABASE_ENDPOINT: props.database.cluster.clusterEndpoint,
+        DATABASE_USER: 'admin',
         SOLVER_FUNCTION_NAME: props.solver.function.functionName,
         USER_POOL_ID: props.auth.userPool.userPoolId,
       },
@@ -51,6 +52,8 @@ export class Api extends Construct {
       this.function,
       'cognito-idp:ListUsers',
       'cognito-idp:ListUsersInGroup',
+      'cognito-idp:AdminGetUser',
+      'cognito-idp:AdminListGroupsForUser',
       'cognito-idp:AdminCreateUser',
       'cognito-idp:AdminAddUserToGroup',
       'cognito-idp:AdminRemoveUserFromGroup',
