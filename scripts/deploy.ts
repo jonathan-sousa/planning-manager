@@ -1,7 +1,9 @@
 /**
- * Deploys a stage: its stacks (and the ones it depends on: the shared mail
- * stack, and for production the us-east-1 edge stack), then its database
- * migrations. Production serves the built app, so it is built first; a
+ * Deploys a stage, then its database migrations. Production also deploys the
+ * stacks it depends on: the shared mail stack, which every stage sends
+ * through, and its us-east-1 edge stack. A change to them thus goes out with
+ * production only, never from a development stage, which deploys its own
+ * stack alone. Production serves the built app, so it is built first; a
  * development stage gets its .env.local for the Vite dev server.
  *
  * Usage: npm run infra:deploy [-- <stage>] [cdk deploy options]
@@ -30,6 +32,7 @@ run('npx', [
   `stage=${stage}`,
   '--outputs-file',
   outputsFile(stage),
+  ...(stage === PROD_STAGE ? [] : ['--exclusively']),
   ...args,
 ]);
 run('npx', ['tsx', 'scripts/db-migrate.ts']);
