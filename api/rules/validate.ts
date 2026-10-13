@@ -90,10 +90,11 @@ const dateFr = (date: string) => date.split('-').reverse().slice(0, 2).join('/')
 
 /**
  * Days d such that the predicate fails on d but not on d - 1: reports a run of
- * failing rolling windows once, on its first window.
+ * failing rolling windows once, on its first window (the first day of the
+ * month for a run that started before it).
  */
 function firstOfRuns(dates: string[], fails: (date: string) => boolean): string[] {
-  return dates.filter((date) => fails(date) && !fails(addDays(date, -1)));
+  return dates.filter((date, index) => fails(date) && (index === 0 || !fails(addDays(date, -1))));
 }
 
 export function validatePlanning(input: RuleInput): Violation[] {
@@ -214,7 +215,13 @@ export function validatePlanning(input: RuleInput): Violation[] {
       date = addDays(date, 1)
     ) {
       run = plan.work(date) ? run + 1 : 0;
-      if (run === settings.maxConsecutiveWorkDays + 1 && inMonth(date)) {
+      // Once per run: when it passes the maximum, or on the 1st if it already had.
+      const over = run > settings.maxConsecutiveWorkDays;
+      if (
+        over &&
+        inMonth(date) &&
+        (run === settings.maxConsecutiveWorkDays + 1 || date === dates[0])
+      ) {
         add('CONSECUTIVE_DAYS', date, `${run} jours travaillés d'affilée`, agent.id);
       }
     }
@@ -239,7 +246,9 @@ export function validatePlanning(input: RuleInput): Violation[] {
     if (!agent) continue;
     const cells = new Map((cellsByAgent.get(agent.id) ?? []).map((cell) => [cell.date, cell]));
     for (let date = request.startDate; date <= request.endDate; date = addDays(date, 1)) {
-      if (!inMonth(date)) continue;
+      if (!inMonth(date) || date < agent.startDate || (agent.endDate && date > agent.endDate)) {
+        continue;
+      }
       const cell = cells.get(date);
       const shift = cell && shiftById.get(cell.shiftTypeId);
       const expected = request.shiftTypeId && shiftById.get(request.shiftTypeId)?.code;

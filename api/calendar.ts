@@ -117,10 +117,14 @@ function parisOffsetMinutes(ms: number): number {
 /** Absolute minute (since the Unix epoch) of a Paris wall-clock time. */
 export function parisMinute(date: string, time: string): number {
   const wall = toUtc(date) + (Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))) * 60_000;
-  // The offset depends on the instant; one correction settles it (DST gaps
-  // and overlaps resolve to the earlier offset).
-  const first = wall - parisOffsetMinutes(wall) * 60_000;
-  return (wall - parisOffsetMinutes(first) * 60_000) / 60_000;
+  // The offset in force half a day before and after; a time skipped or
+  // repeated by a DST change takes the earlier one (Python's fold=0).
+  const instant = (offset: number) => wall - offset * 60_000;
+  const before = parisOffsetMinutes(wall - 12 * 3_600_000);
+  const after = parisOffsetMinutes(wall + 12 * 3_600_000);
+  const valid = (offset: number) => parisOffsetMinutes(instant(offset)) === offset;
+  const offset = valid(before) || !valid(after) ? before : after;
+  return instant(offset) / 60_000;
 }
 
 /**
@@ -142,4 +146,14 @@ export function nominalMinutes(startTime: string, endTime: string): number {
   const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
   const span = minutes(endTime) - minutes(startTime);
   return span > 0 ? span : span + 24 * 60;
+}
+
+/** Minutes credited for a shift on a date: a work shift follows daylight saving time. */
+export function countedOn(
+  date: string,
+  shift: { kind: string; startTime: string | null; endTime: string | null; countedMinutes: number }
+): number {
+  if (shift.kind !== 'WORK' || !shift.startTime || !shift.endTime) return shift.countedMinutes;
+  const { start, end } = shiftInterval(date, shift.startTime, shift.endTime);
+  return shift.countedMinutes + (end - start - nominalMinutes(shift.startTime, shift.endTime));
 }

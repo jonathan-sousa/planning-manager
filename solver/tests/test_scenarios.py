@@ -32,8 +32,8 @@ def to_problem(scenario: dict) -> Problem:
                     "workTimeRatio": 100,
                     "nightMode": agent.get("nightMode", "MIXED"),
                     "hoursRegime": "MIXED_PRORATA",
-                    "startDate": "2020-01-01",
-                    "endDate": None,
+                    "startDate": agent.get("startDate", "2020-01-01"),
+                    "endDate": agent.get("endDate"),
                 }
                 for agent in scenario["agents"]
             ],

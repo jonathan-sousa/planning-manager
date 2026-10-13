@@ -1,9 +1,14 @@
+import json
+from pathlib import Path
+
 from solver.calendar import (
     add_days,
     day_kind,
     day_of_week,
+    is_public_holiday,
     month_dates,
     nominal_minutes,
+    paris_minute,
     public_holidays,
     shift_interval,
 )
@@ -41,3 +46,19 @@ def test_shift_lengths_follow_daylight_saving_time():
     assert length("2026-10-24", "19:00", "07:00") == 780
     assert length("2026-10-14", "14:00", "00:00") == 600
     assert nominal_minutes("19:00", "07:00") == 720
+
+
+def test_matches_the_validator_calendar():
+    """fixtures/calendar.json is also checked by api/calendar.test.ts."""
+    shared = json.loads(
+        (Path(__file__).parents[2] / "fixtures" / "calendar.json").read_text()
+    )
+    for case in shared["parisMinutes"]:
+        assert paris_minute(case["date"], case["time"]) == case["minute"], case
+    holidays = []
+    day = "2026-01-01"
+    while day < "2029-01-01":
+        if is_public_holiday(day):
+            holidays.append(day)
+        day = add_days(day, 1)
+    assert holidays == shared["publicHolidays"]
