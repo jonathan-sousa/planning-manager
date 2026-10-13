@@ -30,6 +30,10 @@ export type AssignmentSource = (typeof ASSIGNMENT_SOURCES)[number];
 export const SOLVE_MODES = ['COMPLETE', 'REOPTIMIZE'] as const;
 export type SolveMode = (typeof SOLVE_MODES)[number];
 
+/** SES events recorded for the accounts page: rejected address, spam report. */
+export const EMAIL_EVENT_KINDS = ['BOUNCE', 'COMPLAINT'] as const;
+export type EmailEventKind = (typeof EMAIL_EVENT_KINDS)[number];
+
 export const SOLVE_STATUSES = ['PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED', 'APPLIED'] as const;
 export type SolveStatus = (typeof SOLVE_STATUSES)[number];
 

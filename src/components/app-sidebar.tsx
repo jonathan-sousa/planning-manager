@@ -12,8 +12,10 @@ import {
   MessageSquare,
   Scale,
   ShieldCheck,
+  UserCog,
   Users,
 } from 'lucide-react';
+import { useIsAdmin } from '@/auth/groups';
 import {
   Sidebar,
   SidebarContent,
@@ -53,9 +55,15 @@ const navigation = [
       { to: '/rule-settings', label: 'Règles', icon: Scale },
     ],
   },
+  {
+    label: 'Administration',
+    adminOnly: true,
+    items: [{ to: '/accounts', label: 'Comptes', icon: UserCog }],
+  },
 ] as const;
 
 export function AppSidebar() {
+  const isAdmin = useIsAdmin();
   const { data: email } = useQuery({
     queryKey: ['user-email'],
     queryFn: async () => {
@@ -73,31 +81,33 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {navigation.map((group) => (
-          <SidebarGroup key={group.label ?? 'main'}>
-            {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map(({ to, label, icon: Icon }) => (
-                  <SidebarMenuItem key={to}>
-                    <SidebarMenuButton
-                      render={
-                        <Link
-                          to={to}
-                          activeOptions={{ exact: to === '/' }}
-                          activeProps={{ 'data-active': true }}
-                        />
-                      }
-                    >
-                      <Icon />
-                      <span>{label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {navigation
+          .filter((group) => !('adminOnly' in group) || isAdmin)
+          .map((group) => (
+            <SidebarGroup key={group.label ?? 'main'}>
+              {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.items.map(({ to, label, icon: Icon }) => (
+                    <SidebarMenuItem key={to}>
+                      <SidebarMenuButton
+                        render={
+                          <Link
+                            to={to}
+                            activeOptions={{ exact: to === '/' }}
+                            activeProps={{ 'data-active': true }}
+                          />
+                        }
+                      >
+                        <Icon />
+                        <span>{label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

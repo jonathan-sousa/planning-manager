@@ -5,7 +5,10 @@ export type Bindings = {
   event: LambdaEvent;
 };
 
-const MANAGER_GROUP = 'MANAGERS';
+/** Every user of the app; admins are managers too. */
+export const MANAGER_GROUP = 'MANAGERS';
+/** Manage the accounts and the planning rules. */
+export const ADMIN_GROUP = 'ADMINS';
 
 /**
  * The HTTP API JWT authorizer serialises array claims as "[A B]" rather than
@@ -34,11 +37,19 @@ export function callerName(event: LambdaEvent): string {
   return String(jwtClaims(event)?.username ?? 'inconnu');
 }
 
+function callerGroups(event: LambdaEvent): string[] {
+  return parseGroups(jwtClaims(event)?.['cognito:groups']);
+}
+
+const requireGroup = (group: string) =>
+  createMiddleware<{ Bindings: Bindings }>(async (c, next) => {
+    if (!callerGroups(c.env.event).includes(group)) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+    await next();
+  });
+
 /** Rejects callers that are not in the managers group. */
-export const requireManager = createMiddleware<{ Bindings: Bindings }>(async (c, next) => {
-  const claims = jwtClaims(c.env.event);
-  if (!claims || !parseGroups(claims['cognito:groups']).includes(MANAGER_GROUP)) {
-    return c.json({ error: 'Forbidden' }, 403);
-  }
-  await next();
-});
+export const requireManager = requireGroup(MANAGER_GROUP);
+/** Rejects callers that are not in the admins group. */
+export const requireAdmin = requireGroup(ADMIN_GROUP);

@@ -46,6 +46,20 @@ export const monthParam = z.object({
   month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Mois au format AAAA-MM'),
 });
 
+export const usernameParam = z.object({ username: z.string().min(1).max(128) });
+
+export const accountInput = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.email({ error: 'Email invalide' })),
+  name: label,
+  admin: z.boolean(),
+});
+
+export const accountUpdateInput = z.object({ name: label, admin: z.boolean() });
+
 export const gradeInput = z.object({ code, label });
 
 export const skillInput = z.object({ code, label });
@@ -224,3 +238,5 @@ export type AgentRequestInput = z.input<typeof agentRequestInput>;
 export type CellsInput = z.input<typeof cellsInput>;
 export type AcceptViolationInput = z.input<typeof acceptViolationInput>;
 export type RuleSettingsInput = z.input<typeof ruleSettingsInput>;
+export type AccountInput = z.input<typeof accountInput>;
+export type AccountUpdateInput = z.input<typeof accountUpdateInput>;

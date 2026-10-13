@@ -59,7 +59,7 @@ export function TextField({
   type = 'text',
   nullable,
   ...props
-}: FieldProps & { type?: 'text' | 'date' | 'time'; nullable?: boolean }) {
+}: FieldProps & { type?: 'text' | 'email' | 'date' | 'time'; nullable?: boolean }) {
   const field = useFieldContext<string | null>();
   return (
     <FieldShell {...props}>
@@ -271,7 +271,8 @@ export function FormError() {
 }
 
 /** <form> with the fields in a responsive grid, the form-level error and the submit button. */
-export function FormShell({ children }: { children: ReactNode }) {
+/** `readOnly` disables every field (native fieldset) and hides the submit button. */
+export function FormShell({ children, readOnly }: { children: ReactNode; readOnly?: boolean }) {
   const form = useFormContext();
   return (
     <form
@@ -280,14 +281,18 @@ export function FormShell({ children }: { children: ReactNode }) {
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        void form.handleSubmit();
+        if (!readOnly) void form.handleSubmit();
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-2">{children}</div>
+      <fieldset disabled={readOnly} className="grid min-w-0 gap-4 sm:grid-cols-2">
+        {children}
+      </fieldset>
       <FormError />
-      <div className="flex justify-end">
-        <SubmitButton />
-      </div>
+      {!readOnly && (
+        <div className="flex justify-end">
+          <SubmitButton />
+        </div>
+      )}
     </form>
   );
 }

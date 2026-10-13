@@ -1,29 +1,11 @@
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchAuthSession, signInWithRedirect, signOut } from 'aws-amplify/auth';
-
-const MANAGER_GROUP = 'MANAGERS';
-
-async function fetchGroups(): Promise<string[]> {
-  const { tokens } = await fetchAuthSession();
-  if (!tokens) {
-    await signInWithRedirect();
-    throw new Error('Session expirée');
-  }
-  const groups = tokens.accessToken.payload['cognito:groups'];
-  return Array.isArray(groups) ? groups.map(String) : [];
-}
+import { signOut } from 'aws-amplify/auth';
+import { groupsQuery, MANAGER_GROUP } from './groups';
 
 /** Blocks signed-in users that are not managers. The API enforces the same rule. */
 export function ManagerGate({ children }: { children: ReactNode }) {
-  const {
-    data: groups,
-    isPending,
-    error,
-  } = useQuery({
-    queryKey: ['auth-groups'],
-    queryFn: fetchGroups,
-  });
+  const { data: groups, isPending, error } = useQuery(groupsQuery);
 
   if (isPending) return null;
 

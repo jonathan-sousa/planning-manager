@@ -10,8 +10,8 @@ import {
 import type { Construct } from 'constructs';
 
 /**
- * Creates the first manager of a fresh stage and adds them to the managers
- * group. Cognito emails the invitation with a temporary password.
+ * Creates the first manager of a fresh stage and adds them to the groups
+ * (managers, admins). Cognito emails the invitation with a temporary password.
  *
  * Runs on create and whenever the email changes. A previous bootstrap
  * account is never removed: a deploy must not silently revoke access.
@@ -19,7 +19,7 @@ import type { Construct } from 'constructs';
 export function bootstrapManager(
   scope: Construct,
   userPool: IUserPool,
-  managersGroup: UserPoolGroup,
+  groups: UserPoolGroup[],
   email: string,
   removalPolicy: RemovalPolicy
 ) {
@@ -55,25 +55,29 @@ export function bootstrapManager(
     logGroup,
   });
 
-  const addToGroup = new AwsCustomResource(scope, 'BootstrapManagerGroup', {
-    onUpdate: {
-      service: 'cognito-identity-provider',
-      action: 'AdminAddUserToGroup',
-      parameters: {
-        UserPoolId: userPool.userPoolId,
-        Username: email,
-        GroupName: managersGroup.groupName,
+  groups.forEach((group, index) => {
+    // The first id predates the admins group: kept so existing stacks keep it.
+    const id = index === 0 ? 'BootstrapManagerGroup' : `BootstrapManager${group.node.id}Group`;
+    const addToGroup = new AwsCustomResource(scope, id, {
+      onUpdate: {
+        service: 'cognito-identity-provider',
+        action: 'AdminAddUserToGroup',
+        parameters: {
+          UserPoolId: userPool.userPoolId,
+          Username: email,
+          GroupName: group.groupName,
+        },
+        physicalResourceId: PhysicalResourceId.of(email),
       },
-      physicalResourceId: PhysicalResourceId.of(email),
-    },
-    policy: AwsCustomResourcePolicy.fromStatements([
-      new PolicyStatement({
-        actions: ['cognito-idp:AdminAddUserToGroup'],
-        resources: [userPool.userPoolArn],
-      }),
-    ]),
-    installLatestAwsSdk: false,
-    logGroup,
+      policy: AwsCustomResourcePolicy.fromStatements([
+        new PolicyStatement({
+          actions: ['cognito-idp:AdminAddUserToGroup'],
+          resources: [userPool.userPoolArn],
+        }),
+      ]),
+      installLatestAwsSdk: false,
+      logGroup,
+    });
+    addToGroup.node.addDependency(createUser, group);
   });
-  addToGroup.node.addDependency(createUser, managersGroup);
 }

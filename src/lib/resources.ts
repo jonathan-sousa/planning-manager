@@ -3,6 +3,8 @@ import type { InferResponseType } from 'hono/client';
 import type { PlanningStatus, SolveMode } from '../../api/domain';
 import type {
   AcceptViolationInput,
+  AccountInput,
+  AccountUpdateInput,
   AgentInput,
   AgentRequestInput,
   CellsInput,
@@ -92,6 +94,19 @@ export const agentRequests = {
   remove: (id: string) => api['agent-requests'][':id'].$delete({ param: { id } }).then(expectOk),
 };
 
+export const accounts = {
+  query: queryOptions({ queryKey: ['accounts'], queryFn: () => api.accounts.$get().then(unwrap) }),
+  invite: (json: AccountInput) => api.accounts.$post({ json }).then(unwrap),
+  update: (username: string, json: AccountUpdateInput) =>
+    api.accounts[':username'].$put({ param: { username }, json }).then(expectOk),
+  resend: (username: string) =>
+    api.accounts[':username'].resend.$post({ param: { username } }).then(expectOk),
+  setEnabled: (username: string, enabled: boolean) =>
+    api.accounts[':username'][enabled ? 'enable' : 'disable']
+      .$post({ param: { username } })
+      .then(expectOk),
+};
+
 export const ruleSettings = {
   query: queryOptions({
     queryKey: ['rule-settings'],
@@ -140,6 +155,7 @@ export type CoverageOverride = InferResponseType<
 >[number];
 export type AgentRequest = InferResponseType<(typeof api)['agent-requests']['$get'], 200>[number];
 export type RuleSettings = InferResponseType<(typeof api)['rule-settings']['$get'], 200>;
+export type Account = InferResponseType<typeof api.accounts.$get, 200>[number];
 export type MonthPlanning = InferResponseType<(typeof api)['plannings'][':month']['$get'], 200>;
 export type Assignment = MonthPlanning['assignments'][number];
 export type AcceptedViolation = MonthPlanning['acceptedViolations'][number];

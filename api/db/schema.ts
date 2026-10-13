@@ -21,6 +21,7 @@ import {
   PLANNING_STATUSES,
   REQUEST_KINDS,
   SHIFT_KINDS,
+  EMAIL_EVENT_KINDS,
   SOLVE_MODES,
   SOLVE_STATUSES,
 } from '../domain';
@@ -295,3 +296,19 @@ export const ruleSettings = pgTable('rule_settings', {
   stabilityWeight: integer('stability_weight').notNull().default(1),
   updatedAt: timestamps.updatedAt,
 });
+
+/** Bounces and complaints of the emails Cognito sends through SES (api/email-events.ts). */
+export const emailEvents = pgTable(
+  'email_events',
+  {
+    ...id,
+    /** Recipient, lowercase. */
+    email: text().notNull(),
+    kind: text({ enum: EMAIL_EVENT_KINDS }).notNull(),
+    /** SES bounce type and subtype, or complaint feedback type. */
+    detail: text(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true, mode: 'string' }).notNull(),
+    ...timestamps,
+  },
+  (table) => [index('email_events_email_idx').on(table.email)]
+);

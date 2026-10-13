@@ -4,6 +4,7 @@ import { Api } from './api';
 import { Auth } from './auth';
 import { Database } from './database';
 import { APP_DOMAIN, AUTH_DOMAIN, parentZone } from './dns';
+import { EmailEvents } from './email-events';
 import type { EdgeStack } from './edge';
 import { Solver } from './solver';
 import { Web } from './web';
@@ -35,8 +36,11 @@ export class PlanningManagerStack extends Stack {
     const zone = edge && parentZone(this);
     const appOrigins = edge ? [`https://${APP_DOMAIN}`] : ['http://localhost:5173'];
 
+    const database = new Database(this, 'Database', { stage, isProd, removalPolicy });
+    const emailEvents = new EmailEvents(this, 'EmailEvents', { stage, database, removalPolicy });
     const auth = new Auth(this, 'Auth', {
       stage,
+      configurationSetName: emailEvents.configurationSet.configurationSetName,
       customDomain: edge && {
         domainName: AUTH_DOMAIN,
         certificate: edge.certificate,
@@ -47,7 +51,6 @@ export class PlanningManagerStack extends Stack {
       isProd,
       removalPolicy,
     });
-    const database = new Database(this, 'Database', { stage, isProd, removalPolicy });
     const solver = new Solver(this, 'Solver', { database, removalPolicy });
     const api = new Api(this, 'Api', {
       auth,

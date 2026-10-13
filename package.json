@@ -28,6 +28,7 @@
     "infra:deploy:prod": "npm run build && cdk deploy -c stage=prod PlanningManager-prod --outputs-file cdk-outputs.prod.json && CDK_OUTPUTS=cdk-outputs.prod.json tsx scripts/db-migrate.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1150.0",
     "@aws-sdk/client-lambda": "^3.1150.0",
     "@aws/aurora-dsql-drizzle": "^0.2.0",
     "@base-ui/react": "^1.9.0",
