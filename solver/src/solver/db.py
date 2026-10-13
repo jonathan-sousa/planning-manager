@@ -56,15 +56,27 @@ def load_problem(conn, month: str, mode: str) -> Problem:
     first, last = add_days(dates[0], -CONTEXT_DAYS), add_days(dates[-1], CONTEXT_DAYS)
     with conn.cursor() as cur:
         settings = _all(cur, "SELECT * FROM rule_settings WHERE id = 'default'")[0]
-        agents = _all(cur, "SELECT * FROM agents")
-        links = _all(cur, "SELECT * FROM agent_skills")
-        shifts = _all(cur, "SELECT * FROM shift_types")
+        # Sorted by id: the model's variables come in the same order every time.
+        agents = _all(cur, "SELECT * FROM agents ORDER BY id")
+        links = _all(cur, "SELECT * FROM agent_skills ORDER BY agent_id, skill_id")
+        shifts = _all(cur, "SELECT * FROM shift_types ORDER BY id")
         cells = _all(
-            cur, "SELECT * FROM assignments WHERE date BETWEEN %s AND %s", (first, last)
+            cur,
+            "SELECT * FROM assignments WHERE date BETWEEN %s AND %s ORDER BY id",
+            (first, last),
         )
-        needs = _all(cur, "SELECT * FROM coverage_needs")
-        overrides = _all(cur, "SELECT * FROM coverage_overrides")
-        requests = _all(cur, "SELECT * FROM agent_requests")
+        needs = _all(cur, "SELECT * FROM coverage_needs ORDER BY id")
+        overrides = _all(
+            cur,
+            "SELECT * FROM coverage_overrides WHERE date BETWEEN %s AND %s ORDER BY id",
+            (dates[0], dates[-1]),
+        )
+        requests = _all(
+            cur,
+            "SELECT * FROM agent_requests WHERE start_date <= %s AND end_date >= %s "
+            "ORDER BY id",
+            (last, first),
+        )
     conn.commit()
     for agent in agents:
         agent["skillIds"] = [

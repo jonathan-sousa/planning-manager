@@ -34,7 +34,11 @@ def health() -> dict:
     }
 
 
-def solve_run(run_id: str) -> None:
+# Seconds kept for loading the month, building the model and writing the result.
+OVERHEAD_SECONDS = 25
+
+
+def solve_run(run_id: str, seconds_left: float | None = None) -> None:
     """Solves a run's month and stores the proposal (or the error) in the run."""
     with db.connect() as conn:
         run = db.start_run(conn, run_id)
@@ -42,9 +46,19 @@ def solve_run(run_id: str) -> None:
             return
         try:
             problem = db.load_problem(conn, run["month"], run["mode"])
+            if seconds_left is not None:
+                problem.time_limit = min(
+                    problem.time_limit, max(10.0, seconds_left - OVERHEAD_SECONDS)
+                )
             db.finish_run(conn, run_id, result=model.solve(problem))
         except Exception as error:  # the run must never stay RUNNING
-            db.finish_run(conn, run_id, error=f"{type(error).__name__}: {error}")
+            conn.rollback()  # a failed statement aborts the transaction
+            message = (
+                str(error)
+                if isinstance(error, model.SolveError)
+                else "Le calcul a échoué : réessayez (détail dans les journaux du solveur)."
+            )
+            db.finish_run(conn, run_id, error=message)
             raise
 
 
@@ -53,5 +67,5 @@ def handler(event, context):
     if action == "health":
         return health()
     if action == "solve":
-        return solve_run(event["runId"])
+        return solve_run(event["runId"], context.get_remaining_time_in_millis() / 1000)
     raise ValueError(f"Unknown action: {action!r}")

@@ -1,7 +1,7 @@
 import { and, between, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { type Bindings, callerName } from '../auth';
-import { addDays, monthDates, monthOf, nominalMinutes, shiftInterval } from '../calendar';
+import { addDays, countedOn, monthDates, monthOf } from '../calendar';
 import { db } from '../db/client';
 import {
   acceptedViolations,
@@ -39,14 +39,11 @@ const stale: ApiError = {
 };
 const notDraft: ApiError = { error: "Planning non modifiable : il n'est plus en brouillon." };
 
-type ShiftType = typeof shiftTypes.$inferSelect;
-
-/** Minutes credited for a shift on a date: a work shift follows daylight saving time. */
-export function countedOn(date: string, shift: ShiftType): number {
-  if (shift.kind !== 'WORK' || !shift.startTime || !shift.endTime) return shift.countedMinutes;
-  const { start, end } = shiftInterval(date, shift.startTime, shift.endTime);
-  return shift.countedMinutes + (end - start - nominalMinutes(shift.startTime, shift.endTime));
-}
+/** Past this age, a run still pending or running is lost (Lambda timeout: 90 s). */
+const RUN_EXPIRY_MS = 3 * 60_000;
+const unfinished = (run: { status: string }) => ['PENDING', 'RUNNING'].includes(run.status);
+const expired = (run: { createdAt: string }) =>
+  Date.now() - Date.parse(run.createdAt) > RUN_EXPIRY_MS;
 
 /** Dates of a month widened by the context days. */
 function window(month: string): [string, string] {
@@ -136,16 +133,36 @@ async function writeCells(
     });
   }
 
-  await tx
-    .delete(assignments)
-    .where(
-      or(
-        ...cells.map((cell) =>
-          and(eq(assignments.agentId, cell.agentId), eq(assignments.date, cell.date))
+  // An upsert writes one row per cell (DSQL caps a transaction at 3 000 rows).
+  const emptied = cells.filter((cell) => !cell.shiftTypeId);
+  if (emptied.length) {
+    await tx
+      .delete(assignments)
+      .where(
+        or(
+          ...emptied.map((cell) =>
+            and(eq(assignments.agentId, cell.agentId), eq(assignments.date, cell.date))
+          )
         )
-      )
-    );
-  return rows.length ? tx.insert(assignments).values(rows).returning() : [];
+      );
+  }
+  return rows.length
+    ? tx
+        .insert(assignments)
+        .values(rows)
+        .onConflictDoUpdate({
+          target: [assignments.agentId, assignments.date],
+          set: {
+            shiftTypeId: sql`excluded.shift_type_id`,
+            countedMinutes: sql`excluded.counted_minutes`,
+            locked: sql`excluded.locked`,
+            source: sql`excluded.source`,
+            updatedBy: sql`excluded.updated_by`,
+            updatedAt: sql`now()`,
+          },
+        })
+        .returning()
+    : [];
 }
 
 /** Allowed status changes: validate, publish, reopen. */
@@ -361,6 +378,16 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
       const [planning] = await db.select().from(plannings).where(eq(plannings.month, month));
       if (!planning) return c.json(notFound, 404);
       if (planning.status !== 'DRAFT') return c.json(notDraft, 409);
+      const running = await db
+        .select()
+        .from(solveRuns)
+        .where(and(eq(solveRuns.month, month), inArray(solveRuns.status, ['PENDING', 'RUNNING'])));
+      if (running.some((run) => !expired(run))) {
+        return c.json(
+          { error: 'Un calcul est déjà en cours sur ce mois.' } satisfies ApiError,
+          409
+        );
+      }
       const [run] = await db
         .insert(solveRuns)
         .values({
@@ -375,7 +402,7 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
       } catch (error) {
         await db
           .update(solveRuns)
-          .set({ status: 'FAILED', error: String(error) })
+          .set({ status: 'FAILED', error: "Le solveur n'a pas pu être lancé : réessayez." })
           .where(eq(solveRuns.id, run!.id));
         throw error;
       }
@@ -389,7 +416,17 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
       .select()
       .from(solveRuns)
       .where(and(eq(solveRuns.id, id), eq(solveRuns.month, month)));
-    return run ? c.json(run, 200) : c.json(notFound, 404);
+    if (!run) return c.json(notFound, 404);
+    if (unfinished(run) && expired(run)) {
+      // Killed by its timeout (or out of memory) before it could record the failure.
+      const [failed] = await db
+        .update(solveRuns)
+        .set({ status: 'FAILED', error: "Le solveur n'a pas répondu à temps : relancez-le." })
+        .where(and(eq(solveRuns.id, id), inArray(solveRuns.status, ['PENDING', 'RUNNING'])))
+        .returning();
+      return c.json(failed ?? run, 200);
+    }
+    return c.json(run, 200);
   })
 
   /**
