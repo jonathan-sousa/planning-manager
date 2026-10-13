@@ -23,7 +23,21 @@ function run(command: string, commandArgs: string[]) {
   if (status !== 0) process.exit(status ?? 1);
 }
 
-if (stage === PROD_STAGE) run('npm', ['run', 'build']);
+if (stage === PROD_STAGE) {
+  // Production ships what is merged: main, committed, up to date with GitHub.
+  const git = (...gitArgs: string[]) =>
+    spawnSync('git', gitArgs, { encoding: 'utf8' }).stdout.trim();
+  run('git', ['fetch', '--quiet', 'origin', 'main']);
+  if (git('branch', '--show-current') !== 'main' || git('status', '--porcelain') !== '') {
+    console.error('La production se déploie depuis main, sans modification en cours.');
+    process.exit(1);
+  }
+  if (git('rev-parse', 'HEAD') !== git('rev-parse', 'origin/main')) {
+    console.error("main n'est pas à jour avec origin/main : git pull d'abord.");
+    process.exit(1);
+  }
+  run('npm', ['run', 'build']);
+}
 run('npx', [
   'cdk',
   'deploy',

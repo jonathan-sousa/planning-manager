@@ -1,17 +1,18 @@
-/**
- * Ids and URLs of the stage, read at startup from /config.json: written next
- * to the app when it is deployed (infra/lib/web.ts), served by the Vite dev
- * server from .env.local in development (vite.config.ts).
- */
-export interface AppConfig {
-  userPoolId: string;
-  userPoolClientId: string;
-  /** Host name of Managed Login, without scheme. */
-  authDomain: string;
-  apiUrl: string;
+import type { AppConfig } from './app-config';
+
+/** The stage's /config.json; on failure the page says so instead of staying blank. */
+async function loadConfig(): Promise<AppConfig> {
+  try {
+    const response = await fetch('/config.json');
+    if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+      throw new Error(`config.json : ${response.status}`);
+    }
+    return (await response.json()) as AppConfig;
+  } catch (error) {
+    document.getElementById('root')!.textContent =
+      "Impossible de charger la configuration de l'application : vérifiez la connexion, puis rechargez la page.";
+    throw error;
+  }
 }
 
-const response = await fetch('/config.json');
-if (!response.ok) throw new Error(`config.json : ${response.status}`);
-
-export const config: AppConfig = await response.json();
+export const config = await loadConfig();

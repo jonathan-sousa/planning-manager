@@ -20,9 +20,9 @@ Connexion via Cognito Managed Login, page d'accueil avec vérification de la bas
 ## Configuration
 
 - **AWS** : compte JS Consulting, région `eu-west-3`, CDK bootstrappé. Le déploiement écrit dans AWS : il se lance avec un profil disposant des droits d'écriture (`jsconsulting-jsousa-dev`).
-- **Stage** : une stack CloudFormation `PlanningManager-<stage>` par développeur ou environnement, choisie avec `-c stage=<nom>` (minuscules, chiffres et tirets ; défaut : le nom d'utilisateur du poste). `prod` active la protection contre la suppression, la rétention des ressources, les sauvegardes et l'hébergement sur le domaine ; les autres stages tournent avec le serveur Vite local.
+- **Stage** : une stack CloudFormation `PlanningManager-<stage>` par développeur ou environnement, désignée par son nom (minuscules, chiffres et tirets ; défaut : le nom d'utilisateur du poste, normalisé) : `npm run infra:deploy -- <nom>`, `STAGE=<nom>` pour les scripts de base, `-c stage=<nom>` pour les commandes `cdk` directes. `prod` active la protection contre la suppression, la rétention des ressources, les sauvegardes et l'hébergement sur le domaine ; les autres stages tournent avec le serveur Vite local.
 - **Emails** : Cognito envoie par SES depuis `no-reply@planning-manager.lab.jonathan-sousa.com`. Le domaine d'envoi est la stack `PlanningManagerMail`, commune à tous les stages et déployée avec la production seulement : la modifier, c'est modifier la production. Sur un compte neuf, déployer d'abord la production (la vérification DKIM prend quelques minutes ; relancer la commande si le stage échoue faute de domaine vérifié).
-- **`BOOTSTRAP_MANAGER_EMAIL`** (obligatoire) : email du premier manager créé à chaque déploiement d'un stage neuf. Il est lu à la synthèse, et le déploiement échoue s'il manque. En local, dans un `.envrc` non versionné (`source_up` puis `export BOOTSTRAP_MANAGER_EMAIL=…`). Changer l'email crée un nouveau manager sans supprimer l'ancien.
+- **`BOOTSTRAP_MANAGER_EMAIL`** (obligatoire) : email du premier compte (manager et admin) créé à chaque déploiement d'un stage neuf. Il est lu à la synthèse, et le déploiement échoue s'il manque. En local, dans un `.envrc` non versionné (`source_up` puis `export BOOTSTRAP_MANAGER_EMAIL=…`). Changer l'email crée un nouveau manager sans supprimer l'ancien.
 - **Sorties CDK** : `cdk-outputs.<stage>.json`, écrit par `npm run infra:deploy`, non versionné. Les scripts de base (`db:migrate`, `db:status`, `db:seed`) le lisent pour ton stage, ou pour celui de `STAGE` (`STAGE=prod npm run db:status`).
 - **`.env.local`** : écrit par `npm run infra:deploy` pour un stage de développement (ou `npm run env:write`), non versionné, requis par `npm run dev` (le serveur Vite en sert les valeurs comme `/config.json`).
 - **Production** : `npm run infra:deploy -- prod` construit l'app puis déploie `PlanningManagerEdge-prod` (us-east-1) et `PlanningManager-prod`, servie sur <https://planning-manager.lab.jonathan-sousa.com> (connexion sur `auth.planning-manager.lab.jonathan-sousa.com`), puis migre sa base. Données fictives exclues : le seed refuse `prod`.
@@ -43,7 +43,7 @@ npm run db:seed        # remplit le stage avec un service fictif (-- --reset pou
 pre-commit run --all-files
 ```
 
-Détruire un stage : `npm run infra:destroy -- -c stage=<nom>` (en `prod`, le coffre AWS Backup doit d'abord être vidé de ses points de restauration).
+Détruire un stage de développement : `npm run infra:destroy -- -c stage=<nom>`. Les stacks de production sont protégées contre la suppression.
 
 Documentation : [`docs/`](docs/README.md).
 

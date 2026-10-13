@@ -1,8 +1,14 @@
 import * as path from 'node:path';
-import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { Duration, type RemovalPolicy, Stack } from 'aws-cdk-lib';
 import type { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import {
+  Function as CloudFrontFunction,
   Distribution,
+  FunctionCode,
+  FunctionEventType,
+  FunctionRuntime,
+  HeadersFrameOption,
+  HeadersReferrerPolicy,
   HttpVersion,
   ResponseHeadersPolicy,
   ViewerProtocolPolicy,
@@ -14,6 +20,7 @@ import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, CacheControl, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { Construct } from 'constructs';
+import type { AppConfig } from '../../src/app-config';
 
 export interface WebProps {
   readonly domainName: string;
@@ -23,7 +30,7 @@ export interface WebProps {
   /** ARN of the CLOUDFRONT-scope web ACL (EdgeStack). */
   readonly webAclArn: string;
   /** Read by the SPA at startup (src/config.ts): ids and URLs of this stage. */
-  readonly config: Record<string, string>;
+  readonly config: AppConfig;
   readonly removalPolicy: RemovalPolicy;
 }
 
@@ -48,27 +55,61 @@ export class Web extends Construct {
       encryption: BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       removalPolicy: props.removalPolicy,
-      autoDeleteObjects: props.removalPolicy === RemovalPolicy.DESTROY,
+    });
+
+    // The app's own files and the hosts it calls: the API, Managed Login (code
+    // exchange) and Cognito (session refresh). Tokens live in localStorage: no
+    // other origin may run scripts or receive data.
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data:",
+      "font-src 'self'",
+      `connect-src 'self' ${props.config.apiUrl} https://${props.config.authDomain} https://cognito-idp.${Stack.of(this).region}.amazonaws.com`,
+      "object-src 'none'",
+      "base-uri 'self'",
+      "frame-ancestors 'none'",
+    ].join('; ');
+    const headers = new ResponseHeadersPolicy(this, 'Headers', {
+      securityHeadersBehavior: {
+        contentSecurityPolicy: { contentSecurityPolicy: csp, override: true },
+        strictTransportSecurity: {
+          accessControlMaxAge: Duration.days(365),
+          includeSubdomains: true,
+          override: true,
+        },
+        contentTypeOptions: { override: true },
+        frameOptions: { frameOption: HeadersFrameOption.DENY, override: true },
+        referrerPolicy: {
+          referrerPolicy: HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+          override: true,
+        },
+      },
+    });
+
+    // Client-side routes (/planning/2026-11) have no file extension: they get
+    // the app. Missing files and WAF blocks keep their real status.
+    const spaRoutes = new CloudFrontFunction(this, 'SpaRoutes', {
+      runtime: FunctionRuntime.JS_2_0,
+      code: FunctionCode.fromInline(
+        "function handler(event) { var request = event.request; if (request.uri.indexOf('.') === -1) { request.uri = '/index.html'; } return request; }"
+      ),
     });
 
     this.distribution = new Distribution(this, 'Distribution', {
       defaultBehavior: {
         origin: S3BucketOrigin.withOriginAccessControl(bucket),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
+        responseHeadersPolicy: headers,
+        functionAssociations: [
+          { function: spaRoutes, eventType: FunctionEventType.VIEWER_REQUEST },
+        ],
       },
       domainNames: [props.domainName],
       certificate: props.certificate,
       webAclId: props.webAclArn,
       httpVersion: HttpVersion.HTTP2_AND_3,
-      defaultRootObject: 'index.html',
-      // Client-side routes (/planning/2026-11) are not objects: serve the app.
-      errorResponses: [403, 404].map((httpStatus) => ({
-        httpStatus,
-        responseHttpStatus: 200,
-        responsePagePath: '/index.html',
-        ttl: Duration.seconds(0),
-      })),
     });
 
     new CfnSubscription(this, 'FreePlan', {
@@ -98,7 +139,7 @@ export class Web extends Construct {
       prune: false,
     });
     const page = new BucketDeployment(this, 'Page', {
-      sources: [Source.asset(distDir), Source.jsonData('config.json', props.config)],
+      sources: [Source.asset(distDir), Source.jsonData('config.json', { ...props.config })],
       destinationBucket: bucket,
       exclude: ['assets/*'],
       cacheControl: [CacheControl.noCache()],

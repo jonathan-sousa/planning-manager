@@ -18,7 +18,11 @@ export interface PlanningManagerStackProps extends StackProps {
 
 export class PlanningManagerStack extends Stack {
   constructor(scope: Construct, id: string, props: PlanningManagerStackProps) {
-    super(scope, id, { ...props, crossRegionReferences: props.edge !== undefined });
+    super(scope, id, {
+      ...props,
+      crossRegionReferences: props.edge !== undefined,
+      terminationProtection: props.stage === PROD_STAGE,
+    });
 
     const { stage } = props;
     const isProd = stage === PROD_STAGE;
@@ -34,7 +38,8 @@ export class PlanningManagerStack extends Stack {
     // Where the SPA runs: hosted on APP_DOMAIN in production, the Vite dev
     // server on the other stages.
     const { edge } = props;
-    const zone = edge && parentZone(this);
+    // Production records live in the parent zone.
+    const zone = parentZone(this);
     const appOrigins = edge ? [`https://${APP_DOMAIN}`] : ['http://localhost:5173'];
 
     const database = new Database(this, 'Database', { stage, isProd, removalPolicy });
@@ -45,7 +50,7 @@ export class PlanningManagerStack extends Stack {
       customDomain: edge && {
         domainName: AUTH_DOMAIN,
         certificate: edge.certificate,
-        zone: zone!,
+        zone,
       },
       bootstrapManagerEmail,
       appOrigins,
@@ -64,7 +69,7 @@ export class PlanningManagerStack extends Stack {
     if (edge) {
       const web = new Web(this, 'Web', {
         domainName: APP_DOMAIN,
-        zone: zone!,
+        zone,
         certificate: edge.certificate,
         webAclArn: edge.webAcl.attrArn,
         config: {

@@ -10,9 +10,7 @@ export interface NodeFunctionProps {
   readonly entry: string;
   readonly environment: Record<string, string>;
   readonly removalPolicy: RemovalPolicy;
-  readonly memorySize?: number;
-  readonly timeout?: Duration;
-  /** Construct id of the log group (kept stable for existing stacks). */
+  /** Construct id of the log group: a stable logical id, never to rename. */
   readonly logGroupId?: string;
 }
 
@@ -22,8 +20,8 @@ export function nodeFunction(scope: Construct, id: string, props: NodeFunctionPr
     entry: path.resolve(import.meta.dirname, '../..', props.entry),
     runtime: Runtime.NODEJS_24_X,
     architecture: Architecture.ARM_64,
-    memorySize: props.memorySize ?? 512,
-    timeout: props.timeout ?? Duration.seconds(30),
+    memorySize: 512,
+    timeout: Duration.seconds(30),
     logGroup: new LogGroup(scope, props.logGroupId ?? `${id}LogGroup`, {
       retention: RetentionDays.ONE_MONTH,
       removalPolicy: props.removalPolicy,

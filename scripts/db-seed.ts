@@ -8,11 +8,12 @@
 import { drizzle } from '@aws/aurora-dsql-drizzle';
 import * as schema from '../api/db/schema';
 import { buildSeed } from './seed/build';
+import { PROD_STAGE } from '../infra/lib/stage';
 import { output, readStageOutputs } from './stage-outputs';
 
 const stack = readStageOutputs();
 const host = output(stack, 'DatabaseEndpoint');
-if (stack.stage === 'prod') throw new Error('The fictional seed never goes to prod');
+if (stack.stage === PROD_STAGE) throw new Error('The fictional seed never goes to prod');
 const reset = process.argv.includes('--reset');
 
 const month = new Intl.DateTimeFormat('en-CA', {

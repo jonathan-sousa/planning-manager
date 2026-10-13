@@ -1,5 +1,6 @@
 import { Duration, type RemovalPolicy } from 'aws-cdk-lib';
 import {
+  CfnStage,
   CorsHttpMethod,
   HttpApi,
   HttpMethod,
@@ -8,6 +9,7 @@ import {
 import { HttpUserPoolAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import type { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import type { Auth } from './auth';
 import type { Database } from './database';
@@ -89,5 +91,28 @@ export class Api extends Construct {
         authorizer: new HttpNoneAuthorizer(),
       });
     }
+
+    // A rate limit for every route (the OPTIONS ones are unauthenticated), and
+    // an access log of every call: who (Cognito username), what, when, status.
+    const accessLogs = new LogGroup(this, 'AccessLogs', {
+      retention: RetentionDays.ONE_YEAR,
+      removalPolicy: props.removalPolicy,
+    });
+    const stage = this.httpApi.defaultStage!.node.defaultChild as CfnStage;
+    stage.defaultRouteSettings = { throttlingRateLimit: 25, throttlingBurstLimit: 50 };
+    stage.accessLogSettings = {
+      destinationArn: accessLogs.logGroupArn,
+      format: JSON.stringify({
+        requestId: '$context.requestId',
+        time: '$context.requestTime',
+        ip: '$context.identity.sourceIp',
+        user: '$context.authorizer.claims.username',
+        method: '$context.httpMethod',
+        path: '$context.path',
+        status: '$context.status',
+        latencyMs: '$context.responseLatency',
+        error: '$context.authorizer.error',
+      }),
+    };
   }
 }

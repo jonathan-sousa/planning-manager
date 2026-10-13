@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
     "lint": "oxlint",
     "typecheck": "tsc -b",
     "test": "vitest run --passWithNoTests",
@@ -15,7 +14,7 @@
     "solver:test": "uv run --directory solver pytest",
     "infra:synth": "cdk synth --quiet",
     "infra:deploy": "tsx scripts/deploy.ts",
-    "infra:watch": "cdk watch 'PlanningManager-*'",
+    "infra:watch": "cdk watch 'PlanningManager-*' --exclusively",
     "infra:destroy": "cdk destroy 'PlanningManager-*'",
     "env:write": "tsx scripts/write-env.ts",
     "db:generate": "aurora-dsql-drizzle generate --out ./api/db/migrations -- --config drizzle.config.ts",

@@ -6,11 +6,13 @@
  * Usage: npm run env:write
  */
 import { writeFileSync } from 'node:fs';
+import { PROD_STAGE } from '../infra/lib/stage';
 import { output, readStageOutputs } from './stage-outputs';
 
 const stack = readStageOutputs();
+// The dev server runs on localhost, which production's sign-in and CORS refuse.
+if (stack.stage === PROD_STAGE) throw new Error('.env.local is for a development stage');
 const env = {
-  STAGE: stack.stage,
   USER_POOL_ID: output(stack, 'UserPoolId'),
   USER_POOL_CLIENT_ID: output(stack, 'UserPoolClientId'),
   AUTH_DOMAIN: output(stack, 'AuthDomain'),
