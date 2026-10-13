@@ -36,6 +36,7 @@ const uniqueViolations: Record<string, { field?: string; message: string }> = {
   coverage_needs_slot_key: {
     message: 'Un besoin existe déjà pour ce poste, ce grade, cette compétence et ce type de jour',
   },
+  accepted_violations_key_idx: { message: 'Violation déjà acceptée' },
   coverage_overrides_slot_key: {
     message: 'Une exception existe déjà pour cette date, ce poste, ce grade et cette compétence',
   },

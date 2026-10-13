@@ -57,7 +57,7 @@ Coût mensuel estimé en usage réel : 0 à 5 € (Cognito et CloudFront dans le
 - Un routeur Hono par ressource dans `api/routes/`, monté dans `api/app.ts` (CRUD : `GET /`, `POST /`, `PUT /:id`, `DELETE /:id` ; `/rule-settings`, ligne unique, n'a que `GET /` et `PUT /`). `GET /health` vérifie la base et le solveur.
 - Les schémas d'entrée Zod de `api/schemas.ts` sont la seule définition de la validation : l'API les applique, les formulaires du frontend les réutilisent. Ils ne dépendent que de `zod` et de `api/domain.ts`, sans Drizzle. Messages en français (`z.locales.fr()`). Les règles croisées s'évaluent même quand d'autres champs sont invalides, pour afficher toutes les erreurs d'un coup.
 - Les contrôles qui lisent la base vivent dans l'API, hors des schémas : type du poste référencé (`api/shift-checks.ts`), chevauchement des absences validées, poste utilisé qui ne peut plus changer entre travaillé et non travaillé. Ils répondent avec la même forme d'erreur.
-- Planning d'un mois : `GET /plannings/:month` renvoie le planning (ou `null`) et les cases du mois, plus 13 jours de part et d'autre pour les règles qui chevauchent deux mois ; `POST /plannings/:month` crée le brouillon ; `PUT /plannings/:month/cells` écrit jusqu'à 500 cases en une transaction, avec la version lue (concurrence optimiste : 409 si un autre manager a écrit entre-temps).
+- Planning d'un mois : `GET /plannings/:month` renvoie le planning (ou `null`) et les cases du mois, plus 13 jours de part et d'autre pour les règles qui chevauchent deux mois ; `POST /plannings/:month` crée le brouillon, absences validées posées ; `PUT /plannings/:month/status` valide, publie ou rouvre (valider rejoue le validateur côté serveur) ; `POST` et `DELETE /plannings/:month/accepted-violations` acceptent ou retirent une violation dure ; `PUT /plannings/:month/cells` écrit jusqu'à 500 cases en une transaction, avec la version lue (concurrence optimiste : 409 si un autre manager a écrit entre-temps).
 - Toute erreur a la forme `{ error, fields? }` (`ApiError`, `api/errors.ts`) ; `fields` associe un champ de formulaire à ses messages :
   - 400 : saisie invalide, ou référence inconnue ;
   - 404 : identifiant inconnu ;
@@ -66,7 +66,8 @@ Coût mensuel estimé en usage réel : 0 à 5 € (Cognito et CloudFront dans le
 
 ## Grille de planning
 
-- `src/routes/planning.$month.tsx` : un mois, créé à la demande (`POST /plannings/:month`).
+- `src/routes/planning.$month.tsx` : un mois, créé à la demande (`POST /plannings/:month`) ; les 7 derniers jours du mois précédent sont affichés en lecture seule.
+- `src/components/planning/planning-editor.tsx` : statut (valider, publier, rouvrir), liste des violations, acceptation d'une violation dure avec justification (case en pointillés).
 - `src/components/planning/use-planning-editor.ts` : copie locale des cases, modifiée immédiatement, enregistrée en arrière-plan par lots (400 ms) avec la version du planning ; une version dépassée (autre manager) recharge le mois avec un message. Annulation des dernières saisies.
 - `src/components/planning/planning-grid.tsx` : saisie au clavier (flèches, Maj pour étendre la sélection, code tapé appliqué à la sélection, Suppr, Alt+L pour verrouiller, copier-coller de codes, Cmd/Ctrl+Z) ; cases hors contrat hachurées, cases verrouillées laissées intactes.
 - Le validateur `api/rules/` tourne à chaque saisie : violations sur les cases (rouge : dure, orange : souple) et en liste, compteurs par agent, ligne de couverture par besoin.
@@ -110,11 +111,10 @@ Limite Lambda : 250 Mo décompressés. OR-Tools tire numpy, pandas (43 Mo) et pr
 
 L'existant est décrit dans le [README](../README.md#usage). Phases restantes :
 
-| Phase               | Contenu                                                                                                                                                                                                                                                                                                                    |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2 — Grille manuelle | Grille agents × jours, saisie clavier, verrouillage, compteurs, validation en temps réel (`api/rules/`), statuts et publication, continuité entre mois ; horaires et décompte d'un poste figés dès qu'il apparaît dans un planning.                                                                                        |
-| 3 — Solveur         | `SolveRun`, proposition en diff, application transactionnelle protégée par version, diagnostic des trous de couverture.                                                                                                                                                                                                    |
-| 4 — Diffusion       | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations (avec notification des rebonds et plaintes SES), hébergement S3 + CloudFront (+ WAF) sur `planning-manager.lab.jonathan-sousa.com`, domaine de connexion `auth.planning-manager.lab.jonathan-sousa.com` (certificat ACM en `us-east-1`). |
+| Phase         | Contenu                                                                                                                                                                                                                                                                                                                    |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 3 — Solveur   | `SolveRun`, proposition en diff, application transactionnelle protégée par version, diagnostic des trous de couverture.                                                                                                                                                                                                    |
+| 4 — Diffusion | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations (avec notification des rebonds et plaintes SES), hébergement S3 + CloudFront (+ WAF) sur `planning-manager.lab.jonathan-sousa.com`, domaine de connexion `auth.planning-manager.lab.jonathan-sousa.com` (certificat ACM en `us-east-1`). |
 
 ## Points ouverts
 

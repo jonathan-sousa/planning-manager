@@ -1,6 +1,8 @@
 import { type QueryKey, queryOptions } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
+import type { PlanningStatus } from '../../api/domain';
 import type {
+  AcceptViolationInput,
   AgentInput,
   AgentRequestInput,
   CellsInput,
@@ -107,6 +109,14 @@ export const plannings = {
   create: (month: string) => api.plannings[':month'].$post({ param: { month } }).then(unwrap),
   writeCells: (month: string, json: CellsInput) =>
     api.plannings[':month'].cells.$put({ param: { month }, json }).then(unwrap),
+  setStatus: (month: string, status: PlanningStatus) =>
+    api.plannings[':month'].status.$put({ param: { month }, json: { status } }).then(unwrap),
+  acceptViolation: (month: string, json: AcceptViolationInput) =>
+    api.plannings[':month']['accepted-violations'].$post({ param: { month }, json }).then(unwrap),
+  removeAccepted: (month: string, id: string) =>
+    api.plannings[':month']['accepted-violations'][':id']
+      .$delete({ param: { month, id } })
+      .then(expectOk),
 };
 
 export type Grade = InferResponseType<typeof api.grades.$get, 200>[number];
@@ -122,3 +132,4 @@ export type AgentRequest = InferResponseType<(typeof api)['agent-requests']['$ge
 export type RuleSettings = InferResponseType<(typeof api)['rule-settings']['$get'], 200>;
 export type MonthPlanning = InferResponseType<(typeof api)['plannings'][':month']['$get'], 200>;
 export type Assignment = MonthPlanning['assignments'][number];
+export type AcceptedViolation = MonthPlanning['acceptedViolations'][number];
