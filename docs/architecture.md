@@ -30,7 +30,7 @@
 
 Versions : toujours la dernière stable, vérifiée sur le registre. Un écart doit être justifié par une incompatibilité constatée :
 
-- **Node 24** : Lambda ne propose pas encore `nodejs26.x`.
+- **Node 24** (et `@types/node` 24) : Lambda ne propose pas encore `nodejs26.x`.
 - **Python 3.14** : runtime Lambda maximal, et OR-Tools ne publie pas de wheel au-delà de cp314.
 - **TypeScript 6.0** : version fixée par le template Vite officiel.
 - **`@aws-cdk/aws-dsql-alpha`** : seul construct L2 pour DSQL ; API expérimentale, à surveiller à chaque mise à jour de CDK.
@@ -48,21 +48,19 @@ Coût mensuel estimé en usage réel : 0 à 5 € (Cognito et CloudFront dans le
 
 `infra/bin/app.ts` instancie `PlanningManager-<stage>` et `PlanningManagerMail`. Le stage vient du contexte CDK (`-c stage=…`, défaut : nom d'utilisateur du poste). `prod` active `deletionProtection`, `RemovalPolicy.RETAIN` et le plan AWS Backup ; les autres stages se détruisent librement (`npm run infra:destroy`). Les journaux Lambda sont conservés un mois.
 
-`PlanningManagerMail` (`infra/lib/mail.ts`) porte le domaine d'envoi, commun à tous les stages et déployé une fois (`npm run infra:deploy:mail`) : identité SES `planning-manager.lab.jonathan-sousa.com` (Easy DKIM), MAIL FROM `mail.planning-manager.lab.jonathan-sousa.com` (MX et SPF) et DMARC `p=quarantine` aligné strict, écrits dans la zone Route 53 `jonathan-sousa.com` (résolue par lookup, mise en cache dans `cdk.context.json`). Chaque user pool envoie par SES depuis `no-reply@` ; Cognito crée à la première configuration son rôle lié `AWSServiceRoleForAmazonCognitoIdpEmailService`. Le compte SES est sorti du bac à sable en `eu-west-3`. Un sous-domaine isole la réputation d'envoi de l'application de celle de la messagerie du domaine principal.
+`PlanningManagerMail` (`infra/lib/mail.ts`) porte le domaine d'envoi, commun à tous les stages et déployé une fois (`npm run infra:deploy:mail`) : identité SES `planning-manager.lab.jonathan-sousa.com` (Easy DKIM), MAIL FROM `mail.planning-manager.lab.jonathan-sousa.com` (MX et SPF) et DMARC `p=quarantine` (DKIM aligné strict, SPF relâché : le MAIL FROM de SES est forcément un sous-domaine), écrits dans la zone Route 53 `jonathan-sousa.com` (référencée par son identifiant : la synthèse ne demande aucun identifiant AWS). La stack est protégée contre la suppression et l'identité SES est conservée si la stack disparaît : tous les stages en dépendent. Chaque user pool envoie par SES depuis `no-reply@` ; Cognito crée à la première configuration son rôle lié `AWSServiceRoleForAmazonCognitoIdpEmailService`. Le compte SES est sorti du bac à sable en `eu-west-3`. Un sous-domaine isole la réputation d'envoi de l'application de celle de la messagerie du domaine principal.
 
-`npm run infra:deploy` enchaîne `cdk deploy 'PlanningManager-*' --outputs-file cdk-outputs.json`, `scripts/write-env.ts` (sorties → `.env.local`) et `scripts/db-migrate.ts` (migrations Drizzle, connexion `admin` par jeton IAM de l'appelant). Le frontend lit `VITE_USER_POOL_ID`, `VITE_USER_POOL_CLIENT_ID`, `VITE_AUTH_DOMAIN` et `VITE_API_URL`. Les sessions expirées renvoient vers Managed Login. Les URL de rappel OAuth et les origines CORS sont celles de `appOrigins` dans `infra/lib/stack.ts` (le serveur Vite jusqu'à la phase 4).
-
-Suivi possible : rôle de base de données dédié (`dsql:DbConnect` + `AWS IAM GRANT`) à la place d'`admin` pour les Lambdas, quand le schéma sera stable.
+`npm run infra:deploy` enchaîne `cdk deploy 'PlanningManager-*' --outputs-file cdk-outputs.json`, `scripts/write-env.ts` (sorties → `.env.local`) et `scripts/db-migrate.ts` (migrations Drizzle, connexion `admin` par jeton IAM de l'appelant). Le frontend lit `VITE_USER_POOL_ID`, `VITE_USER_POOL_CLIENT_ID`, `VITE_AUTH_DOMAIN` et `VITE_API_URL`. Les sessions expirées renvoient vers Managed Login. Les URL de rappel OAuth et les origines CORS sont celles de `appOrigins` dans `infra/lib/stack.ts` (le serveur Vite local ; l'hébergement relève de la phase 4).
 
 ## API
 
-- Un routeur Hono par ressource dans `api/routes/`, monté dans `api/app.ts` (CRUD : `GET /`, `POST /`, `PUT /:id`, `DELETE /:id`).
+- Un routeur Hono par ressource dans `api/routes/`, monté dans `api/app.ts` (CRUD : `GET /`, `POST /`, `PUT /:id`, `DELETE /:id` ; `/rule-settings`, ligne unique, n'a que `GET /` et `PUT /`). `GET /health` vérifie la base et le solveur.
 - Les schémas d'entrée Zod de `api/schemas.ts` sont la seule définition de la validation : l'API les applique, les formulaires du frontend les réutilisent. Ils ne dépendent que de `zod` et de `api/domain.ts`, sans Drizzle. Messages en français (`z.locales.fr()`). Les règles croisées s'évaluent même quand d'autres champs sont invalides, pour afficher toutes les erreurs d'un coup.
-- Les contrôles qui lisent la base vivent dans l'API, hors des schémas : type du poste référencé (`api/shift-checks.ts`), chevauchement des absences validées, poste figé une fois utilisé. Ils répondent avec la même forme d'erreur.
+- Les contrôles qui lisent la base vivent dans l'API, hors des schémas : type du poste référencé (`api/shift-checks.ts`), chevauchement des absences validées, type figé d'un poste utilisé. Ils répondent avec la même forme d'erreur.
 - Toute erreur a la forme `{ error, fields? }` (`ApiError`, `api/errors.ts`) ; `fields` associe un champ de formulaire à ses messages :
   - 400 : saisie invalide, ou référence inconnue ;
   - 404 : identifiant inconnu ;
-  - 409 : doublon (contrainte unique, rattachée au champ fautif) ou suppression d'une ligne encore référencée.
+  - 409 : doublon (contrainte unique, rattachée au champ `code` quand c'est lui), suppression d'une ligne encore référencée, ou type d'un poste utilisé.
 - Tri des libellés en français dans l'API (`api/sort.ts`), jamais par `ORDER BY` sur du texte.
 
 ## Base de données
@@ -72,7 +70,7 @@ Suivi possible : rôle de base de données dédié (`dsql:DbConnect` + `AWS IAM 
 - Pas de type `enum` en DSQL : colonnes `text` typées par Drizzle, valeurs listées dans `api/domain.ts` et validées par l'API.
 - Les données initiales indispensables (la ligne `rule_settings`) sont insérées par la migration ; les données de démonstration relèvent du seed.
 - Le migrateur officiel applique un DDL par transaction et attend les index asynchrones.
-- Clés primaires UUID (`gen_random_uuid()`), horodatages `timestamptz` en UTC.
+- Clés primaires UUID (`gen_random_uuid()`, exceptions dans [domain-model.md](domain-model.md#conventions)), horodatages `timestamptz` en UTC.
 - Concurrence optimiste : les écritures multi-lignes passent par `db.transactionWithRetry`.
 - Collation `C` : tri des libellés côté application.
 
@@ -84,7 +82,7 @@ Suivi possible : rôle de base de données dédié (`dsql:DbConnect` + `AWS IAM 
 2. `uv pip install --no-deps --python-platform aarch64-manylinux_2_28 --only-binary=:all:` les installe pour la plateforme Lambda.
 3. Le package `solver` est copié à côté.
 
-Limite Lambda : 250 Mo décompressés. OR-Tools tire numpy, pandas (43 Mo) et protobuf ; le connecteur DSQL ajoute psycopg (24 Mo). Taille actuelle : environ **217 Mo** (`npm run infra:size` après `npm run infra:synth` ; `cdk.out/` conserve aussi d'anciens assets, d'où le script) ; au-delà de la limite, on passe à une image conteneur.
+Limite Lambda : 250 Mo décompressés. OR-Tools tire numpy, pandas (43 Mo) et protobuf ; le connecteur DSQL ajoute psycopg (24 Mo). La taille se mesure avec `npm run infra:size` après `npm run infra:synth` (`cdk.out/` conserve d'anciens assets, d'où le script) ; au-delà de la limite, on passe à une image conteneur.
 
 ## Flux solveur (cible)
 
@@ -104,13 +102,15 @@ Limite Lambda : 250 Mo décompressés. OR-Tools tire numpy, pandas (43 Mo) et pr
 
 L'existant est décrit dans le [README](../README.md#usage). Phases restantes :
 
-| Phase               | Contenu                                                                                                                                                                                                                                                                    |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2 — Grille manuelle | Grille agents × jours, saisie clavier, verrouillage, compteurs, validation en temps réel, statuts et publication, continuité entre mois.                                                                                                                                   |
-| 3 — Solveur         | `SolveRun`, proposition en diff, application transactionnelle protégée par version, diagnostic des trous de couverture.                                                                                                                                                    |
-| 4 — Diffusion       | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations, hébergement S3 + CloudFront (+ WAF) sur `planning-manager.lab.jonathan-sousa.com`, domaine de connexion `auth.planning-manager.lab.jonathan-sousa.com` (certificat ACM en `us-east-1`). |
+| Phase               | Contenu                                                                                                                                                                                                                                                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2 — Grille manuelle | Grille agents × jours, saisie clavier, verrouillage, compteurs, validation en temps réel (`src/lib/rules/`), statuts et publication, continuité entre mois ; horaires et décompte d'un poste figés dès qu'il apparaît dans un planning.                                                                                    |
+| 3 — Solveur         | `SolveRun`, proposition en diff, application transactionnelle protégée par version, diagnostic des trous de couverture.                                                                                                                                                                                                    |
+| 4 — Diffusion       | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations (avec notification des rebonds et plaintes SES), hébergement S3 + CloudFront (+ WAF) sur `planning-manager.lab.jonathan-sousa.com`, domaine de connexion `auth.planning-manager.lab.jonathan-sousa.com` (certificat ACM en `us-east-1`). |
 
 ## Points ouverts
+
+Technique : rôle de base de données dédié (`dsql:DbConnect` + `AWS IAM GRANT`) à la place d'`admin` pour les Lambdas.
 
 À clarifier avec le cadre de santé :
 

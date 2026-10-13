@@ -32,7 +32,7 @@ const duplicateCode = { field: 'code', message: 'Code déjà utilisé' };
 const uniqueViolations: Record<string, { field?: string; message: string }> = {
   grades_code_idx: duplicateCode,
   skills_code_idx: duplicateCode,
-  shift_types_code_idx: duplicateCode,
+  shift_types_active_code_idx: duplicateCode,
   coverage_needs_slot_key: {
     message: 'Un besoin existe déjà pour ce poste, ce grade, cette compétence et ce type de jour',
   },
