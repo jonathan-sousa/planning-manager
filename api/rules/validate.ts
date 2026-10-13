@@ -255,10 +255,15 @@ export function validatePlanning(input: RuleInput): Violation[] {
     }
   }
 
-  for (const slot of coverage(input)) {
-    if (slot.count < slot.minCount) {
-      const shift = shiftById.get(slot.shiftTypeId)?.code ?? '?';
-      add('COVERAGE', slot.date, `${shift} : ${slot.count}/${slot.minCount}`, undefined);
+  for (const { date, shiftTypeId, gradeId, skillId, minCount, count } of coverage(input)) {
+    if (count < minCount) {
+      violations.push({
+        rule: 'COVERAGE',
+        severity: RULES.COVERAGE,
+        date,
+        slot: { shiftTypeId, gradeId, skillId },
+        message: `${count}/${minCount}`,
+      });
     }
   }
 
