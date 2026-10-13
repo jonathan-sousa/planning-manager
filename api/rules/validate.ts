@@ -255,31 +255,10 @@ export function validatePlanning(input: RuleInput): Violation[] {
     }
   }
 
-  // Coverage: dated overrides replace the standard need of the same slot.
-  const slot = (need: { shiftTypeId: string; gradeId: string; skillId: string | null }) =>
-    `${need.shiftTypeId}|${need.gradeId}|${need.skillId ?? ''}`;
-  const agentById = new Map(input.agents.map((agent) => [agent.id, agent]));
-  const cellsByDate = Map.groupBy(input.cells, (cell) => cell.date);
-  for (const date of dates) {
-    const needs = new Map(
-      input.needs.filter((need) => need.dayKind === dayKind(date)).map((need) => [slot(need), need])
-    );
-    for (const override of input.overrides.filter((item) => item.date === date)) {
-      needs.set(slot(override), { ...override, dayKind: dayKind(date) });
-    }
-    for (const need of needs.values()) {
-      const count = (cellsByDate.get(date) ?? []).filter((cell) => {
-        const agent = agentById.get(cell.agentId);
-        return (
-          cell.shiftTypeId === need.shiftTypeId &&
-          agent?.gradeId === need.gradeId &&
-          (!need.skillId || agent.skillIds.includes(need.skillId))
-        );
-      }).length;
-      if (count < need.minCount) {
-        const shift = shiftById.get(need.shiftTypeId)?.code ?? '?';
-        add('COVERAGE', date, `${shift} : ${count}/${need.minCount}`, undefined);
-      }
+  for (const slot of coverage(input)) {
+    if (slot.count < slot.minCount) {
+      const shift = shiftById.get(slot.shiftTypeId)?.code ?? '?';
+      add('COVERAGE', slot.date, `${shift} : ${slot.count}/${slot.minCount}`, undefined);
     }
   }
 
@@ -298,6 +277,49 @@ export function validatePlanning(input: RuleInput): Violation[] {
   }
 
   return violations;
+}
+
+export interface CoverageSlot {
+  date: string;
+  shiftTypeId: string;
+  gradeId: string;
+  skillId: string | null;
+  minCount: number;
+  /** Agents on that shift with the grade (and the skill, when required). */
+  count: number;
+}
+
+/** Coverage of each need of each day of the month; dated overrides replace the standard need of the same slot. */
+export function coverage(input: RuleInput): CoverageSlot[] {
+  const slotKey = (need: { shiftTypeId: string; gradeId: string; skillId: string | null }) =>
+    `${need.shiftTypeId}|${need.gradeId}|${need.skillId ?? ''}`;
+  const agentById = new Map(input.agents.map((agent) => [agent.id, agent]));
+  const cellsByDate = Map.groupBy(input.cells, (cell) => cell.date);
+  return monthDates(input.month).flatMap((date) => {
+    const needs = new Map(
+      input.needs
+        .filter((need) => need.dayKind === dayKind(date))
+        .map((need) => [slotKey(need), need])
+    );
+    for (const override of input.overrides.filter((item) => item.date === date)) {
+      needs.set(slotKey(override), { ...override, dayKind: dayKind(date) });
+    }
+    return [...needs.values()].map(({ shiftTypeId, gradeId, skillId, minCount }) => ({
+      date,
+      shiftTypeId,
+      gradeId,
+      skillId,
+      minCount,
+      count: (cellsByDate.get(date) ?? []).filter((cell) => {
+        const agent = agentById.get(cell.agentId);
+        return (
+          cell.shiftTypeId === shiftTypeId &&
+          agent?.gradeId === gradeId &&
+          (!skillId || agent.skillIds.includes(skillId))
+        );
+      }).length,
+    }));
+  });
 }
 
 /** First day of the fixed fortnight containing a date. */

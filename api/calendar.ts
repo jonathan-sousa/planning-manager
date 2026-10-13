@@ -20,6 +20,32 @@ export const dayOfWeek = (date: string): number => new Date(toUtc(date)).getUTCD
 /** 'YYYY-MM' of a date. */
 export const monthOf = (date: string): string => date.slice(0, 7);
 
+/** 'YYYY-MM' shifted by a number of months. */
+export function addMonths(month: string, months: number): string {
+  return fromUtc(
+    Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1 + months, 1)
+  ).slice(0, 7);
+}
+
+const monthFormat = new Intl.DateTimeFormat('fr-FR', {
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+const weekdayFormat = new Intl.DateTimeFormat('fr-FR', { weekday: 'narrow', timeZone: 'UTC' });
+
+/** 'novembre 2026' */
+export const monthLabel = (month: string): string => monthFormat.format(toUtc(`${month}-01`));
+
+/** 'L', 'M', 'M', 'J', 'V', 'S', 'D' */
+export const weekdayLetter = (date: string): string => weekdayFormat.format(toUtc(date));
+
+/** Current month in Paris. */
+export const currentMonth = (): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit' })
+    .format(new Date())
+    .slice(0, 7);
+
 /** Every date of a 'YYYY-MM' month. */
 export function monthDates(month: string): string[] {
   const dates: string[] = [];

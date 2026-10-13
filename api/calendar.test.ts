@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  addMonths,
+  monthLabel,
+  weekdayLetter,
   dayKind,
   monthDates,
   nominalMinutes,
@@ -18,6 +21,10 @@ describe('calendar', () => {
     expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
     expect(addDays('2028-03-01', -1)).toBe('2028-02-29');
     expect(monthDates('2026-02')).toHaveLength(28);
+    expect(addMonths('2026-12', 1)).toBe('2027-01');
+    expect(addMonths('2026-01', -1)).toBe('2025-12');
+    expect(monthLabel('2026-11')).toBe('novembre 2026');
+    expect(weekdayLetter('2026-11-02')).toBe('L');
   });
 
   it('knows the French public holidays, Easter-based ones included', () => {
