@@ -28,7 +28,6 @@ infra/                      app CDK (tsconfig.infra.json)
   lib/bootstrap-manager.ts  premier compte (manager et admin) créé au déploiement (custom resources)
   lib/stage.ts              nom du stage (défaut : utilisateur du poste), stage de production
   lib/tags.ts               tags Project et Stage
-  lib/logs.ts               stack PlanningManagerLogs-prod : bucket des journaux WAF à Paris
   lib/database.ts           cluster Aurora DSQL + plan AWS Backup quotidien
   lib/api.ts                HTTP API + authorizer JWT Cognito → NodejsFunction (api/index.ts)
   lib/node-function.ts      Lambda Node du code api/ (ESM, ARM64, journaux)

@@ -1,9 +1,8 @@
 import { Stack, type StackProps } from 'aws-cdk-lib';
 import { Certificate, CertificateValidation } from 'aws-cdk-lib/aws-certificatemanager';
-import { CfnLoggingConfiguration, CfnWebACL } from 'aws-cdk-lib/aws-wafv2';
+import { CfnWebACL } from 'aws-cdk-lib/aws-wafv2';
 import type { Construct } from 'constructs';
 import { APP_DOMAIN, AUTH_DOMAIN, parentZone } from './dns';
-import { wafLogsBucketName } from './logs';
 
 /**
  * What CloudFront requires in us-east-1, for the production stage: the
@@ -52,23 +51,6 @@ export class EdgeStack extends Stack {
         sampledRequestsEnabled: false,
         cloudWatchMetricsEnabled: true,
         metricName: 'PlanningManagerWeb',
-      },
-    });
-
-    // Blocked requests only (requests for the static app, never the API),
-    // written to the logs stack's bucket in eu-west-3.
-    new CfnLoggingConfiguration(this, 'WafLogging', {
-      resourceArn: this.webAcl.attrArn,
-      logDestinationConfigs: [`arn:aws:s3:::${wafLogsBucketName(props.stage, this.account)}`],
-      loggingFilter: {
-        DefaultBehavior: 'DROP',
-        Filters: [
-          {
-            Behavior: 'KEEP',
-            Requirement: 'MEETS_ANY',
-            Conditions: [{ ActionCondition: { Action: 'BLOCK' } }],
-          },
-        ],
       },
     });
   }
