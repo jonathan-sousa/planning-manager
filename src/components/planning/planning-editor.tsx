@@ -163,7 +163,7 @@ export function PlanningEditor(props: PlanningEditorProps) {
             <Button
               variant="outline"
               disabled={solver.running || saving}
-              title="Ne garde que les cases verrouillées et les absences ; part du brouillon actuel"
+              title="Garde les cases verrouillées, les absences et les repos ; recalcule les autres postes en changeant le moins possible"
               onClick={() => solver.start('REOPTIMIZE')}
             >
               Réoptimiser
