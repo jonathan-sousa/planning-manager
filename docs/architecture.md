@@ -69,7 +69,7 @@ Production (`npm run infra:deploy -- prod`) :
 - Un routeur Hono par ressource dans `api/routes/`, monté dans `api/app.ts` (CRUD : `GET /`, `POST /`, `PUT /:id`, `DELETE /:id` ; `/rule-settings`, ligne unique, n'a que `GET /` et `PUT /`). `GET /health` vérifie la base et le solveur.
 - Les schémas d'entrée Zod de `api/schemas.ts` sont la seule définition de la validation : l'API les applique, les formulaires du frontend les réutilisent. Ils ne dépendent que de `zod` et de `api/domain.ts`, sans Drizzle. Messages en français (`z.locales.fr()`). Les règles croisées s'évaluent même quand d'autres champs sont invalides, pour afficher toutes les erreurs d'un coup.
 - Les contrôles qui lisent la base vivent dans l'API, hors des schémas : type du poste référencé (`api/shift-checks.ts`), chevauchement des absences validées, poste utilisé qui ne peut plus changer entre travaillé et non travaillé. Ils répondent avec la même forme d'erreur.
-- Planning d'un mois : `GET /plannings/:month` renvoie le planning (ou `null`) et les cases du mois, plus 13 jours de part et d'autre pour les règles qui chevauchent deux mois ; `POST /plannings/:month` crée le brouillon, absences validées posées ; `PUT /plannings/:month/status` valide, publie ou rouvre (valider rejoue le validateur côté serveur) ; `POST` et `DELETE /plannings/:month/accepted-violations` acceptent ou retirent une violation dure ; `PUT /plannings/:month/cells` écrit jusqu'à 500 cases en une transaction, avec la version lue (concurrence optimiste : 409 si un autre manager a écrit entre-temps).
+- Planning d'un mois : `GET /plannings/:month` renvoie le planning (ou `null`) et les cases du mois, plus 13 jours de part et d'autre pour les règles qui chevauchent deux mois ; `POST /plannings/:month` crée le brouillon, absences validées posées ; `PUT /plannings/:month/status` valide, publie ou rouvre (valider rejoue le validateur côté serveur ; publier enregistre dans `month_balances` les heures créditées et la cible de chaque agent, dans la même transaction) ; `GET /plannings/:month` renvoie aussi le solde d'ouverture de chaque agent (solde initial plus écarts des mois antérieurs publiés) et signale un mois précédent non publié ou un mois antérieur republié après celui-ci ; `POST` et `DELETE /plannings/:month/accepted-violations` acceptent ou retirent une violation dure ; `PUT /plannings/:month/cells` écrit jusqu'à 500 cases en une transaction, avec la version lue (concurrence optimiste : 409 si un autre manager a écrit entre-temps).
 - Toute erreur a la forme `{ error, fields? }` (`ApiError`, `api/errors.ts`) ; `fields` associe un champ de formulaire à ses messages :
   - 400 : saisie invalide, ou référence inconnue ;
   - 404 : identifiant inconnu ;
@@ -94,6 +94,7 @@ Production (`npm run infra:deploy -- prod`) :
 
 - Schéma dans `api/db/schema.ts` ; migrations générées par `npm run db:generate` (drizzle-kit puis `dsql-lint` : `CREATE INDEX ASYNC`, pas de `SERIAL`, FK ajoutées `NOT VALID`) et committées dans `api/db/migrations/`.
 - Chaque FK ajoutée `NOT VALID` est suivie, à la main dans la migration, d'un `ALTER TABLE ASYNC … VALIDATE CONSTRAINT …` (contrôle des lignes existantes). Les FK sont en `RESTRICT`, sauf les tables qui dépendent d'un agent (`agent_skills`, `agent_requests`) en `CASCADE`.
+- Une colonne ajoutée à une table existante ne prend ni `NOT NULL` ni valeur par défaut appliquée aux lignes existantes : la migration l'ajoute, pose le défaut pour les nouvelles lignes et remplit les anciennes (`agents.initial_balance_minutes`, migration 0009) ; l'API l'écrit toujours.
 - Pas de type `enum` en DSQL : colonnes `text` typées par Drizzle, valeurs listées dans `api/domain.ts` et validées par l'API.
 - Les données initiales indispensables (la ligne `rule_settings`) sont insérées par la migration ; les données de démonstration relèvent du seed.
 - Le migrateur officiel applique un DDL par transaction et attend les index asynchrones.
@@ -136,11 +137,7 @@ Le budget de recherche est réparti 20 % / 30 % / 50 % entre les trois niveaux ;
 
 ## Feuille de route
 
-L'existant est décrit dans le [README](../README.md#usage). Phases restantes :
-
-| Phase         | Contenu                      |
-| ------------- | ---------------------------- |
-| 4 — Diffusion | Clôture des soldes d'heures. |
+Les quatre phases sont livrées ; l'existant est décrit dans le [README](../README.md#usage). Restent les points ouverts ci-dessous.
 
 ## Points ouverts
 

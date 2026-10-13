@@ -53,6 +53,7 @@ const data: PlanningExport = {
     ],
   ]),
   counters: new Map(),
+  openingBalance: new Map(),
   coverage: [
     {
       label: 'J IDE',

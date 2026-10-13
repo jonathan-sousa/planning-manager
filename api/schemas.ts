@@ -77,6 +77,11 @@ export const agentInput = z
     active: z.boolean(),
     startDate: isoDate,
     endDate: isoDate.nullable(),
+    /** Hours carried in from before the app, in minutes: negative when owed. */
+    initialBalanceMinutes: z
+      .int({ error: 'Durée requise' })
+      .min(-500 * 60, 'Au plus 500 h')
+      .max(500 * 60, 'Au plus 500 h'),
   })
   .refine(
     (agent) =>

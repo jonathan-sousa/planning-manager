@@ -38,6 +38,7 @@ Le décret laisse de la marge sur ces points ; le validateur retient une lecture
 - **Jours de repos de la quinzaine** : un jour d'absence (congé, formation) compte comme jour de repos.
 - **Mois voisin sans planning** : ses jours comptent comme des repos ; aucune alerte en bordure de mois tant qu'il n'est pas saisi.
 - **Cible d'heures** : prorata calendaire de l'obligation annuelle ; les fériés et le mode de crédit des absences dépendent du protocole local.
+- **Soldes d'heures** : écart cumulé entre heures créditées et cible, à partir d'un solde initial saisi par agent ; un mois ne compte qu'une fois publié, et un mois rouvert garde sa dernière publication jusqu'à la suivante.
 
 ## Un seul validateur
 

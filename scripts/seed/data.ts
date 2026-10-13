@@ -134,13 +134,18 @@ const agent = (
   active: true,
   startDate: '2022-09-01',
   endDate: null,
+  initialBalanceMinutes: 0,
   ...extra,
 });
 
 export const agents: SeedAgent[] = [
   agent('Camille', 'Arnaud', 'IDE', 'MIXED', { skills: ['IOA', 'SAUV'], startDate: '2018-03-01' }),
-  agent('Nicolas', 'Bertin', 'IDE', 'MIXED', { skills: ['SAUV'] }),
-  agent('Léa', 'Chevalier', 'IDE', 'DAY_ONLY', { skills: ['IOA'], workTimeRatio: 80 }),
+  agent('Nicolas', 'Bertin', 'IDE', 'MIXED', { skills: ['SAUV'], initialBalanceMinutes: 14 * 60 }),
+  agent('Léa', 'Chevalier', 'IDE', 'DAY_ONLY', {
+    skills: ['IOA'],
+    workTimeRatio: 80,
+    initialBalanceMinutes: -7 * 60,
+  }),
   agent('Julien', 'Delorme', 'IDE', 'NIGHT_ONLY', { skills: ['SAUV'] }),
   agent('Sarah', 'Étienne', 'IDE', 'MIXED', { skills: ['IOA'] }),
   agent('Thomas', 'Fabre', 'IDE', 'MIXED'),
