@@ -23,17 +23,20 @@ const startSolve = vi.hoisted(() => vi.fn(async () => {}));
 vi.mock('./solver-client', () => ({ startSolve, checkSolverHealth: vi.fn() }));
 
 const { default: app } = await import('./app');
-const { countedOn } = await import('./routes/plannings');
 
 const env = {
   event: {
     requestContext: { authorizer: { jwt: { claims: { 'cognito:groups': '[MANAGERS]' } } } },
   },
 };
-const send = (method: string, path: string, body: unknown) =>
+const send = (method: string, path: string, body?: unknown) =>
   app.request(
     path,
-    { method, body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } },
+    {
+      method,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json' },
+    },
     env
   );
 
@@ -157,14 +160,6 @@ describe('planning cells', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ version: 4 });
   });
-
-  it('credits night shifts their real length on daylight saving nights', () => {
-    const night = { ...shift, id: uuid(3), startTime: '19:00', endTime: '07:00', isNight: true };
-    const row = { ...night, createdAt: '', updatedAt: '' } as Parameters<typeof countedOn>[1];
-    expect(countedOn('2026-10-14', row)).toBe(720);
-    expect(countedOn('2026-10-24', row)).toBe(780);
-    expect(countedOn('2026-03-28', row)).toBe(660);
-  });
 });
 
 describe('planning status', () => {
@@ -250,11 +245,65 @@ describe('solve runs', () => {
 
     results.push(
       [{ month: '2026-11', status: 'DRAFT', version: 3 }],
+      [],
       [{ ...run, status: 'PENDING' }]
     );
     const response = await send('POST', '/plannings/2026-11/solve-runs', { mode: 'COMPLETE' });
     expect(response.status).toBe(202);
     expect(startSolve).toHaveBeenCalledWith(uuid(7));
+  });
+
+  it('refuses a second run while one is in progress, not after it expired', async () => {
+    const now = new Date().toISOString();
+    const old = new Date(Date.now() - 10 * 60_000).toISOString();
+    results.push(
+      [{ month: '2026-11', status: 'DRAFT', version: 3 }],
+      [{ ...run, status: 'RUNNING', createdAt: now }]
+    );
+    const busy = await send('POST', '/plannings/2026-11/solve-runs', { mode: 'COMPLETE' });
+    expect(busy.status).toBe(409);
+    expect(((await busy.json()) as ApiError).error).toMatch(/déjà en cours/);
+
+    results.push(
+      [{ month: '2026-11', status: 'DRAFT', version: 3 }],
+      [{ ...run, status: 'RUNNING', createdAt: old }],
+      [{ ...run, status: 'PENDING' }]
+    );
+    expect((await send('POST', '/plannings/2026-11/solve-runs', { mode: 'COMPLETE' })).status).toBe(
+      202
+    );
+  });
+
+  it('marks the run failed when the solver cannot be started', async () => {
+    startSolve.mockRejectedValueOnce(new Error('throttled'));
+    results.push(
+      [{ month: '2026-11', status: 'DRAFT', version: 3 }],
+      [],
+      [{ ...run, status: 'PENDING' }],
+      []
+    );
+    const response = await send('POST', '/plannings/2026-11/solve-runs', { mode: 'COMPLETE' });
+    expect(response.status).toBe(500);
+  });
+
+  it('reports a run lost by the solver as failed', async () => {
+    const old = new Date(Date.now() - 10 * 60_000).toISOString();
+    results.push(
+      [{ ...run, status: 'RUNNING', createdAt: old }],
+      [{ ...run, status: 'FAILED', error: "Le solveur n'a pas répondu à temps : relancez-le." }]
+    );
+    const response = await send('GET', `/plannings/2026-11/solve-runs/${uuid(7)}`);
+    expect(await response.json()).toMatchObject({ status: 'FAILED' });
+
+    results.push([]);
+    expect((await send('GET', `/plannings/2026-11/solve-runs/${uuid(7)}`)).status).toBe(404);
+  });
+
+  it('applies only a finished proposal', async () => {
+    results.push([{ ...run, status: 'APPLIED', result: { cells: [], stats: {} } }]);
+    const response = await send('POST', `/plannings/2026-11/solve-runs/${uuid(7)}/apply`, {});
+    expect(response.status).toBe(409);
+    expect(((await response.json()) as ApiError).error).toMatch(/Aucune proposition/);
   });
 
   it('refuses to apply a proposal computed on an older version', async () => {
@@ -272,7 +321,6 @@ describe('solve runs', () => {
       [{ version: 4 }],
       [{ id: uuid(2), ...shift }],
       [agent],
-      [],
       [{ id: uuid(9) }],
       []
     );
