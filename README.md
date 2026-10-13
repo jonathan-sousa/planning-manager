@@ -38,6 +38,7 @@ npm run infra:synth    # synthèse CDK locale (bundle l'API et le solveur, sans 
 npm run infra:watch    # redéploie à chaud l'API et le solveur à chaque modification
 npm run db:generate    # génère une migration SQL (Drizzle) réécrite pour Aurora DSQL
 npm run db:migrate     # applique les migrations au stage courant et relie le rôle IAM du solveur
+npm run db:status      # avancement des migrations (-- --watch pour suivre)
 npm run db:seed        # remplit le stage avec un service fictif (-- --reset pour remplacer les données)
 pre-commit run --all-files
 ```
