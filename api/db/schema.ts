@@ -76,6 +76,11 @@ export const agents = pgTable('agents', {
   active: boolean().notNull().default(true),
   startDate: day('start_date').notNull(),
   endDate: day('end_date'),
+  /**
+   * Hours owed (negative) or to recover (positive) before the first month
+   * planned here, in minutes: the opening of the balances.
+   */
+  initialBalanceMinutes: integer('initial_balance_minutes').notNull().default(0),
   ...timestamps,
 });
 
@@ -311,4 +316,25 @@ export const emailEvents = pgTable(
     ...timestamps,
   },
   (table) => [index('email_events_email_idx').on(table.email)]
+);
+
+/**
+ * An agent's hours of a month as of its last publication: the month's gap
+ * (credited - target) carries into the balance of the following months.
+ */
+export const monthBalances = pgTable(
+  'month_balances',
+  {
+    ...id,
+    agentId: uuid('agent_id')
+      .notNull()
+      .references(() => agents.id, { onDelete: 'restrict' }),
+    month: text()
+      .notNull()
+      .references(() => plannings.month, { onDelete: 'restrict' }),
+    creditedMinutes: integer('credited_minutes').notNull(),
+    targetMinutes: integer('target_minutes').notNull(),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex('month_balances_agent_month_idx').on(table.agentId, table.month)]
 );

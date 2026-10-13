@@ -105,6 +105,9 @@ export function PlanningEditor(props: PlanningEditorProps) {
   };
   const violations = validatePlanning(input);
   const counters = new Map(countPlanning(input).map((count) => [count.agentId, count]));
+  const openingBalance = new Map(
+    data.balances.opening.map((balance) => [balance.agentId, balance.minutes])
+  );
   const acceptedByKey = new Map(data.acceptedViolations.map((item) => [acceptedKey(item), item]));
   const accepted = new Set(acceptedByKey.keys());
 
@@ -142,6 +145,7 @@ export function PlanningEditor(props: PlanningEditorProps) {
     shifts,
     cells: editor.cells,
     counters,
+    openingBalance,
     coverage: coverageRows,
   });
   const exportPdf = useMutation({
@@ -277,6 +281,18 @@ export function PlanningEditor(props: PlanningEditorProps) {
           </Button>
         </div>
       )}
+      {data.balances.previousMonthOpen && (
+        <p className="text-sm text-amber-700 dark:text-amber-500">
+          Le mois précédent n'est pas publié : les soldes d'ouverture reprennent sa dernière
+          publication, ou ne le comptent pas s'il n'a jamais été publié.
+        </p>
+      )}
+      {data.balances.openingChangedSincePublication && (
+        <p className="text-sm text-amber-700 dark:text-amber-500">
+          Un mois antérieur a été republié après ce mois : ses soldes d'ouverture ont changé depuis
+          la publication.
+        </p>
+      )}
       {!readOnly && (
         <p className="text-muted-foreground text-xs">
           Saisie : tapez un code (J, N, CA…) ; Suppr vide ; Alt+L verrouille ; Maj+flèches
@@ -295,6 +311,7 @@ export function PlanningEditor(props: PlanningEditorProps) {
         violations={violations}
         accepted={accepted}
         counters={counters}
+        openingBalance={openingBalance}
         coverage={coverageRows}
         readOnly={readOnly}
         onApply={apply}

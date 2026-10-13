@@ -11,7 +11,7 @@ import type { PlanningStatus } from '../../../api/domain';
 import type { AgentCounters } from '../../../api/rules/model';
 import type { CoverageRow } from './planning-grid';
 import { cellKey, type GridCell } from './cells';
-import { formatDate, formatMinutes } from '@/lib/format';
+import { formatBalance, formatDate, formatMinutes } from '@/lib/format';
 import { planningStatusLabels } from '@/lib/labels';
 import type { Agent, ShiftType } from '@/lib/resources';
 
@@ -25,6 +25,7 @@ export interface PlanningExport {
   shifts: ShiftType[];
   cells: Map<string, GridCell>;
   counters: Map<string, AgentCounters>;
+  openingBalance: Map<string, number>;
   coverage: CoverageRow[];
 }
 
@@ -149,6 +150,7 @@ export async function buildPdf(data: PlanningExport) {
         'Heures / cible',
         'Nuits',
         'WE',
+        'Solde fin',
       ],
     ],
     body: data.agents.map((agent) => {
@@ -165,6 +167,10 @@ export async function buildPdf(data: PlanningExport) {
           : '',
         String(count?.nights ?? ''),
         String(count?.weekendDays ?? ''),
+        formatBalance(
+          (data.openingBalance.get(agent.id) ?? 0) +
+            (count ? count.creditedMinutes - count.targetMinutes : 0)
+        ),
       ];
     }),
     foot: data.coverage.map((line) => [
@@ -174,6 +180,7 @@ export async function buildPdf(data: PlanningExport) {
         const need = line.byDate.get(date);
         return need ? (need.min ? `${need.count}/${need.min}` : String(need.count)) : '';
       }),
+      '',
       '',
       '',
       '',

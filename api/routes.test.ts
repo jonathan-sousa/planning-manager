@@ -230,6 +230,49 @@ describe('planning status', () => {
     const response = await setStatus('VALIDATED');
     expect(response.status).toBe(200);
   });
+
+  it('records the hours of the month when publishing', async () => {
+    // Planning, the validator inputs, then the transaction: status, delete, insert.
+    results.push(
+      [{ month: '2026-11', status: 'VALIDATED', version: 3 }],
+      ...validationQueries([]).slice(1, 9),
+      [{ month: '2026-11', status: 'PUBLISHED' }],
+      [],
+      []
+    );
+    expect((await setStatus('PUBLISHED')).status).toBe(200);
+    expect(results).toEqual([]);
+  });
+});
+
+describe('hour balances', () => {
+  it('opens a month with the initial balance plus the earlier published gaps', async () => {
+    // The balance queries start first (agents, carried gaps, previous month,
+    // last earlier publication), then the planning, its cells and acceptances.
+    results.push(
+      [
+        { id: uuid(1), initial: 60 },
+        { id: uuid(2), initial: 0 },
+      ],
+      [{ agentId: uuid(1), minutes: -150 }],
+      [{ month: '2026-10', status: 'DRAFT' }],
+      [{ at: '2026-11-20 10:00:00+00' }],
+      [{ month: '2026-11', status: 'PUBLISHED', publishedAt: '2026-11-05 09:00:00+00' }],
+      [],
+      []
+    );
+    const body = (await (await send('GET', '/plannings/2026-11')).json()) as {
+      balances: unknown;
+    };
+    expect(body.balances).toEqual({
+      opening: [
+        { agentId: uuid(1), minutes: -90 },
+        { agentId: uuid(2), minutes: 0 },
+      ],
+      previousMonthOpen: true,
+      openingChangedSincePublication: true,
+    });
+  });
 });
 
 describe('solve runs', () => {

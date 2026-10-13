@@ -5,7 +5,7 @@ import { dayOfWeek, isPublicHoliday, weekdayLetter } from '../../../api/calendar
 import type { AgentCounters, Violation } from '../../../api/rules/model';
 import { cn } from 'cn';
 import { type CellEdit, cellKey, type GridCell } from './cells';
-import { formatMinutes } from '@/lib/format';
+import { formatBalance, formatMinutes } from '@/lib/format';
 import type { Agent, ShiftType } from '@/lib/resources';
 
 export interface CoverageRow {
@@ -29,6 +29,8 @@ interface PlanningGridProps {
   /** Keys `agentId|date|rule` of hard violations accepted with a justification. */
   accepted: Set<string>;
   counters: Map<string, AgentCounters>;
+  /** Hour balance of each agent at the start of the month, in minutes. */
+  openingBalance: Map<string, number>;
   coverage: CoverageRow[];
   readOnly: boolean;
   onApply: (edits: CellEdit[]) => void;
@@ -59,6 +61,7 @@ export function PlanningGrid({
   violations,
   accepted,
   counters,
+  openingBalance,
   coverage,
   readOnly,
   onApply,
@@ -283,6 +286,7 @@ export function PlanningGrid({
             <th className="border-b border-l px-2 text-right">Heures / cible</th>
             <th className="border-b border-l px-2">Nuits</th>
             <th className="border-b border-l px-2">WE</th>
+            <th className="border-b border-l px-2 text-right">Solde fin</th>
           </tr>
         </thead>
         <tbody>
@@ -366,6 +370,10 @@ export function PlanningGrid({
                 <td className="border-b border-l px-2 text-center tabular-nums">
                   {count?.weekendDays}
                 </td>
+                <BalanceCell
+                  opening={openingBalance.get(agent.id) ?? 0}
+                  month={count ? count.creditedMinutes - count.targetMinutes : 0}
+                />
               </tr>
             );
           })}
@@ -406,11 +414,27 @@ export function PlanningGrid({
                   </td>
                 );
               })}
-              <td colSpan={3} className="border-t border-l" />
+              <td colSpan={4} className="border-t border-l" />
             </tr>
           ))}
         </tfoot>
       </table>
     </div>
+  );
+}
+
+/** End-of-month balance: the opening plus this month's gap (credited - target). */
+function BalanceCell({ opening, month }: { opening: number; month: number }) {
+  const closing = opening + month;
+  return (
+    <td
+      title={`Ouverture ${formatBalance(opening)}, mois ${formatBalance(month)}`}
+      className={cn(
+        'border-b border-l px-2 text-right whitespace-nowrap tabular-nums',
+        closing < 0 && 'text-destructive'
+      )}
+    >
+      {formatBalance(closing)}
+    </td>
   );
 }

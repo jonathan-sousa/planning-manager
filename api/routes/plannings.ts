@@ -1,7 +1,7 @@
-import { and, between, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
+import { and, between, eq, gte, inArray, lt, lte, max, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { type Bindings, callerName } from '../auth';
-import { addDays, countedOn, monthDates, monthOf } from '../calendar';
+import { addDays, addMonths, countedOn, monthDates, monthOf } from '../calendar';
 import { db } from '../db/client';
 import {
   acceptedViolations,
@@ -11,6 +11,7 @@ import {
   assignments,
   coverageNeeds,
   coverageOverrides,
+  monthBalances,
   plannings,
   ruleSettings,
   shiftTypes,
@@ -19,7 +20,7 @@ import {
 import type { AssignmentSource, PlanningStatus } from '../domain';
 import { type ApiError, notFound, ValidationError } from '../errors';
 import { planningAgents, type RuleInput } from '../rules/model';
-import { validatePlanning } from '../rules/validate';
+import { countPlanning, validatePlanning } from '../rules/validate';
 import {
   acceptViolationInput,
   cellsInput,
@@ -81,6 +82,44 @@ async function loadRuleInput(month: string): Promise<RuleInput> {
     needs,
     overrides,
     requests,
+  };
+}
+
+/**
+ * Each agent's hour balance at the start of a month: their initial balance
+ * plus the gap (credited - target) of every earlier month, as of its last
+ * publication. A republished month thus updates the months after it.
+ */
+async function openingBalances(month: string) {
+  const [agentRows, carried, [previous], [lastEarlier]] = await Promise.all([
+    db.select({ id: agents.id, initial: agents.initialBalanceMinutes }).from(agents),
+    db
+      .select({
+        agentId: monthBalances.agentId,
+        minutes: sql<number>`sum(${monthBalances.creditedMinutes} - ${monthBalances.targetMinutes})::int`,
+      })
+      .from(monthBalances)
+      .where(lt(monthBalances.month, month))
+      .groupBy(monthBalances.agentId),
+    db
+      .select()
+      .from(plannings)
+      .where(eq(plannings.month, addMonths(month, -1))),
+    db
+      .select({ at: max(monthBalances.updatedAt) })
+      .from(monthBalances)
+      .where(lt(monthBalances.month, month)),
+  ]);
+  const carriedBy = new Map(carried.map((row) => [row.agentId, row.minutes]));
+  return {
+    opening: agentRows.map((agent) => ({
+      agentId: agent.id,
+      minutes: agent.initial + (carriedBy.get(agent.id) ?? 0),
+    })),
+    /** The previous month is planned but not published: its hours may still change. */
+    previousMonthOpen: previous !== undefined && previous.status !== 'PUBLISHED',
+    /** When an earlier month was last published. */
+    earlierPublishedAt: lastEarlier?.at ?? null,
   };
 }
 
@@ -176,18 +215,30 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
   /** The month's planning (null until created) and the cells around it. */
   .get('/:month', validate('param', monthParam), async (c) => {
     const { month } = c.req.valid('param');
-    const [planning, cells, accepted] = await Promise.all([
+    const [planning, cells, accepted, balances] = await Promise.all([
       db.select().from(plannings).where(eq(plannings.month, month)),
       db
         .select()
         .from(assignments)
         .where(between(assignments.date, ...window(month))),
       db.select().from(acceptedViolations).where(eq(acceptedViolations.month, month)),
+      openingBalances(month),
     ]);
+    const published = planning[0]?.publishedAt;
     return c.json({
       planning: planning[0] ?? null,
       assignments: cells,
       acceptedViolations: accepted,
+      balances: {
+        opening: balances.opening,
+        previousMonthOpen: balances.previousMonthOpen,
+        // An earlier month republished since this one was: its opening changed.
+        openingChangedSincePublication:
+          published !== null &&
+          published !== undefined &&
+          balances.earlierPublishedAt !== null &&
+          balances.earlierPublishedAt > published,
+      },
     });
   })
 
@@ -321,15 +372,34 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
           );
         }
       }
-      const [updated] = await db
-        .update(plannings)
-        .set({
-          status,
-          version: sql`${plannings.version} + 1`,
-          publishedAt: status === 'PUBLISHED' ? new Date().toISOString() : null,
-        })
-        .where(and(eq(plannings.month, month), eq(plannings.status, current.status)))
-        .returning();
+      // Publishing records each agent's hours of the month (a validated month
+      // is not editable: its cells are those just read).
+      const counts = status === 'PUBLISHED' ? countPlanning(await loadRuleInput(month)) : [];
+      const updated = await db.transactionWithRetry(async (tx) => {
+        const [row] = await tx
+          .update(plannings)
+          .set({
+            status,
+            version: sql`${plannings.version} + 1`,
+            publishedAt: status === 'PUBLISHED' ? new Date().toISOString() : null,
+          })
+          .where(and(eq(plannings.month, month), eq(plannings.status, current.status)))
+          .returning();
+        if (row && status === 'PUBLISHED') {
+          await tx.delete(monthBalances).where(eq(monthBalances.month, month));
+          if (counts.length) {
+            await tx.insert(monthBalances).values(
+              counts.map((count) => ({
+                agentId: count.agentId,
+                month,
+                creditedMinutes: count.creditedMinutes,
+                targetMinutes: count.targetMinutes,
+              }))
+            );
+          }
+        }
+        return row;
+      });
       return updated ? c.json(updated, 200) : c.json(stale, 409);
     }
   )

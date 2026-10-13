@@ -12,6 +12,7 @@ const agent = {
   active: true,
   startDate: '2026-01-01',
   endDate: null,
+  initialBalanceMinutes: -90,
 };
 
 describe('agentInput', () => {

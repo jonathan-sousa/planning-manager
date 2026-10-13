@@ -74,6 +74,7 @@ const emptyAgent: AgentInput = {
   active: true,
   startDate: '',
   endDate: null,
+  initialBalanceMinutes: 0,
 };
 
 function AgentForm({ row, onSaved }: { row: Agent | undefined; onSaved: () => void }) {
@@ -131,6 +132,14 @@ function AgentForm({ row, onSaved }: { row: Agent | undefined; onSaved: () => vo
         </form.AppField>
         <form.AppField name="endDate">
           {(field) => <field.TextField label="Fin de contrat" type="date" nullable />}
+        </form.AppField>
+        <form.AppField name="initialBalanceMinutes">
+          {(field) => (
+            <field.DurationField
+              label="Solde d'heures initial"
+              description="Reporté avant le premier mois planifié ici ; -7:00 si 7 h sont dues"
+            />
+          )}
         </form.AppField>
         <form.AppField name="active">
           {(field) => <field.SwitchField label="Actif" />}
