@@ -193,13 +193,17 @@ export function PlanningEditor(props: PlanningEditorProps) {
           </Button>
         )}
         <span className="text-muted-foreground text-xs">
-          {readOnly
-            ? 'Lecture seule : rouvrez le planning pour le modifier.'
-            : openHard > 0
-              ? `Validation possible une fois les ${openHard} violation(s) dure(s) corrigée(s) ou acceptée(s).`
-              : saving
-                ? 'Enregistrement…'
-                : 'Enregistré'}
+          {solver.running
+            ? 'Lecture seule pendant le calcul.'
+            : solver.preview
+              ? 'Lecture seule pendant la revue de la proposition.'
+              : readOnly
+                ? 'Lecture seule : rouvrez le planning pour le modifier.'
+                : openHard > 0
+                  ? `Validation possible une fois les ${openHard} violation(s) dure(s) corrigée(s) ou acceptée(s).`
+                  : saving
+                    ? 'Enregistrement…'
+                    : 'Enregistré'}
         </span>
       </div>
       {solver.running && (
@@ -331,6 +335,7 @@ export function PlanningEditor(props: PlanningEditorProps) {
         isLocked={(agentId, date) => cells.get(cellKey(agentId, date))?.locked ?? false}
         agentName={agentName}
         shiftCode={shiftCode}
+        slotLabel={slotLabel}
         readOnly={readOnly}
         onPlace={(agentId, { date, shiftTypeId }) => {
           apply([{ agentId, date, shiftTypeId, locked: false }]);

@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { countedOn } from '../../../api/calendar';
 import { ApiRequestError } from '@/lib/api-client';
 import { type Assignment, type MonthPlanning, plannings, type ShiftType } from '@/lib/resources';
 
@@ -119,11 +120,11 @@ export function usePlanningEditor(month: string, data: MonthPlanning, shifts: Sh
         });
         pending.current.set(key, edit);
         if (edit.shiftTypeId) {
+          const shift = shiftById.get(edit.shiftTypeId);
           next.set(key, {
             ...edit,
             shiftTypeId: edit.shiftTypeId,
-            // The server returns the exact value (daylight saving time).
-            countedMinutes: shiftById.get(edit.shiftTypeId)?.countedMinutes ?? 0,
+            countedMinutes: shift ? countedOn(edit.date, shift) : 0,
           });
         } else {
           next.delete(key);
@@ -132,6 +133,8 @@ export function usePlanningEditor(month: string, data: MonthPlanning, shifts: Sh
       if (recordUndo) undoStack.current.push(previous);
       cellsRef.current = next;
       setCells(next);
+      // Saving from now on: the solver and status buttons wait for the flush.
+      setSaving(true);
       clearTimeout(timer.current);
       timer.current = setTimeout(() => void flush(), SAVE_DELAY_MS);
     },

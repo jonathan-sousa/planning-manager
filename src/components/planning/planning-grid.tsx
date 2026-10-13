@@ -386,16 +386,24 @@ export function PlanningGrid({
                 return (
                   <td
                     key={date}
-                    title={short ? 'Pourquoi ? Cliquez pour le diagnostic' : undefined}
-                    onClick={short ? () => onDiagnose(line, date) : undefined}
                     className={cn(
                       'border-t border-l text-center tabular-nums',
-                      short &&
-                        'bg-destructive/15 text-destructive hover:bg-destructive/25 cursor-pointer font-medium'
+                      short && 'bg-destructive/15 text-destructive font-medium'
                     )}
                   >
-                    {/* A need with no minimum (target only) shows the headcount. */}
-                    {need && (need.min ? `${need.count}/${need.min}` : need.count)}
+                    {short ? (
+                      <button
+                        type="button"
+                        title="Pourquoi ? Cliquez pour le diagnostic"
+                        onClick={() => onDiagnose(line, date)}
+                        className="hover:bg-destructive/25 focus-visible:ring-ring/50 size-full cursor-pointer outline-none focus-visible:ring-2"
+                      >
+                        {need.count}/{need.min}
+                      </button>
+                    ) : (
+                      // A need with no minimum (target only) shows the headcount.
+                      need && (need.min ? `${need.count}/${need.min}` : need.count)
+                    )}
                   </td>
                 );
               })}

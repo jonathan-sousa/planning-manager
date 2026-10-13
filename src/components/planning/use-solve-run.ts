@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { countedOn } from '../../../api/calendar';
 import type { SolveMode } from '../../../api/domain';
 import { cellKey, type GridCell } from './use-planning-editor';
 import { plannings, type ShiftType } from '@/lib/resources';
@@ -24,16 +25,21 @@ export function useSolveRun(month: string, cells: Map<string, GridCell>, shifts:
 
   const start = useMutation({
     mutationFn: (mode: SolveMode) => plannings.solve(month, mode),
-    onSuccess: (created) => setRunId(created.id),
+    onSuccess: (created) => {
+      // The pending run is shown at once, before the first poll.
+      queryClient.setQueryData(plannings.solveRun(month, created.id).queryKey, created);
+      setRunId(created.id);
+    },
     onError: (error) => toast.error(error.message),
   });
 
   const apply = useMutation({
     mutationFn: () => plannings.applySolveRun(month, runId!),
     onSuccess: async () => {
+      // The applied cells replace the preview only once they are loaded.
+      await queryClient.invalidateQueries({ queryKey: plannings.query(month).queryKey });
       setRunId(null);
       toast.success('Proposition appliquée');
-      await queryClient.invalidateQueries({ queryKey: plannings.query(month).queryKey });
     },
     onError: (error) => toast.error(error.message),
   });
@@ -50,12 +56,13 @@ export function useSolveRun(month: string, cells: Map<string, GridCell>, shifts:
     for (const change of result.cells) {
       const key = cellKey(change.agentId, change.date);
       changed.add(key);
+      const shift = change.shiftTypeId && shiftById.get(change.shiftTypeId);
       if (change.shiftTypeId) {
         next.set(key, {
           agentId: change.agentId,
           date: change.date,
           shiftTypeId: change.shiftTypeId,
-          countedMinutes: shiftById.get(change.shiftTypeId)?.countedMinutes ?? 0,
+          countedMinutes: shift ? countedOn(change.date, shift) : 0,
           locked: false,
         });
       } else {
@@ -69,9 +76,14 @@ export function useSolveRun(month: string, cells: Map<string, GridCell>, shifts:
     start: (mode: SolveMode) => start.mutate(mode),
     apply: () => apply.mutate(),
     discard: () => setRunId(null),
-    running: start.isPending || status === 'PENDING' || status === 'RUNNING',
+    running: start.isPending || (!run.isError && (status === 'PENDING' || status === 'RUNNING')),
     applying: apply.isPending,
-    failed: status === 'FAILED' ? (run.data?.error ?? 'Échec du solveur') : null,
+    failed:
+      status === 'FAILED'
+        ? (run.data?.error ?? 'Échec du solveur')
+        : run.isError
+          ? run.error.message
+          : null,
     stats: result?.stats ?? null,
     preview,
   };

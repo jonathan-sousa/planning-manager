@@ -12,7 +12,7 @@ import { formatDate } from '@/lib/format';
 /** Groups in display order: who can fill the gap first, then why the others cannot. */
 const GROUPS: { status: CandidateStatus; title: string }[] = [
   { status: 'AVAILABLE', title: 'Libres, sans conflit' },
-  { status: 'ELSEWHERE', title: 'Sur un autre poste, déplaçables sans conflit' },
+  { status: 'ELSEWHERE', title: 'Sur un autre poste, déplaçables sans violer de règle dure' },
   { status: 'BLOCKED', title: 'Bloqués par une règle dure' },
   { status: 'LOCKED', title: 'Case verrouillée' },
   { status: 'ABSENT', title: 'Absents' },
@@ -26,7 +26,13 @@ function summary(candidates: Candidate[]): string {
     candidates.filter((candidate) => candidate.status === status).length;
   if (count('AVAILABLE'))
     return `${count('AVAILABLE')} agent(s) libre(s) peuvent prendre ce poste.`;
-  if (count('ELSEWHERE')) return "Personne de libre : il faut déplacer un agent d'un autre poste.";
+  const movable = candidates.filter(
+    (candidate) => candidate.status === 'ELSEWHERE' && candidate.uncovers.length === 0
+  ).length;
+  if (movable) return "Personne de libre : il faut déplacer un agent d'un autre poste.";
+  if (count('ELSEWHERE')) {
+    return "Personne de libre : déplacer un agent d'un autre poste ouvrirait un autre manque.";
+  }
   return "Aucun agent du grade ne peut prendre ce poste ce jour-là sans enfreindre une règle dure : il faut changer d'autres jours, l'effectif ou le besoin.";
 }
 
@@ -37,6 +43,7 @@ interface CoverageDiagnosisProps {
   isLocked: (agentId: string, date: string) => boolean;
   agentName: Map<string, string>;
   shiftCode: Map<string, string>;
+  slotLabel: (slot: Omit<CoverageSlotKey, 'date'>) => string;
   readOnly: boolean;
   onPlace: (agentId: string, slot: CoverageSlotKey) => void;
   onClose: () => void;
@@ -49,6 +56,7 @@ export function CoverageDiagnosis({
   isLocked,
   agentName,
   shiftCode,
+  slotLabel,
   readOnly,
   onPlace,
   onClose,
@@ -88,6 +96,11 @@ export function CoverageDiagnosis({
                       <span key={index} className="text-muted-foreground w-full pl-4 text-xs">
                         {blocker.date !== target!.slot.date && `${formatDate(blocker.date)} : `}
                         {blocker.message}
+                      </span>
+                    ))}
+                    {candidate.uncovers.map((item) => (
+                      <span key={slotLabel(item)} className="w-full pl-4 text-xs text-amber-600">
+                        Laisserait {slotLabel(item)} à {item.count}/{item.minCount}
                       </span>
                     ))}
                     {!readOnly && (status === 'AVAILABLE' || status === 'ELSEWHERE') && (
