@@ -21,7 +21,7 @@ pre-commit run --all-files
 
 ## Déploiement AWS
 
-`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie (`npm run infra:deploy`, soit `cdk deploy` suivi, via le hook `postinfra:deploy`, de `env:write` et `db:migrate` ; `-- -c stage=<nom>` pour un autre stage). Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc`) et inspecte `cdk.out/`. Sans `.env.local`, ni `npm run dev` ni `db:migrate` ne fonctionnent ; `npm run build` passe mais avec des variables vides.
+`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie (`npm run infra:deploy:mail` une fois par compte, puis `npm run infra:deploy`, soit `cdk deploy` suivi, via le hook `postinfra:deploy`, de `env:write` et `db:migrate` ; `-- -c stage=<nom>` pour un autre stage). Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc`) et inspecte `cdk.out/`. Sans `.env.local`, ni `npm run dev` ni `db:migrate` ne fonctionnent ; `npm run build` passe mais avec des variables vides.
 
 ## Structure
 
@@ -30,6 +30,7 @@ infra/                      app CDK (tsconfig.infra.json)
   bin/app.ts                une stack PlanningManager-<stage> ; stage via -c stage=…
   lib/stack.ts              assemble Auth, Database, Solver, Api ; sorties CloudFormation
   lib/auth.ts               user pool (Essentials, inscription fermée), Managed Login (domaine Cognito, client OAuth code+PKCE, branding par défaut), groupe MANAGERS
+  lib/mail.ts               stack PlanningManagerMail (partagée, déployée une fois) : identité SES du sous-domaine d'envoi, DKIM/MAIL FROM/DMARC dans Route 53
   lib/bootstrap-manager.ts  premier manager créé au déploiement (custom resources)
   lib/database.ts           cluster Aurora DSQL + plan AWS Backup quotidien
   lib/api.ts                HTTP API + authorizer JWT Cognito → NodejsFunction (api/index.ts)

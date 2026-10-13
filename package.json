@@ -14,15 +14,16 @@
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "solver:test": "uv run --directory solver pytest",
     "infra:synth": "cdk synth --quiet",
-    "infra:deploy": "cdk deploy --outputs-file cdk-outputs.json",
-    "infra:watch": "cdk watch",
-    "infra:destroy": "cdk destroy",
+    "infra:deploy": "cdk deploy 'PlanningManager-*' --outputs-file cdk-outputs.json",
+    "infra:watch": "cdk watch 'PlanningManager-*'",
+    "infra:destroy": "cdk destroy 'PlanningManager-*'",
     "env:write": "tsx scripts/write-env.ts",
     "db:generate": "aurora-dsql-drizzle generate --out ./api/db/migrations -- --config drizzle.config.ts",
     "db:migrate": "tsx scripts/db-migrate.ts",
     "postinfra:deploy": "npm run env:write && npm run db:migrate",
     "infra:size": "tsx scripts/asset-sizes.ts",
-    "db:seed": "tsx scripts/db-seed.ts"
+    "db:seed": "tsx scripts/db-seed.ts",
+    "infra:deploy:mail": "cdk deploy PlanningManagerMail"
   },
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.1150.0",

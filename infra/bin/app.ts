@@ -1,5 +1,6 @@
 import { userInfo } from 'node:os';
 import { App } from 'aws-cdk-lib';
+import { MailStack } from '../lib/mail';
 import { PlanningManagerStack } from '../lib/stack';
 
 const app = new App();
@@ -12,7 +13,9 @@ if (!/^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/.test(stage)) {
   );
 }
 
-new PlanningManagerStack(app, `PlanningManager-${stage}`, {
-  stage,
-  env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'eu-west-3' },
-});
+const env = { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'eu-west-3' };
+
+// Shared by every stage, deployed once (npm run infra:deploy:mail).
+new MailStack(app, 'PlanningManagerMail', { env });
+
+new PlanningManagerStack(app, `PlanningManager-${stage}`, { stage, env });
