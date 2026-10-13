@@ -1,8 +1,9 @@
 import { userInfo } from 'node:os';
-import { App } from 'aws-cdk-lib';
+import { App, type Stack, Tags } from 'aws-cdk-lib';
 import { EdgeStack } from '../lib/edge';
 import { MailStack } from '../lib/mail';
 import { PlanningManagerStack } from '../lib/stack';
+import { stageTags } from '../lib/tags';
 
 const app = new App();
 
@@ -17,7 +18,7 @@ if (!/^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/.test(stage)) {
 const env = { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'eu-west-3' };
 
 // Shared by every stage, deployed once (npm run infra:deploy:mail).
-new MailStack(app, 'PlanningManagerMail', { env });
+const mail = new MailStack(app, 'PlanningManagerMail', { env });
 
 // Production is hosted on its own domain: CloudFront needs its certificate and
 // web ACL in us-east-1.
@@ -28,4 +29,15 @@ const edge =
       })
     : undefined;
 
-new PlanningManagerStack(app, `PlanningManager-${stage}`, { stage, env, edge });
+const stageStack = new PlanningManagerStack(app, `PlanningManager-${stage}`, { stage, env, edge });
+
+// Cost and inventory: every resource carries its project and stage (cost
+// allocation tags, to activate once in Billing).
+const tag = (stack: Stack | undefined, stageName: string) => {
+  for (const [key, value] of Object.entries(stageTags(stageName))) {
+    if (stack) Tags.of(stack).add(key, value);
+  }
+};
+tag(mail, 'shared');
+tag(edge, stage);
+tag(stageStack, stage);
