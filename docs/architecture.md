@@ -137,24 +137,4 @@ Le budget de recherche est réparti 20 % / 30 % / 50 % entre les trois niveaux ;
 
 ## Feuille de route
 
-Les quatre phases sont livrées ; l'existant est décrit dans le [README](../README.md#usage). Restent les points ouverts ci-dessous.
-
-## Points ouverts
-
-Technique : l'API se connecte en `admin` ; un rôle limité au DML lui retirerait le DDL.
-
-À clarifier avec le cadre de santé :
-
-- **Interprétations du validateur** : voir [scheduling-rules.md](scheduling-rules.md#interprétations-à-valider) (repos de 36h glissant, absences comptées comme repos dans la quinzaine, mois voisin vide, cible d'heures).
-
-- **Protocole temps de travail local** :
-  - dérogation 12h ;
-  - nombre maximal de jours consécutifs ;
-  - statut du lendemain de nuit (repos ou non) ;
-  - ancrage des quinzaines ;
-  - régimes horaires ;
-  - codes d'absence.
-- **Postes** : un agent peut-il avoir deux postes le même jour ?
-- **Horaires exacts** des postes et besoins par grade.
-- **Outil de gestion des temps** de l'hôpital et format d'export attendu.
-- **Gouvernance** : accord de la DSI et du DPO de l'hôpital avant toute donnée nominative réelle. En développement, données fictives uniquement.
+Les quatre phases sont livrées ; l'existant est décrit dans le [README](../README.md#usage). Les idées et points ouverts sont dans [todo.md](todo.md).
