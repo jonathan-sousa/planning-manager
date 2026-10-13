@@ -12,15 +12,18 @@ Liste complète dans le [README](README.md#development) : `npm run check` avant 
 
 ## Déploiement AWS
 
-`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie (`npm run infra:deploy:mail` une fois par compte, puis `npm run infra:deploy`, soit `cdk deploy` suivi, via le hook `postinfra:deploy`, de `env:write` et `db:migrate` (migrations, puis rôle IAM du solveur relié au rôle de base `solver`) ; `-- -c stage=<nom>` pour un autre stage). Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc` ; aucun identifiant AWS requis) et inspecte `cdk.out/`. Rôle de `.env.local` : voir le README (§ Configuration).
+`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie (`npm run infra:deploy:mail` une fois par compte, puis `npm run infra:deploy` pour un stage de développement, soit `cdk deploy` suivi, via le hook `postinfra:deploy`, de `env:write` et `db:migrate` (migrations, puis rôle IAM du solveur relié au rôle de base `solver`) ; `-- -c stage=<nom>` pour un autre stage ; `npm run infra:deploy:prod` pour la production hébergée). Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc` ; aucun identifiant AWS requis) et inspecte `cdk.out/`. Rôle de `.env.local` : voir le README (§ Configuration).
 
 ## Structure
 
 ```text
 infra/                      app CDK (tsconfig.infra.json)
-  bin/app.ts                stacks PlanningManager-<stage> (stage via -c stage=…) et PlanningManagerMail
-  lib/stack.ts              assemble Auth, Database, Solver, Api ; sorties CloudFormation
-  lib/auth.ts               user pool (Essentials, inscription fermée), Managed Login (domaine Cognito, client OAuth code+PKCE, branding par défaut), groupe MANAGERS
+  bin/app.ts                stacks PlanningManager-<stage> (stage via -c stage=…), PlanningManagerMail, et PlanningManagerEdge-prod pour la production
+  lib/stack.ts              assemble Auth, Database, Solver, Api (et Web en production) ; sorties CloudFormation
+  lib/dns.ts                domaines de production et zone Route 53 parente
+  lib/edge.ts               stack us-east-1 de la production : certificat ACM et web ACL WAF de CloudFront
+  lib/web.ts                SPA sur S3 + CloudFront (forfait Free), domaine, config.json du stage
+  lib/auth.ts               user pool (Essentials, inscription fermée), Managed Login (domaine Cognito, ou personnalisé en production ; client OAuth code+PKCE, branding par défaut), groupe MANAGERS
   lib/mail.ts               stack PlanningManagerMail (partagée, déployée une fois) : identité SES du sous-domaine d'envoi, DKIM/MAIL FROM/DMARC dans Route 53
   lib/bootstrap-manager.ts  premier manager créé au déploiement (custom resources)
   lib/database.ts           cluster Aurora DSQL + plan AWS Backup quotidien
@@ -41,8 +44,9 @@ api/                        Hono (tsconfig.api.json, projet référencé par le 
   db/client.ts              drizzle() du connecteur DSQL (jeton IAM, pool)
   solver-client.ts          invocation de la Lambda solveur
 solver/                     Python (uv) : handler.py (actions health, solve), model.py (CP-SAT), db.py (DSQL), calendar.py (miroir de api/calendar.ts), cli.py ; tests/
-scripts/                    write-env.ts (cdk-outputs.json → .env.local), db-migrate.ts, db-seed.ts + seed/ (service fictif), asset-sizes.ts (infra:size), solver.e2e.test.ts (mois résolu puis validé)
+scripts/                    stage-outputs.ts (sorties CDK du stage), write-env.ts (sorties → .env.local), db-migrate.ts, db-seed.ts + seed/ (service fictif), asset-sizes.ts (infra:size), solver.e2e.test.ts (mois résolu puis validé)
 src/                        frontend
+  config.ts                 /config.json du stage (ids Cognito, URL de l'API), lu au démarrage
   main.tsx                  Amplify.configure (Auth + OAuth), QueryClient, router
   auth/auth-gate.tsx        redirige vers Managed Login (signInWithRedirect) tant qu'il n'y a pas de session
   auth/manager-gate.tsx     « Accès refusé » hors du groupe MANAGERS (l'API refuse aussi)

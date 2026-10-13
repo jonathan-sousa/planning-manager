@@ -2,6 +2,7 @@ import { fetchAuthSession, signInWithRedirect } from 'aws-amplify/auth';
 import { type ClientResponse, hc } from 'hono/client';
 import type { AppType } from '../../api/app';
 import type { ApiError } from '../../api/errors';
+import { config } from '@/config';
 
 /**
  * Current Cognito access token. When the session is gone (refresh token
@@ -17,7 +18,7 @@ export async function requireAccessToken(): Promise<string> {
 }
 
 /** Typed client for the HTTP API, authenticated with the Cognito access token. */
-export const api = hc<AppType>(import.meta.env.VITE_API_URL, {
+export const api = hc<AppType>(config.apiUrl, {
   headers: async () => ({ Authorization: `Bearer ${await requireAccessToken()}` }),
 });
 

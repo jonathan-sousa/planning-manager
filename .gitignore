@@ -17,7 +17,7 @@ dist
 
 # CDK
 cdk.out
-cdk-outputs.json
+cdk-outputs*.json
 
 # Python (solver)
 .venv

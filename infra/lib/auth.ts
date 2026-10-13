@@ -11,12 +11,22 @@ import {
   type UserPoolDomain,
   type UserPoolGroup,
 } from 'aws-cdk-lib/aws-cognito';
+import type { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
+import { ARecord, type IHostedZone, RecordTarget } from 'aws-cdk-lib/aws-route53';
+import { UserPoolDomainTarget } from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
 import { bootstrapManager } from './bootstrap-manager';
 import { MAIL_DOMAIN, MAIL_FROM } from './mail';
 
 export interface AuthProps {
   readonly stage: string;
+  /** Managed Login on its own domain (production); a Cognito prefix otherwise. */
+  readonly customDomain?: {
+    readonly domainName: string;
+    /** us-east-1 certificate covering `domainName`. */
+    readonly certificate: ICertificate;
+    readonly zone: IHostedZone;
+  };
   readonly bootstrapManagerEmail: string;
   /** Browser origins of the SPA, used as OAuth callback and sign-out URLs. */
   readonly appOrigins: string[];
@@ -81,13 +91,25 @@ export class Auth extends Construct {
       preventUserExistenceErrors: true,
     });
 
-    // Cognito-prefixed domain; a custom domain (ACM certificate in us-east-1)
-    // can replace it for production.
-    this.domain = this.userPool.addDomain('Domain', {
-      cognitoDomain: { domainPrefix: `planning-manager-${props.stage}` },
-      managedLoginVersion: ManagedLoginVersion.NEWER_MANAGED_LOGIN,
-    });
-    this.authDomain = `${this.domain.domainName}.auth.${Stack.of(this).region}.amazoncognito.com`;
+    const custom = props.customDomain;
+    if (custom) {
+      this.domain = this.userPool.addDomain('CustomDomain', {
+        customDomain: { domainName: custom.domainName, certificate: custom.certificate },
+        managedLoginVersion: ManagedLoginVersion.NEWER_MANAGED_LOGIN,
+      });
+      new ARecord(this, 'DomainAlias', {
+        zone: custom.zone,
+        recordName: custom.domainName,
+        target: RecordTarget.fromAlias(new UserPoolDomainTarget(this.domain)),
+      });
+      this.authDomain = custom.domainName;
+    } else {
+      this.domain = this.userPool.addDomain('Domain', {
+        cognitoDomain: { domainPrefix: `planning-manager-${props.stage}` },
+        managedLoginVersion: ManagedLoginVersion.NEWER_MANAGED_LOGIN,
+      });
+      this.authDomain = `${this.domain.domainName}.auth.${Stack.of(this).region}.amazoncognito.com`;
+    }
 
     // Managed Login requires a branding style per app client; Cognito defaults.
     new CfnManagedLoginBranding(this, 'Branding', {

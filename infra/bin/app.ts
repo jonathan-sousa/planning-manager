@@ -1,5 +1,6 @@
 import { userInfo } from 'node:os';
 import { App } from 'aws-cdk-lib';
+import { EdgeStack } from '../lib/edge';
 import { MailStack } from '../lib/mail';
 import { PlanningManagerStack } from '../lib/stack';
 
@@ -18,4 +19,13 @@ const env = { account: process.env.CDK_DEFAULT_ACCOUNT, region: 'eu-west-3' };
 // Shared by every stage, deployed once (npm run infra:deploy:mail).
 new MailStack(app, 'PlanningManagerMail', { env });
 
-new PlanningManagerStack(app, `PlanningManager-${stage}`, { stage, env });
+// Production is hosted on its own domain: CloudFront needs its certificate and
+// web ACL in us-east-1.
+const edge =
+  stage === 'prod'
+    ? new EdgeStack(app, `PlanningManagerEdge-${stage}`, {
+        env: { account: env.account, region: 'us-east-1' },
+      })
+    : undefined;
+
+new PlanningManagerStack(app, `PlanningManager-${stage}`, { stage, env, edge });

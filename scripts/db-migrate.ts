@@ -1,19 +1,16 @@
 /**
  * Applies pending Drizzle migrations to the stage's Aurora DSQL cluster, then
- * maps the solver Lambda's IAM role to the `solver` database role. Reads
- * DATABASE_ENDPOINT and SOLVER_ROLE_ARN from .env.local (written by
- * write-env.ts) and connects as `admin` with the caller's IAM identity.
+ * maps the solver Lambda's IAM role to the `solver` database role. The stage
+ * comes from the CDK outputs (scripts/stage-outputs.ts); connects as `admin`
+ * with the caller's IAM identity.
  */
 import { drizzle, migrate } from '@aws/aurora-dsql-drizzle';
 import { sql } from 'drizzle-orm';
+import { output, readStageOutputs } from './stage-outputs';
 
-process.loadEnvFile('.env.local');
-
-const host = process.env.DATABASE_ENDPOINT;
-const solverRole = process.env.SOLVER_ROLE_ARN;
-if (!host || !solverRole) {
-  throw new Error('DATABASE_ENDPOINT or SOLVER_ROLE_ARN is not set (run write-env first)');
-}
+const stack = readStageOutputs();
+const host = output(stack, 'DatabaseEndpoint');
+const solverRole = output(stack, 'SolverRoleArn');
 // Inlined in AWS IAM GRANT, which takes no parameters.
 if (!/^arn:aws:iam::\d{12}:role\/[\w+=,.@/-]+$/.test(solverRole)) {
   throw new Error(`Unexpected SOLVER_ROLE_ARN: ${solverRole}`);

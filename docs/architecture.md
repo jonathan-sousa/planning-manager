@@ -40,17 +40,26 @@ Alternatives écartées (raisons valables tant que le besoin ne change pas) :
 - **Amplify Gen 2** : fonction Python, inscription fermée, premier manager et format des tables sortent de son modèle ; chaque écart se code en CDK de toute façon.
 - **DynamoDB** : relations, agrégats et exports à coder à la main ; `TransactWriteItems` plafonne à 100 éléments, le diff mensuel du solveur (~600 lignes) ne peut pas être atomique.
 - **AppSync (GraphQL)** : 4 $/M requêtes et subscriptions inutiles pour deux managers ; pas de data source DSQL.
-- **Amplify Hosting** : WAF facturé 15 $/mois par app ; CloudFront + S3 restent dans la stack CDK.
+- **Amplify Hosting** : WAF facturé 15 $/mois par app ; CloudFront + S3, sous forfait Free, restent dans la stack CDK.
 
 Coût mensuel estimé en usage réel : 0 à 5 € (Cognito et CloudFront dans le free tier, HTTP API et Lambda dans le free tier, DSQL dans ou proche du free tier). La consommation DSQL se suit sur CloudWatch (`TotalDPU`).
 
 ## Déploiement et stages
 
-`infra/bin/app.ts` instancie `PlanningManager-<stage>` et `PlanningManagerMail`. Le stage vient du contexte CDK (`-c stage=…`, défaut : nom d'utilisateur du poste). `prod` active `deletionProtection`, `RemovalPolicy.RETAIN` et le plan AWS Backup ; les autres stages se détruisent librement (`npm run infra:destroy`). Les journaux Lambda sont conservés un mois.
+`infra/bin/app.ts` instancie `PlanningManager-<stage>` et `PlanningManagerMail`, plus `PlanningManagerEdge-prod` pour la production. Le stage vient du contexte CDK (`-c stage=…`, défaut : nom d'utilisateur du poste). `prod` active `deletionProtection`, `RemovalPolicy.RETAIN` et le plan AWS Backup ; les autres stages se détruisent librement (`npm run infra:destroy`). Les journaux Lambda sont conservés un mois.
 
 `PlanningManagerMail` (`infra/lib/mail.ts`) porte le domaine d'envoi, commun à tous les stages et déployé une fois (`npm run infra:deploy:mail`) : identité SES `planning-manager.lab.jonathan-sousa.com` (Easy DKIM), MAIL FROM `mail.planning-manager.lab.jonathan-sousa.com` (MX et SPF) et DMARC `p=quarantine` (DKIM aligné strict, SPF relâché : le MAIL FROM de SES est forcément un sous-domaine), écrits dans la zone Route 53 `jonathan-sousa.com` (référencée par son identifiant : la synthèse ne demande aucun identifiant AWS). La stack est protégée contre la suppression : tous les stages en dépendent. Chaque user pool envoie par SES depuis `no-reply@` ; Cognito crée à la première configuration son rôle lié `AWSServiceRoleForAmazonCognitoIdpEmailService`. Le compte SES est sorti du bac à sable en `eu-west-3`. Un sous-domaine isole la réputation d'envoi de l'application de celle de la messagerie du domaine principal.
 
-`npm run infra:deploy` enchaîne `cdk deploy 'PlanningManager-*' --outputs-file cdk-outputs.json`, `scripts/write-env.ts` (sorties → `.env.local`) et `scripts/db-migrate.ts` (migrations Drizzle, connexion `admin` par jeton IAM de l'appelant). Le frontend lit `VITE_USER_POOL_ID`, `VITE_USER_POOL_CLIENT_ID`, `VITE_AUTH_DOMAIN` et `VITE_API_URL`. Les sessions expirées renvoient vers Managed Login. Les URL de rappel OAuth et les origines CORS sont celles de `appOrigins` dans `infra/lib/stack.ts` (le serveur Vite local ; l'hébergement relève de la phase 4).
+`npm run infra:deploy` (stage de développement) enchaîne `cdk deploy 'PlanningManager-*' --outputs-file cdk-outputs.json`, `scripts/write-env.ts` (sorties → `.env.local`) et `scripts/db-migrate.ts` (migrations Drizzle, connexion `admin` par jeton IAM de l'appelant, puis rôle du solveur). Les scripts lisent les sorties CDK (`scripts/stage-outputs.ts`), `cdk-outputs.json` par défaut ou le fichier nommé par `CDK_OUTPUTS`.
+
+Le frontend lit ses identifiants (user pool, client, domaine Managed Login, URL de l'API) dans `/config.json` au démarrage (`src/config.ts`) : servi par le serveur Vite depuis `.env.local` en développement, écrit à côté de l'app au déploiement en production. Le build ne dépend donc d'aucun stage. Les sessions expirées renvoient vers Managed Login. Les URL de rappel OAuth et les origines CORS sont celles de `appOrigins` dans `infra/lib/stack.ts` : le domaine de production, ou le serveur Vite local pour les autres stages.
+
+Production (`npm run infra:deploy:prod` : build, `cdk deploy -c stage=prod`, sorties dans `cdk-outputs.prod.json`, migrations) :
+
+- `PlanningManagerEdge-prod` (`infra/lib/edge.ts`, `us-east-1`, exigé par CloudFront) : certificat ACM de `planning-manager.lab.jonathan-sousa.com` et `auth.planning-manager.lab.jonathan-sousa.com`, validé par DNS ; web ACL AWS WAF (règles gérées AWS : réputation IP, règles communes, entrées malveillantes connues). Le stage les lit par références inter-régions.
+- `infra/lib/web.ts` : bucket S3 privé derrière CloudFront (contrôle d'accès d'origine), domaine `planning-manager.lab.jonathan-sousa.com` (A et AAAA), en-têtes de sécurité gérés, routes de la SPA renvoyées vers `index.html`. Forfait CloudFront **Free** (`AWS::PricingPlanManager::Subscription`) : CDN, WAF et protection DDoS sans frais, tant qu'une web ACL reste associée. `dist/` est déployé tel quel : fichiers hachés en cache d'un an, page et `config.json` revalidés, invalidation CloudFront à chaque déploiement.
+- Managed Login sur `auth.planning-manager.lab.jonathan-sousa.com` (domaine personnalisé Cognito, créé après l'enregistrement A du domaine parent, que Cognito exige).
+- L'API reste sur son URL `execute-api` : une HTTP API ne prend pas de WAF, l'authorizer JWT filtre en amont de la Lambda.
 
 ## API
 
@@ -122,13 +131,13 @@ Le budget de recherche est réparti 20 % / 30 % / 50 % entre les trois niveaux ;
 
 L'existant est décrit dans le [README](../README.md#usage). Phases restantes :
 
-| Phase         | Contenu                                                                                                                                                                                                                                                                                                                    |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 4 — Diffusion | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations (avec notification des rebonds et plaintes SES), hébergement S3 + CloudFront (+ WAF) sur `planning-manager.lab.jonathan-sousa.com`, domaine de connexion `auth.planning-manager.lab.jonathan-sousa.com` (certificat ACM en `us-east-1`). |
+| Phase         | Contenu                                                                                                                            |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 4 — Diffusion | Export PDF A3 et CSV, clôture des soldes d'heures, groupe `ADMINS` et invitations (avec notification des rebonds et plaintes SES). |
 
 ## Points ouverts
 
-Technique : rôle de base de données dédié (`dsql:DbConnect` + `AWS IAM GRANT`) à la place d'`admin` pour les Lambdas.
+Technique : l'API se connecte encore en `admin` (le solveur a son rôle `solver`) ; un rôle dédié limité au DML lui retirerait le DDL.
 
 À clarifier avec le cadre de santé :
 

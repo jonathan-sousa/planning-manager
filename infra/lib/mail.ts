@@ -1,13 +1,12 @@
 import { Duration, Stack, type StackProps } from 'aws-cdk-lib';
-import { CnameRecord, HostedZone, MxRecord, TxtRecord } from 'aws-cdk-lib/aws-route53';
+import { CnameRecord, MxRecord, TxtRecord } from 'aws-cdk-lib/aws-route53';
 import { EmailIdentity, Identity } from 'aws-cdk-lib/aws-ses';
 import type { Construct } from 'constructs';
+import { APP_DOMAIN, parentZone } from './dns';
 
 /** Sending domain, shared by every stage: a subdomain keeps its reputation apart. */
-export const MAIL_DOMAIN = 'planning-manager.lab.jonathan-sousa.com';
+export const MAIL_DOMAIN = APP_DOMAIN;
 export const MAIL_FROM = `no-reply@${MAIL_DOMAIN}`;
-// Parent zone, by id: no lookup, so synthesis needs no AWS credentials.
-const PARENT_ZONE = { hostedZoneId: 'Z0918331Z206A3LVJU81', zoneName: 'jonathan-sousa.com' };
 
 /**
  * SES domain identity of MAIL_DOMAIN, authenticated in the parent Route 53
@@ -19,7 +18,7 @@ export class MailStack extends Stack {
   constructor(scope: Construct, id: string, props: StackProps) {
     super(scope, id, { ...props, terminationProtection: true });
 
-    const zone = HostedZone.fromHostedZoneAttributes(this, 'Zone', PARENT_ZONE);
+    const zone = parentZone(this);
     const mailFromDomain = `mail.${MAIL_DOMAIN}`;
 
     const identity = new EmailIdentity(this, 'Identity', {

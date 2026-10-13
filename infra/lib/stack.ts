@@ -3,15 +3,20 @@ import type { Construct } from 'constructs';
 import { Api } from './api';
 import { Auth } from './auth';
 import { Database } from './database';
+import { APP_DOMAIN, AUTH_DOMAIN, parentZone } from './dns';
+import type { EdgeStack } from './edge';
 import { Solver } from './solver';
+import { Web } from './web';
 
 export interface PlanningManagerStackProps extends StackProps {
   readonly stage: string;
+  /** Production only: certificate and web ACL in us-east-1, to host the app on APP_DOMAIN. */
+  readonly edge?: EdgeStack;
 }
 
 export class PlanningManagerStack extends Stack {
   constructor(scope: Construct, id: string, props: PlanningManagerStackProps) {
-    super(scope, id, props);
+    super(scope, id, { ...props, crossRegionReferences: props.edge !== undefined });
 
     const { stage } = props;
     const isProd = stage === 'prod';
@@ -24,11 +29,19 @@ export class PlanningManagerStack extends Stack {
       );
     }
 
-    // Where the SPA runs: the Vite dev server until the app is hosted (phase 4).
-    const appOrigins = ['http://localhost:5173'];
+    // Where the SPA runs: hosted on APP_DOMAIN in production, the Vite dev
+    // server on the other stages.
+    const { edge } = props;
+    const zone = edge && parentZone(this);
+    const appOrigins = edge ? [`https://${APP_DOMAIN}`] : ['http://localhost:5173'];
 
     const auth = new Auth(this, 'Auth', {
       stage,
+      customDomain: edge && {
+        domainName: AUTH_DOMAIN,
+        certificate: edge.certificate,
+        zone: zone!,
+      },
       bootstrapManagerEmail,
       appOrigins,
       isProd,
@@ -43,6 +56,25 @@ export class PlanningManagerStack extends Stack {
       allowedOrigins: appOrigins,
       removalPolicy,
     });
+
+    if (edge) {
+      const web = new Web(this, 'Web', {
+        domainName: APP_DOMAIN,
+        zone: zone!,
+        certificate: edge.certificate,
+        webAclArn: edge.webAcl.attrArn,
+        config: {
+          userPoolId: auth.userPool.userPoolId,
+          userPoolClientId: auth.userPoolClient.userPoolClientId,
+          authDomain: auth.authDomain,
+          apiUrl: api.httpApi.apiEndpoint,
+        },
+        removalPolicy,
+      });
+      // Cognito requires the parent of the auth domain to resolve first.
+      auth.domain.node.addDependency(web.aliasRecord);
+      new CfnOutput(this, 'AppUrl', { value: `https://${APP_DOMAIN}` });
+    }
 
     new CfnOutput(this, 'UserPoolId', { value: auth.userPool.userPoolId });
     new CfnOutput(this, 'UserPoolClientId', { value: auth.userPoolClient.userPoolClientId });
