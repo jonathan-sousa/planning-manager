@@ -34,14 +34,14 @@ api/                        Hono (tsconfig.api.json, projet référencé par le 
   errors.ts                 forme ApiError { error, fields? }, mapping des erreurs PostgreSQL
   shift-checks.ts           contrôle du type de poste référencé (lecture en base, hors schémas)
   calendar.ts               jours, fériés, changement d'heure (seul usage de Date)
-  rules/                    validateur des règles de planification (partagé avec la grille), compteurs
+  rules/                    validateur des règles de planification (partagé avec la grille), compteurs, diagnostic des manques de couverture
   validate.ts               zValidator qui lève une ValidationError (400 par champ)
   auth.ts                   middleware : 403 si pas dans MANAGERS (claim cognito:groups)
   db/schema.ts              schéma Drizzle ; db/migrations/ généré, committé
   db/client.ts              drizzle() du connecteur DSQL (jeton IAM, pool)
   solver-client.ts          invocation de la Lambda solveur
 solver/                     Python (uv) : handler.py (actions health, solve), model.py (CP-SAT), db.py (DSQL), calendar.py (miroir de api/calendar.ts), cli.py ; tests/
-scripts/                    write-env.ts (cdk-outputs.json → .env.local), db-migrate.ts, db-seed.ts + seed/ (service fictif), asset-sizes.ts (infra:size)
+scripts/                    write-env.ts (cdk-outputs.json → .env.local), db-migrate.ts, db-seed.ts + seed/ (service fictif), asset-sizes.ts (infra:size), solver.e2e.test.ts (mois résolu puis validé)
 src/                        frontend
   main.tsx                  Amplify.configure (Auth + OAuth), QueryClient, router
   auth/auth-gate.tsx        redirige vers Managed Login (signInWithRedirect) tant qu'il n'y a pas de session
@@ -52,10 +52,11 @@ src/                        frontend
   hooks/form.ts             useAppForm (TanStack Form) ; submitToApi reporte les erreurs de l'API sur les champs
   components/form-fields.tsx champs de formulaire liés à shadcn, FormShell
   components/crud-page.tsx  liste + fenêtres de création, modification, suppression
-  components/planning/      grille mensuelle (saisie clavier, sauvegarde automatique versionnée, validation en direct, revue des propositions du solveur)
+  components/planning/      grille mensuelle (saisie clavier, sauvegarde automatique versionnée, validation en direct, revue des propositions du solveur, diagnostic de couverture)
   routes/                   routes file-based (routeTree.gen.ts est généré, ne pas éditer)
   components/ui/            shadcn (générés via `npx shadcn@latest add`)
   styles/shadcn-tailwind.css preset Tailwind de shadcn, copié depuis le paquet (variants data-*, keyframes)
+fixtures/rule-scenarios/    scénarios de règles partagés par Vitest et pytest
 docs/                       architecture, modèle de domaine, règles de planification
 ```
 
