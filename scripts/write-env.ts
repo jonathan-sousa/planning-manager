@@ -1,36 +1,23 @@
 /**
- * Turns the CDK outputs file into the Vite env file used by `npm run dev`
- * and by the database scripts.
+ * Writes `.env.local` from the CDK outputs of the development stage: the Vite
+ * dev server serves these values as /config.json (vite.config.ts).
  *
- * Usage: tsx scripts/write-env.ts [cdk-outputs.json]
+ * Usage: tsx scripts/write-env.ts
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
+import { output, readStageOutputs } from './stage-outputs';
 
-const outputsFile = process.argv[2] ?? 'cdk-outputs.json';
-const outputs: Record<string, Record<string, string>> = JSON.parse(
-  readFileSync(outputsFile, 'utf8')
-);
-
-const stackName = Object.keys(outputs).find((name) => name.startsWith('PlanningManager-'));
-if (!stackName) throw new Error(`No PlanningManager stack in ${outputsFile}`);
-const stack = outputs[stackName];
-
+const stack = readStageOutputs();
 const env = {
-  STAGE: stackName.slice('PlanningManager-'.length),
-  VITE_USER_POOL_ID: stack.UserPoolId,
-  VITE_USER_POOL_CLIENT_ID: stack.UserPoolClientId,
-  VITE_AUTH_DOMAIN: stack.AuthDomain,
-  VITE_API_URL: stack.ApiUrl,
-  DATABASE_ENDPOINT: stack.DatabaseEndpoint,
-  SOLVER_ROLE_ARN: stack.SolverRoleArn,
+  STAGE: stack.stage,
+  USER_POOL_ID: output(stack, 'UserPoolId'),
+  USER_POOL_CLIENT_ID: output(stack, 'UserPoolClientId'),
+  AUTH_DOMAIN: output(stack, 'AuthDomain'),
+  API_URL: output(stack, 'ApiUrl'),
 };
-
-const lines = Object.entries(env).map(([key, value]) => {
-  if (!value) throw new Error(`Missing output for ${key} in ${stackName}`);
-  return `${key}=${value}`;
-});
+const lines = Object.entries(env).map(([key, value]) => `${key}=${value}`);
 writeFileSync(
   '.env.local',
-  `# Generated from ${outputsFile} (${stackName})\n${lines.join('\n')}\n`
+  `# Generated from the CDK outputs (${stack.stage})\n${lines.join('\n')}\n`
 );
-console.log(`.env.local written for ${stackName}`);
+console.log(`.env.local written for ${stack.stage}`);

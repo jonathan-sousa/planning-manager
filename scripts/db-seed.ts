@@ -8,11 +8,11 @@
 import { drizzle } from '@aws/aurora-dsql-drizzle';
 import * as schema from '../api/db/schema';
 import { buildSeed } from './seed/build';
+import { output, readStageOutputs } from './stage-outputs';
 
-process.loadEnvFile('.env.local');
-const { STAGE: stage, DATABASE_ENDPOINT: host } = process.env;
-if (!host || !stage) throw new Error('STAGE or DATABASE_ENDPOINT is not set (run env:write first)');
-if (stage === 'prod') throw new Error('The fictional seed never goes to prod');
+const stack = readStageOutputs();
+const host = output(stack, 'DatabaseEndpoint');
+if (stack.stage === 'prod') throw new Error('The fictional seed never goes to prod');
 const reset = process.argv.includes('--reset');
 
 const month = new Intl.DateTimeFormat('en-CA', {
@@ -60,7 +60,7 @@ try {
     await tx.insert(schema.agentRequests).values(seed.agentRequests);
   });
   const counts = Object.entries(seed).map(([table, rows]) => `${table} ${rows.length}`);
-  console.log(`Seeded ${stage}: ${counts.join(', ')}`);
+  console.log(`Seeded ${stack.stage}: ${counts.join(', ')}`);
 } finally {
   await db.$client.end();
 }
