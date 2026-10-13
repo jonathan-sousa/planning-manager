@@ -33,6 +33,7 @@ api/                        Hono (tsconfig.api.json, projet référencé par le 
   domain.ts                 énumérations du domaine (sans dépendance)
   errors.ts                 forme ApiError { error, fields? }, mapping des erreurs PostgreSQL
   shift-checks.ts           contrôle du type de poste référencé (lecture en base, hors schémas)
+  calendar.ts               jours, fériés, changement d'heure (seul usage de Date)
   validate.ts               zValidator qui lève une ValidationError (400 par champ)
   auth.ts                   middleware : 403 si pas dans MANAGERS (claim cognito:groups)
   db/schema.ts              schéma Drizzle ; db/migrations/ généré, committé

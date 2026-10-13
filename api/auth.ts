@@ -29,6 +29,11 @@ function jwtClaims(event: LambdaEvent): Record<string, unknown> | undefined {
   return 'jwt' in authorizer ? authorizer.jwt?.claims : undefined;
 }
 
+/** Cognito username of the caller (access token `username` claim). */
+export function callerName(event: LambdaEvent): string {
+  return String(jwtClaims(event)?.username ?? 'inconnu');
+}
+
 /** Rejects callers that are not in the managers group. */
 export const requireManager = createMiddleware<{ Bindings: Bindings }>(async (c, next) => {
   const claims = jwtClaims(c.env.event);

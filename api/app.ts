@@ -8,6 +8,7 @@ import { agentRoutes } from './routes/agents';
 import { coverageNeedRoutes } from './routes/coverage-needs';
 import { coverageOverrideRoutes } from './routes/coverage-overrides';
 import { gradeRoutes } from './routes/grades';
+import { planningRoutes } from './routes/plannings';
 import { ruleSettingsRoutes } from './routes/rule-settings';
 import { shiftTypeRoutes } from './routes/shift-types';
 import { skillRoutes } from './routes/skills';
@@ -37,7 +38,8 @@ const app = new Hono<{ Bindings: Bindings }>()
   .route('/coverage-needs', coverageNeedRoutes)
   .route('/coverage-overrides', coverageOverrideRoutes)
   .route('/agent-requests', agentRequestRoutes)
-  .route('/rule-settings', ruleSettingsRoutes);
+  .route('/rule-settings', ruleSettingsRoutes)
+  .route('/plannings', planningRoutes);
 
 export type AppType = typeof app;
 export default app;

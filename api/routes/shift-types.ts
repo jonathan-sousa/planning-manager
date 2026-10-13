@@ -2,7 +2,13 @@ import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { SHIFT_KINDS } from '../domain';
 import { db } from '../db/client';
-import { agentRequests, coverageNeeds, coverageOverrides, shiftTypes } from '../db/schema';
+import {
+  agentRequests,
+  assignments,
+  coverageNeeds,
+  coverageOverrides,
+  shiftTypes,
+} from '../db/schema';
 import { type ApiError, notFound } from '../errors';
 import { idParam, shiftTypeInput } from '../schemas';
 import { compareFr } from '../sort';
@@ -20,7 +26,35 @@ const kindInUse: ApiError = {
   fields: { kind: ['Travaillé ou non : figé, poste déjà utilisé'] },
 };
 
-/** Whether any row refers to the shift type. */
+/**
+ * Once a shift type appears in a planning, what defines the time worked is
+ * frozen: past months must keep their meaning. Archiving frees the code for a
+ * new definition.
+ */
+const TIMING_FIELDS = [
+  'kind',
+  'startTime',
+  'endTime',
+  'breakMinutes',
+  'countedMinutes',
+  'isNight',
+] as const;
+
+const planned: ApiError = {
+  error:
+    'Poste présent dans un planning : son type, ses horaires et son décompte ne se modifient plus. Archivez-le et créez-en un nouveau avec le même code.',
+};
+
+async function isPlanned(id: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: assignments.id })
+    .from(assignments)
+    .where(eq(assignments.shiftTypeId, id))
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** Whether a need, override or request refers to the shift type. */
 async function isReferenced(id: string): Promise<boolean> {
   const results = await Promise.all(
     [coverageNeeds, coverageOverrides, agentRequests].map((table) =>
@@ -54,6 +88,8 @@ export const shiftTypeRoutes = new Hono()
     const input = c.req.valid('json');
     const [current] = await db.select().from(shiftTypes).where(eq(shiftTypes.id, id));
     if (!current) return c.json(notFound, 404);
+    const retimed = TIMING_FIELDS.some((field) => current[field] !== input[field]);
+    if (retimed && (await isPlanned(id))) return c.json(planned, 409);
     const worked = (kind: string) => kind === 'WORK';
     if (worked(current.kind) !== worked(input.kind) && (await isReferenced(id))) {
       return c.json(kindInUse, 409);
