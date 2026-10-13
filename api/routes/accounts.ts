@@ -6,6 +6,7 @@ import {
   listAccounts,
   requireActiveAdmin,
   resendInvitation,
+  resetMfa,
   setAccountEnabled,
   updateAccount,
 } from '../accounts';
@@ -95,6 +96,16 @@ export const accountRoutes = new Hono<{ Bindings: Bindings }>()
       return c.json(refused('Aucune invitation en attente pour ce compte'), 409);
     }
     await resendInvitation(account.email);
+    return c.body(null, 204);
+  })
+
+  /** A lost phone: the account enrolls a new authenticator app at its next sign-in. */
+  .post('/:username/reset-mfa', validate('param', usernameParam), async (c) => {
+    const { username } = c.req.valid('param');
+    if (username === callerName(c.env.event)) {
+      return c.json(refused('Vous ne pouvez pas réinitialiser votre propre MFA.'), 409);
+    }
+    await resetMfa(username);
     return c.body(null, 204);
   })
 

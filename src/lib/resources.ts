@@ -101,6 +101,8 @@ export const accounts = {
     api.accounts[':username'].$put({ param: { username }, json }).then(expectOk),
   resend: (username: string) =>
     api.accounts[':username'].resend.$post({ param: { username } }).then(expectOk),
+  resetMfa: (username: string) =>
+    api.accounts[':username']['reset-mfa'].$post({ param: { username } }).then(expectOk),
   setEnabled: (username: string, enabled: boolean) =>
     api.accounts[':username'][enabled ? 'enable' : 'disable']
       .$post({ param: { username } })

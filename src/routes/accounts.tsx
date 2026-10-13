@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { Mail, Pencil, Plus, UserCheck, UserX } from 'lucide-react';
+import { KeyRound, Mail, Pencil, Plus, UserCheck, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { accountInput, accountUpdateInput } from '../../api/schemas';
@@ -44,12 +44,20 @@ function AccountsPage() {
   const own = useSession()?.username;
   const [editing, setEditing] = useState<Account | 'new' | null>(null);
   const [disabling, setDisabling] = useState<Account | null>(null);
+  const [resettingMfa, setResettingMfa] = useState<Account | null>(null);
   const reload = () => queryClient.invalidateQueries({ queryKey: accounts.query.queryKey });
 
   const resend = useMutation({
     mutationFn: (account: Account) => accounts.resend(account.username),
     onSuccess: () => toast.success('Invitation renvoyée'),
     onError: (error) => toast.error(error.message),
+  });
+  const resetMfa = useMutation({
+    mutationFn: (account: Account) => accounts.resetMfa(account.username),
+    onSuccess: () =>
+      toast.success('MFA réinitialisé : nouvelle application à la prochaine connexion'),
+    onError: (error) => toast.error(error.message),
+    onSettled: () => setResettingMfa(null),
   });
   const setEnabled = useMutation({
     mutationFn: ({ account, enabled }: { account: Account; enabled: boolean }) =>
@@ -87,7 +95,7 @@ function AccountsPage() {
             <TableHead>Email</TableHead>
             <TableHead>Rôle</TableHead>
             <TableHead>État</TableHead>
-            <TableHead className="w-32" />
+            <TableHead className="w-40" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -136,6 +144,18 @@ function AccountsPage() {
                       <Mail />
                     </Button>
                   )}
+                  {account.username !== own &&
+                    account.enabled &&
+                    account.status === 'CONFIRMED' && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title="Réinitialiser le MFA (téléphone perdu ou changé)"
+                        onClick={() => setResettingMfa(account)}
+                      >
+                        <KeyRound />
+                      </Button>
+                    )}
                   {account.username !== own &&
                     (account.enabled ? (
                       <Button
@@ -191,6 +211,33 @@ function AccountsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={resettingMfa !== null}
+        onOpenChange={(open) => !open && setResettingMfa(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Réinitialiser le MFA de {resettingMfa?.name || resettingMfa?.email} ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Son application d'authentification est oubliée : à la prochaine connexion, il en
+              enregistrera une nouvelle avec son seul mot de passe. Vérifiez d'abord son identité
+              (appel, en personne). Ses sessions en cours sont fermées.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={resetMfa.isPending}
+              onClick={() => resettingMfa && resetMfa.mutate(resettingMfa)}
+            >
+              Réinitialiser
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={disabling !== null} onOpenChange={(open) => !open && setDisabling(null)}>
         <AlertDialogContent>

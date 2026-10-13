@@ -62,6 +62,7 @@ export class Api extends Construct {
       'cognito-idp:AdminUpdateUserAttributes',
       'cognito-idp:AdminDisableUser',
       'cognito-idp:AdminEnableUser',
+      'cognito-idp:AdminSetUserMFAPreference',
       'cognito-idp:AdminUserGlobalSignOut'
     );
 
