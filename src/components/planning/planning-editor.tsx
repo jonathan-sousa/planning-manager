@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { addDays, monthDates } from '../../../api/calendar';
@@ -8,6 +9,7 @@ import { acceptViolationInput } from '../../../api/schemas';
 import { countPlanning, coverage, validatePlanning } from '../../../api/rules/validate';
 import { type CoverageRow, PlanningGrid } from './planning-grid';
 import { usePlanningEditor } from './use-planning-editor';
+import { useSolveRun } from './use-solve-run';
 import { FormShell } from '@/components/form-fields';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -49,7 +51,11 @@ const acceptedKey = (v: { agentId?: string; date: string; rule: string }) =>
 export function PlanningEditor(props: PlanningEditorProps) {
   const { month, data, grades, skills, shifts } = props;
   const queryClient = useQueryClient();
-  const { cells, apply, undo, saving } = usePlanningEditor(month, data, shifts);
+  const editor = usePlanningEditor(month, data, shifts);
+  const { apply, undo, saving } = editor;
+  const solver = useSolveRun(month, editor.cells, shifts);
+  // While a proposal is reviewed, the grid shows it over the current cells.
+  const cells = solver.preview?.cells ?? editor.cells;
   const [accepting, setAccepting] = useState<Violation | null>(null);
   const dates = useMemo(() => monthDates(month), [month]);
   const contextDates = useMemo(
@@ -57,7 +63,7 @@ export function PlanningEditor(props: PlanningEditorProps) {
     [dates]
   );
   const status = data.planning!.status;
-  const readOnly = status !== 'DRAFT';
+  const readOnly = status !== 'DRAFT' || solver.running || solver.preview !== null;
   const reload = () => queryClient.invalidateQueries({ queryKey: plannings.query(month).queryKey });
 
   const setStatus = useMutation({
@@ -140,9 +146,29 @@ export function PlanningEditor(props: PlanningEditorProps) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        {status === 'DRAFT' && (
+        {status === 'DRAFT' && !solver.preview && (
+          <>
+            <Button
+              variant="outline"
+              disabled={solver.running || saving}
+              title="Garde toutes les cases saisies et remplit les cases vides"
+              onClick={() => solver.start('COMPLETE')}
+            >
+              Compléter avec le solveur
+            </Button>
+            <Button
+              variant="outline"
+              disabled={solver.running || saving}
+              title="Ne garde que les cases verrouillées et les absences ; part du brouillon actuel"
+              onClick={() => solver.start('REOPTIMIZE')}
+            >
+              Réoptimiser
+            </Button>
+          </>
+        )}
+        {status === 'DRAFT' && !solver.preview && (
           <Button
-            disabled={openHard > 0 || saving || setStatus.isPending}
+            disabled={openHard > 0 || saving || solver.running || setStatus.isPending}
             onClick={() => setStatus.mutate('VALIDATED')}
           >
             Valider le planning
@@ -172,6 +198,35 @@ export function PlanningEditor(props: PlanningEditorProps) {
                 : 'Enregistré'}
         </span>
       </div>
+      {solver.running && (
+        <p className="flex items-center gap-2 text-sm">
+          <Loader2 className="size-4 animate-spin" />
+          Calcul en cours, jusqu'à une minute…
+        </p>
+      )}
+      {solver.failed && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-destructive">{solver.failed}</span>
+          <Button variant="link" size="xs" onClick={solver.discard}>
+            Fermer
+          </Button>
+        </div>
+      )}
+      {solver.preview && (
+        <div className="bg-muted/50 flex flex-wrap items-center gap-3 rounded-lg border p-3 text-sm">
+          <span>
+            Proposition du solveur : {solver.preview.changed.size} case(s) modifiée(s) (marquées
+            d'un point bleu), {openHard} violation(s) dure(s), manque de couverture{' '}
+            {String(solver.stats?.coverage ?? '?')}.
+          </span>
+          <Button size="sm" disabled={solver.applying} onClick={solver.apply}>
+            Appliquer
+          </Button>
+          <Button size="sm" variant="outline" disabled={solver.applying} onClick={solver.discard}>
+            Abandonner
+          </Button>
+        </div>
+      )}
       {!readOnly && (
         <p className="text-muted-foreground text-xs">
           Saisie : tapez un code (J, N, CA…) ; Suppr vide ; Alt+L verrouille ; Maj+flèches
@@ -186,6 +241,7 @@ export function PlanningEditor(props: PlanningEditorProps) {
         gradeCode={gradeCode}
         shifts={shifts}
         cells={cells}
+        changed={solver.preview?.changed}
         violations={violations}
         accepted={accepted}
         counters={counters}

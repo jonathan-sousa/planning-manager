@@ -2,6 +2,7 @@
 
 import os
 from datetime import date
+from uuid import UUID
 
 import aurora_dsql_psycopg as dsql
 from psycopg.rows import dict_row
@@ -18,12 +19,16 @@ def connect():
 
 
 def _camel(row: dict) -> dict:
-    """snake_case columns to the camelCase keys of the API, dates as strings."""
+    """snake_case columns to the camelCase keys of the API; dates and UUIDs as strings."""
     out = {}
     for key, value in row.items():
         head, *rest = key.split("_")
         out[head + "".join(part.title() for part in rest)] = (
-            value.isoformat() if isinstance(value, date) else value
+            value.isoformat()
+            if isinstance(value, date)
+            else str(value)
+            if isinstance(value, UUID)
+            else value
         )
     return out
 
@@ -63,7 +68,7 @@ def load_problem(conn, month: str, mode: str) -> Problem:
     conn.commit()
     for agent in agents:
         agent["skillIds"] = [
-            str(link["skillId"]) for link in links if link["agentId"] == agent["id"]
+            link["skillId"] for link in links if link["agentId"] == agent["id"]
         ]
     # Same agents as the grid (api/rules/model.ts planningAgents).
     with_cells = {cell["agentId"] for cell in cells if cell["date"].startswith(month)}
@@ -74,20 +79,16 @@ def load_problem(conn, month: str, mode: str) -> Problem:
         and (not agent["endDate"] or agent["endDate"] >= dates[0])
         and (agent["active"] or agent["id"] in with_cells)
     ]
-    ids = lambda rows: [
-        {k: str(v) if k.endswith("Id") or k == "id" else v for k, v in r.items()}
-        for r in rows
-    ]
     return Problem(
         month=month,
         mode=mode,
         settings=settings,
-        agents=ids(agents),
-        shift_types=ids(shifts),
-        cells=ids(cells),
-        needs=ids(needs),
-        overrides=ids(overrides),
-        requests=ids(requests),
+        agents=agents,
+        shift_types=shifts,
+        cells=cells,
+        needs=needs,
+        overrides=overrides,
+        requests=requests,
     )
 
 

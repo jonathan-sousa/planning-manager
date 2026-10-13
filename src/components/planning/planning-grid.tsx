@@ -23,6 +23,8 @@ interface PlanningGridProps {
   gradeCode: Map<string, string>;
   shifts: ShiftType[];
   cells: Map<string, GridCell>;
+  /** Cells a solver proposal changes (`agentId|date`). */
+  changed?: Set<string>;
   violations: Violation[];
   /** Keys `agentId|date|rule` of hard violations accepted with a justification. */
   accepted: Set<string>;
@@ -51,6 +53,7 @@ export function PlanningGrid({
   gradeCode,
   shifts,
   cells,
+  changed,
   violations,
   accepted,
   counters,
@@ -342,6 +345,9 @@ export function PlanningGrid({
                         <span className="text-primary underline">{typed}</span>
                       ) : (
                         shift?.code
+                      )}
+                      {changed?.has(cellKey(agent.id, date)) && (
+                        <span className="absolute top-0.5 left-0.5 size-1.5 rounded-full bg-sky-500" />
                       )}
                       {cell?.locked && (
                         <Lock className="text-muted-foreground absolute top-0.5 right-0.5 size-2.5" />
