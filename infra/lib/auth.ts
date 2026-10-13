@@ -1,9 +1,12 @@
 import { type RemovalPolicy, Stack } from 'aws-cdk-lib';
 import {
   AccountRecovery,
+  ClientAttributes,
   CfnManagedLoginBranding,
+  CfnUserPoolClient,
   FeaturePlan,
   ManagedLoginVersion,
+  Mfa,
   OAuthScope,
   UserPool,
   UserPoolEmail,
@@ -58,6 +61,12 @@ export class Auth extends Construct {
       featurePlan: FeaturePlan.ESSENTIALS,
       selfSignUpEnabled: false,
       signInAliases: { email: true },
+      // Jean.Dupont@… signs in as jean.dupont@… (fixed at the pool's creation).
+      signInCaseSensitive: false,
+      // Health-sector data: an authenticator app code at every sign-in,
+      // enrolled by Managed Login at the first one.
+      mfa: Mfa.REQUIRED,
+      mfaSecondFactor: { otp: true, sms: false, email: false },
       autoVerify: { email: true },
       standardAttributes: { email: { required: true, mutable: true } },
       accountRecovery: AccountRecovery.EMAIL_ONLY,
@@ -93,8 +102,17 @@ export class Auth extends Construct {
         callbackUrls: appUrls,
         logoutUrls: appUrls,
       },
+      // No self-service attribute change (name, email).
+      writeAttributes: new ClientAttributes(),
       preventUserExistenceErrors: true,
     });
+
+    // Sign-in through Managed Login only: no direct SRP, password or custom
+    // auth calls (Cognito enables them when the list is absent), only the
+    // session refresh Amplify performs.
+    (this.userPoolClient.node.defaultChild as CfnUserPoolClient).explicitAuthFlows = [
+      'ALLOW_REFRESH_TOKEN_AUTH',
+    ];
 
     const custom = props.customDomain;
     if (custom) {

@@ -56,7 +56,7 @@ export function bootstrapManager(
   });
 
   groups.forEach((group, index) => {
-    // The first id predates the admins group: kept so existing stacks keep it.
+    // Stable logical ids, never to rename: the managers group keeps the plain one.
     const id = index === 0 ? 'BootstrapManagerGroup' : `BootstrapManager${group.node.id}Group`;
     const addToGroup = new AwsCustomResource(scope, id, {
       onUpdate: {

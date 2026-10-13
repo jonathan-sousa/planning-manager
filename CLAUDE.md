@@ -12,7 +12,7 @@ Liste complète dans le [README](README.md#development) : `npm run check` avant 
 
 ## Déploiement AWS
 
-`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie, avec une seule commande : `npm run infra:deploy` pour son stage, `npm run infra:deploy -- <stage>` pour un autre (`prod` compris). `scripts/deploy.ts` construit l'app pour la production, lance `cdk deploy` (seul le stack du stage pour un stage de développement ; en production, avec les stacks dont elle dépend : `PlanningManagerMail`, partagée par tous les stages, et `PlanningManagerEdge-prod` : toute modification de `infra/lib/mail.ts` est donc une mise en production), écrit `cdk-outputs.<stage>.json`, migre la base (puis relie le rôle IAM du solveur au rôle de base `solver`) et écrit `.env.local` pour un stage de développement. Les scripts de base lisent le stage dans `STAGE` (`STAGE=prod npm run db:status`). Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc` ; aucun identifiant AWS requis) et inspecte `cdk.out/`. Rôle de `.env.local` : voir le README (§ Configuration).
+`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie : `npm run infra:deploy [-- <stage>]` (détail : `docs/architecture.md` § Déploiement et stages). Une modification de `infra/lib/mail.ts` est une mise en production. Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc` ; aucun identifiant AWS requis) et inspecte `cdk.out/`. Rôle de `.env.local` : voir le README (§ Configuration).
 
 ## Structure
 
@@ -25,14 +25,19 @@ infra/                      app CDK (tsconfig.infra.json)
   lib/web.ts                SPA sur S3 + CloudFront (forfait Free), domaine, config.json du stage
   lib/auth.ts               user pool (Essentials, inscription fermée), Managed Login (domaine Cognito, ou personnalisé en production ; client OAuth code+PKCE, branding par défaut), groupes MANAGERS et ADMINS
   lib/mail.ts               stack PlanningManagerMail (partagée, déployée une fois) : identité SES du sous-domaine d'envoi, DKIM/MAIL FROM/DMARC dans Route 53
-  lib/bootstrap-manager.ts  premier manager créé au déploiement (custom resources)
+  lib/bootstrap-manager.ts  premier compte (manager et admin) créé au déploiement (custom resources)
+  lib/stage.ts              nom du stage (défaut : utilisateur du poste), stage de production
+  lib/tags.ts               tags Project et Stage
+  lib/logs.ts               stack PlanningManagerLogs-prod : bucket des journaux WAF à Paris
   lib/database.ts           cluster Aurora DSQL + plan AWS Backup quotidien
   lib/api.ts                HTTP API + authorizer JWT Cognito → NodejsFunction (api/index.ts)
   lib/node-function.ts      Lambda Node du code api/ (ESM, ARM64, journaux)
   lib/email-events.ts       jeu de configuration SES du stage → SNS → Lambda des rebonds et plaintes
   lib/solver.ts             Lambda Python ARM64, bundling uv sans Docker
 api/                        Hono (tsconfig.api.json, projet référencé par le frontend pour AppType)
+  index.ts                  point d'entrée Lambda (adaptateur Hono)
   app.ts                    monte les routeurs, gestion d'erreurs ; export type AppType
+  sort.ts                   tri des libellés en français
   routes/                   un routeur Hono par ressource (CRUD)
   schemas.ts                schémas d'entrée Zod, partagés avec les formulaires du frontend
   domain.ts                 énumérations du domaine (sans dépendance)
@@ -48,9 +53,10 @@ api/                        Hono (tsconfig.api.json, projet référencé par le 
   db/client.ts              drizzle() du connecteur DSQL (jeton IAM, pool)
   solver-client.ts          invocation de la Lambda solveur
 solver/                     Python (uv) : handler.py (actions health, solve), model.py (CP-SAT), db.py (DSQL), calendar.py (miroir de api/calendar.ts), cli.py ; tests/
-scripts/                    deploy.ts (infra:deploy), stage-outputs.ts (sorties CDK du stage), write-env.ts (sorties → .env.local), db-migrate.ts, db-status.ts (avancement des migrations), db-seed.ts + seed/ (service fictif), asset-sizes.ts (infra:size), solver.e2e.test.ts (mois résolu puis validé)
+scripts/                    deploy.ts (infra:deploy), solve.ts (solveur pour les tests), stage-outputs.ts (sorties CDK du stage), write-env.ts (sorties → .env.local), db-migrate.ts, db-status.ts (avancement des migrations), db-seed.ts + seed/ (service fictif), asset-sizes.ts (infra:size), solver.e2e.test.ts et solver.random.test.ts (mois résolus puis validés)
 src/                        frontend
-  config.ts                 /config.json du stage (ids Cognito, URL de l'API), lu au démarrage
+  app-config.ts             contrat de /config.json (partagé avec l'infra et vite.config.ts)
+  config.ts                 /config.json du stage, lu au démarrage (message d'erreur si absent)
   main.tsx                  Amplify.configure (Auth + OAuth), QueryClient, router
   auth/auth-gate.tsx        redirige vers Managed Login (signInWithRedirect) tant qu'il n'y a pas de session
   auth/session.ts           utilisateur connecté (username, email, groupes du jeton d'accès), useIsAdmin

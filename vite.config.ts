@@ -3,23 +3,30 @@ import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
+import type { AppConfig } from './src/app-config.js';
 
-/** Serves /config.json (src/config.ts) from .env.local, written by `npm run env:write`. */
+/** Serves /config.json (src/config.ts) from .env.local, written by `npm run infra:deploy`. */
 function stageConfig(): Plugin {
   return {
     name: 'stage-config',
     configureServer(server) {
       server.middlewares.use('/config.json', (_request, response) => {
         const env = loadEnv('development', import.meta.dirname, '');
+        const config: AppConfig = {
+          userPoolId: env.USER_POOL_ID ?? '',
+          userPoolClientId: env.USER_POOL_CLIENT_ID ?? '',
+          authDomain: env.AUTH_DOMAIN ?? '',
+          apiUrl: env.API_URL ?? '',
+        };
+        if (Object.values(config).some((value) => !value)) {
+          response.statusCode = 500;
+          response.end(
+            '.env.local incomplet : lancez npm run infra:deploy (ou npm run env:write).'
+          );
+          return;
+        }
         response.setHeader('Content-Type', 'application/json');
-        response.end(
-          JSON.stringify({
-            userPoolId: env.USER_POOL_ID,
-            userPoolClientId: env.USER_POOL_CLIENT_ID,
-            authDomain: env.AUTH_DOMAIN,
-            apiUrl: env.API_URL,
-          })
-        );
+        response.end(JSON.stringify(config));
       });
     },
   };
