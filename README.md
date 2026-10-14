@@ -33,6 +33,7 @@ Connexion via Cognito Managed Login, page d'accueil avec vérification de la bas
 ```bash
 npm run check          # lint + types (web, api, infra) + tests + build
 npm run test           # Vitest (dont des mois résolus par le solveur : exige uv)
+npm run test:coverage  # Vitest avec la couverture de code (rapport dans coverage/)
 npm run solver:test    # pytest du solveur (scénarios partagés, calendrier)
 npm run infra:synth    # synthèse CDK locale (bundle l'API et le solveur, sans déployer)
 npm run infra:watch    # redéploie à chaud l'API et le solveur à chaque modification

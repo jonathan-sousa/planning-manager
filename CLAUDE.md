@@ -51,6 +51,7 @@ api/                        Hono (tsconfig.api.json, projet référencé par le 
   db/schema.ts              schéma Drizzle ; db/migrations/ généré, committé
   db/client.ts              drizzle() du connecteur DSQL (jeton IAM, pool)
   solver-client.ts          invocation de la Lambda solveur
+  test/                     tests de routes : PostgreSQL en mémoire (PGlite, migrations committées), Cognito simulé, fabriques de données, appel de l'app
 solver/                     Python (uv) : handler.py (actions health, solve), model.py (CP-SAT), db.py (DSQL), calendar.py (miroir de api/calendar.ts), cli.py ; tests/
 scripts/                    deploy.ts (infra:deploy), solve.ts (solveur pour les tests), stage-outputs.ts (sorties CDK du stage), write-env.ts (sorties → .env.local), db-migrate.ts, db-status.ts (avancement des migrations), db-seed.ts + seed/ (service fictif), asset-sizes.ts (infra:size), solver.e2e.test.ts et solver.random.test.ts (mois résolus puis validés)
 src/                        frontend
