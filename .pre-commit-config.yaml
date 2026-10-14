@@ -74,3 +74,16 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+  # Project hook, outside the baseline fragments: the project lints TS with
+  # oxlint (npm run lint), not eslint. `npx --no` uses the project's own oxlint;
+  # warnings block too, as pre-commit hides the output of a passing hook.
+  # `baseline-init --force` rewrites this file: add this hook back afterwards.
+  - repo: local
+    hooks:
+      - id: oxlint
+        name: oxlint
+        entry: npx --no -- oxlint --deny-warnings
+        language: system
+        types_or: [javascript, jsx, ts, tsx]
+        require_serial: true
+        pass_filenames: true
