@@ -128,6 +128,16 @@ describe('planning core', () => {
     ]);
   });
 
+  it('leaves out an absence whose code is archived', () => {
+    const rows = absenceCells(
+      [{ agentId: 'a1', startDate: '2026-11-02', endDate: '2026-11-03', shiftTypeId: 's3' }],
+      agents,
+      shifts,
+      { month: '2026-11', updatedBy: 'u' }
+    );
+    expect(rows).toEqual([]);
+  });
+
   it('opens balances with the initial balance plus the carried gaps', () => {
     expect(
       openingBalances(
