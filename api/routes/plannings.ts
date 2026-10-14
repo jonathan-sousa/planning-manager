@@ -1,7 +1,7 @@
 import { and, between, eq, gte, inArray, lt, lte, max, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { type Bindings, callerName } from '../auth';
-import { addDays, addMonths, countedOn, monthDates, monthOf } from '../calendar';
+import { addMonths, monthDates, monthOf } from '../calendar';
 import { db } from '../db/client';
 import {
   acceptedViolations,
@@ -17,9 +17,22 @@ import {
   shiftTypes,
   solveRuns,
 } from '../db/schema';
-import type { AssignmentSource, PlanningStatus } from '../domain';
+import { type AssignmentSource, UNFINISHED_SOLVE_STATUSES } from '../domain';
 import { type ApiError, notFound, ValidationError } from '../errors';
 import { planningAgents, type RuleInput } from '../rules/model';
+import {
+  absenceCells,
+  canTransition,
+  cellRows,
+  contextWindow,
+  isInProgress,
+  isLost,
+  monthBalanceRows,
+  openingBalances,
+  openingChangedSincePublication,
+  openViolations,
+  previousMonthOpen,
+} from '../rules/planning';
 import { countPlanning, validatePlanning } from '../rules/validate';
 import {
   acceptViolationInput,
@@ -32,25 +45,10 @@ import {
 import { startSolve } from '../solver-client';
 import { validate } from '../validate';
 
-/** Days of the neighbouring months loaded with a month, for rules spanning two months. */
-const CONTEXT_DAYS = 13;
-
 const stale: ApiError = {
   error: 'Le planning a été modifié entre-temps : rechargez la page.',
 };
 const notDraft: ApiError = { error: "Planning non modifiable : il n'est plus en brouillon." };
-
-/** Past this age, a run still pending or running is lost (Lambda timeout: 90 s). */
-const RUN_EXPIRY_MS = 3 * 60_000;
-const unfinished = (run: { status: string }) => ['PENDING', 'RUNNING'].includes(run.status);
-const expired = (run: { createdAt: string }) =>
-  Date.now() - Date.parse(run.createdAt) > RUN_EXPIRY_MS;
-
-/** Dates of a month widened by the context days. */
-function window(month: string): [string, string] {
-  const dates = monthDates(month);
-  return [addDays(dates[0]!, -CONTEXT_DAYS), addDays(dates.at(-1)!, CONTEXT_DAYS)];
-}
 
 /** Everything the validator needs for a month, read from the database. */
 async function loadRuleInput(month: string): Promise<RuleInput> {
@@ -62,7 +60,7 @@ async function loadRuleInput(month: string): Promise<RuleInput> {
       db
         .select()
         .from(assignments)
-        .where(between(assignments.date, ...window(month))),
+        .where(between(assignments.date, ...contextWindow(month))),
       db.select().from(coverageNeeds),
       db.select().from(coverageOverrides),
       db.select().from(agentRequests),
@@ -86,11 +84,10 @@ async function loadRuleInput(month: string): Promise<RuleInput> {
 }
 
 /**
- * Each agent's hour balance at the start of a month: their initial balance
- * plus the gap (credited - target) of every earlier month, as of its last
- * publication. A republished month thus updates the months after it.
+ * The balances of a month (api/rules/planning.ts), from the hours recorded at
+ * each publication: a republished month thus updates the months after it.
  */
-async function openingBalances(month: string) {
+async function loadBalances(month: string) {
   const [agentRows, carried, [previous], [lastEarlier]] = await Promise.all([
     db.select({ id: agents.id, initial: agents.initialBalanceMinutes }).from(agents),
     db
@@ -110,14 +107,9 @@ async function openingBalances(month: string) {
       .from(monthBalances)
       .where(lt(monthBalances.month, month)),
   ]);
-  const carriedBy = new Map(carried.map((row) => [row.agentId, row.minutes]));
   return {
-    opening: agentRows.map((agent) => ({
-      agentId: agent.id,
-      minutes: agent.initial + (carriedBy.get(agent.id) ?? 0),
-    })),
-    /** The previous month is planned but not published: its hours may still change. */
-    previousMonthOpen: previous !== undefined && previous.status !== 'PUBLISHED',
+    opening: openingBalances(agentRows, carried),
+    previousMonthOpen: previousMonthOpen(previous),
     /** When an earlier month was last published. */
     earlierPublishedAt: lastEarlier?.at ?? null,
   };
@@ -126,10 +118,7 @@ async function openingBalances(month: string) {
 type Tx = Parameters<Parameters<typeof db.transactionWithRetry>[0]>[0];
 type CellWrite = { agentId: string; date: string; shiftTypeId: string | null; locked: boolean };
 
-/**
- * Replaces cells inside a transaction: contract dates and archived shift types
- * are checked, counted minutes computed (daylight saving time included).
- */
+/** Replaces cells inside a transaction, as checked and computed by `cellRows`. */
 async function writeCells(
   tx: Tx,
   month: string,
@@ -144,33 +133,12 @@ async function writeCells(
       : Promise.resolve([]),
     tx.select().from(agents).where(inArray(agents.id, agentIds)),
   ]);
-  const shiftById = new Map(shiftRows.map((shift) => [shift.id, shift]));
-  const agentById = new Map(agentRows.map((agent) => [agent.id, agent]));
-
-  const rows = [];
-  for (const cell of cells) {
-    const agent = agentById.get(cell.agentId);
-    if (!agent) throw new ValidationError({ cells: ['Agent inconnu'] });
-    if (cell.date < agent.startDate || (agent.endDate && cell.date > agent.endDate)) {
-      throw new ValidationError({
-        cells: [`Hors contrat : ${agent.lastName} le ${cell.date}`],
-      });
-    }
-    if (!cell.shiftTypeId) continue;
-    const shift = shiftById.get(cell.shiftTypeId);
-    if (!shift || shift.archived)
-      throw new ValidationError({ cells: ['Poste inconnu ou archivé'] });
-    rows.push({
-      agentId: cell.agentId,
-      date: cell.date,
-      month,
-      shiftTypeId: shift.id,
-      countedMinutes: countedOn(cell.date, shift),
-      locked: cell.locked,
-      source,
-      updatedBy,
-    });
-  }
+  const rows = cellRows(
+    cells,
+    new Map(agentRows.map((agent) => [agent.id, agent])),
+    new Map(shiftRows.map((shift) => [shift.id, shift])),
+    { month, updatedBy, source }
+  );
 
   // An upsert writes one row per cell (DSQL caps a transaction at 3 000 rows).
   const emptied = cells.filter((cell) => !cell.shiftTypeId);
@@ -204,13 +172,6 @@ async function writeCells(
     : [];
 }
 
-/** Allowed status changes: validate, publish, reopen. */
-const TRANSITIONS: Record<PlanningStatus, PlanningStatus[]> = {
-  DRAFT: ['VALIDATED'],
-  VALIDATED: ['PUBLISHED', 'DRAFT'],
-  PUBLISHED: ['DRAFT'],
-};
-
 export const planningRoutes = new Hono<{ Bindings: Bindings }>()
   /** The month's planning (null until created) and the cells around it. */
   .get('/:month', validate('param', monthParam), async (c) => {
@@ -220,11 +181,10 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
       db
         .select()
         .from(assignments)
-        .where(between(assignments.date, ...window(month))),
+        .where(between(assignments.date, ...contextWindow(month))),
       db.select().from(acceptedViolations).where(eq(acceptedViolations.month, month)),
-      openingBalances(month),
+      loadBalances(month),
     ]);
-    const published = planning[0]?.publishedAt;
     return c.json({
       planning: planning[0] ?? null,
       assignments: cells,
@@ -232,12 +192,10 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
       balances: {
         opening: balances.opening,
         previousMonthOpen: balances.previousMonthOpen,
-        // An earlier month republished since this one was: its opening changed.
-        openingChangedSincePublication:
-          published !== null &&
-          published !== undefined &&
-          balances.earlierPublishedAt !== null &&
-          balances.earlierPublishedAt > published,
+        openingChangedSincePublication: openingChangedSincePublication(
+          planning[0]?.publishedAt,
+          balances.earlierPublishedAt
+        ),
       },
     });
   })
@@ -266,30 +224,12 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
         tx.select().from(agents),
         tx.select().from(shiftTypes),
       ]);
-      const agentById = new Map(agentRows.map((agent) => [agent.id, agent]));
-      const shiftById = new Map(shifts.map((shift) => [shift.id, shift]));
-      const rows = requests.flatMap((request) => {
-        const agent = agentById.get(request.agentId)!;
-        const shift = shiftById.get(request.shiftTypeId!)!;
-        return dates
-          .filter(
-            (date) =>
-              date >= request.startDate &&
-              date <= request.endDate &&
-              date >= agent.startDate &&
-              (!agent.endDate || date <= agent.endDate)
-          )
-          .map((date) => ({
-            agentId: agent.id,
-            date,
-            month,
-            shiftTypeId: shift.id,
-            countedMinutes: countedOn(date, shift),
-            locked: true,
-            source: 'REQUEST' as const,
-            updatedBy,
-          }));
-      });
+      const rows = absenceCells(
+        requests,
+        new Map(agentRows.map((agent) => [agent.id, agent])),
+        new Map(shifts.map((shift) => [shift.id, shift])),
+        { month, updatedBy }
+      );
       if (rows.length) await tx.insert(assignments).values(rows);
       return created!;
     });
@@ -347,7 +287,7 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
       const { status } = c.req.valid('json');
       const [current] = await db.select().from(plannings).where(eq(plannings.month, month));
       if (!current) return c.json(notFound, 404);
-      if (!TRANSITIONS[current.status].includes(status)) {
+      if (!canTransition(current.status, status)) {
         return c.json({ error: 'Changement de statut impossible.' } satisfies ApiError, 409);
       }
       if (status === 'VALIDATED') {
@@ -355,14 +295,7 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
           loadRuleInput(month),
           db.select().from(acceptedViolations).where(eq(acceptedViolations.month, month)),
         ]);
-        const acceptedKeys = new Set(
-          accepted.map((item) => `${item.agentId}|${item.date}|${item.rule}`)
-        );
-        const open = validatePlanning(input).filter(
-          (violation) =>
-            violation.severity === 'HARD' &&
-            !acceptedKeys.has(`${violation.agentId}|${violation.date}|${violation.rule}`)
-        );
+        const open = openViolations(validatePlanning(input), accepted);
         if (open.length) {
           return c.json(
             {
@@ -387,16 +320,7 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
           .returning();
         if (row && status === 'PUBLISHED') {
           await tx.delete(monthBalances).where(eq(monthBalances.month, month));
-          if (counts.length) {
-            await tx.insert(monthBalances).values(
-              counts.map((count) => ({
-                agentId: count.agentId,
-                month,
-                creditedMinutes: count.creditedMinutes,
-                targetMinutes: count.targetMinutes,
-              }))
-            );
-          }
+          if (counts.length) await tx.insert(monthBalances).values(monthBalanceRows(counts, month));
         }
         return row;
       });
@@ -429,7 +353,8 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
     async (c) => {
       const { month, id } = c.req.valid('param');
       const [planning] = await db.select().from(plannings).where(eq(plannings.month, month));
-      if (planning && planning.status !== 'DRAFT') return c.json(notDraft, 409);
+      if (!planning) return c.json(notFound, 404);
+      if (planning.status !== 'DRAFT') return c.json(notDraft, 409);
       const [row] = await db
         .delete(acceptedViolations)
         .where(and(eq(acceptedViolations.id, id), eq(acceptedViolations.month, month)))
@@ -451,8 +376,10 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
       const running = await db
         .select()
         .from(solveRuns)
-        .where(and(eq(solveRuns.month, month), inArray(solveRuns.status, ['PENDING', 'RUNNING'])));
-      if (running.some((run) => !expired(run))) {
+        .where(
+          and(eq(solveRuns.month, month), inArray(solveRuns.status, UNFINISHED_SOLVE_STATUSES))
+        );
+      if (running.some((run) => isInProgress(run, Date.now()))) {
         return c.json(
           { error: 'Un calcul est déjà en cours sur ce mois.' } satisfies ApiError,
           409
@@ -487,12 +414,12 @@ export const planningRoutes = new Hono<{ Bindings: Bindings }>()
       .from(solveRuns)
       .where(and(eq(solveRuns.id, id), eq(solveRuns.month, month)));
     if (!run) return c.json(notFound, 404);
-    if (unfinished(run) && expired(run)) {
+    if (isLost(run, Date.now())) {
       // Killed by its timeout (or out of memory) before it could record the failure.
       const [failed] = await db
         .update(solveRuns)
         .set({ status: 'FAILED', error: "Le solveur n'a pas répondu à temps : relancez-le." })
-        .where(and(eq(solveRuns.id, id), inArray(solveRuns.status, ['PENDING', 'RUNNING'])))
+        .where(and(eq(solveRuns.id, id), inArray(solveRuns.status, UNFINISHED_SOLVE_STATUSES)))
         .returning();
       return c.json(failed ?? run, 200);
     }

@@ -295,6 +295,8 @@ describe('accepted violations', () => {
     await db.update(plannings).set({ status: 'VALIDATED' });
     expect((await send('DELETE', path)).status).toBe(409);
 
+    expect((await send('DELETE', path.replace('2026-11', '2026-12'))).status).toBe(404);
+
     await db.update(plannings).set({ status: 'DRAFT' });
     expect((await send('DELETE', path)).status).toBe(204);
     expect(await db.select().from(acceptedViolations)).toEqual([]);

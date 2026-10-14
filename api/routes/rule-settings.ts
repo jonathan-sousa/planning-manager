@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { requireActiveAdmin } from '../accounts';
-import { requireAdmin } from '../auth';
+import { type Bindings, requireAdmin } from '../auth';
 import { db } from '../db/client';
 import { ruleSettings } from '../db/schema';
 import { ruleSettingsInput } from '../schemas';
@@ -10,7 +10,7 @@ import { validate } from '../validate';
 // Single row, inserted by the migration.
 const DEFAULT_ID = 'default';
 
-export const ruleSettingsRoutes = new Hono()
+export const ruleSettingsRoutes = new Hono<{ Bindings: Bindings }>()
   .get('/', async (c) => {
     const [row] = await db.select().from(ruleSettings).where(eq(ruleSettings.id, DEFAULT_ID));
     return c.json(row!);

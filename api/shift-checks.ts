@@ -11,15 +11,14 @@ import { ValidationError } from './errors';
  */
 export async function requireShiftKind(
   shiftTypeId: string | null,
-  accepted: readonly ShiftKind[],
-  message: string
+  { kinds, message }: { kinds: readonly ShiftKind[]; message: string }
 ): Promise<void> {
   if (!shiftTypeId) return;
   const [shift] = await db
     .select({ kind: shiftTypes.kind })
     .from(shiftTypes)
     .where(eq(shiftTypes.id, shiftTypeId));
-  if (shift && !accepted.includes(shift.kind)) {
+  if (shift && !kinds.includes(shift.kind)) {
     throw new ValidationError({ shiftTypeId: [message] });
   }
 }

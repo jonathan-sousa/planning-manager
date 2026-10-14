@@ -13,7 +13,7 @@ import {
 import { type Bindings, callerName, requireAdmin } from '../auth';
 import { db } from '../db/client';
 import { emailEvents } from '../db/schema';
-import type { ApiError } from '../errors';
+import { type ApiError, notFound } from '../errors';
 import { accountInput, accountUpdateInput, usernameParam } from '../schemas';
 import { compareFr } from '../sort';
 import { validate } from '../validate';
@@ -91,7 +91,7 @@ export const accountRoutes = new Hono<{ Bindings: Bindings }>()
     const account = (await listAccounts()).find(
       (item) => item.username === c.req.valid('param').username
     );
-    if (!account) return c.json(refused('Introuvable'), 404);
+    if (!account) return c.json(notFound, 404);
     if (!account.enabled || account.status !== 'FORCE_CHANGE_PASSWORD') {
       return c.json(refused('Aucune invitation en attente pour ce compte'), 409);
     }
