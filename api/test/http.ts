@@ -1,5 +1,5 @@
 // Calls the app as API Gateway would, with the claims of a Cognito access token.
-import app from '../app';
+import type { ApiError } from '../errors';
 
 export const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
@@ -18,8 +18,12 @@ export function caller(groups: string, username = uuid(999)) {
   };
 }
 
-/** A request as `as` (a manager by default); the body is sent as JSON. */
-export function send(method: string, path: string, body?: unknown, as = caller(MANAGER)) {
+/**
+ * A request as `as` (a manager by default); the body is sent as JSON. The app
+ * loads on first use: unit tests importing `caller` or `uuid` need no database.
+ */
+export async function send(method: string, path: string, body?: unknown, as = caller(MANAGER)) {
+  const { default: app } = await import('../app');
   return app.request(
     path,
     {
@@ -30,3 +34,6 @@ export function send(method: string, path: string, body?: unknown, as = caller(M
     as
   );
 }
+
+/** The JSON body of a response: an ApiError unless told otherwise. */
+export const body = async <T = ApiError>(response: Response) => (await response.json()) as T;
