@@ -31,7 +31,7 @@ Connexion via Cognito Managed Login, page d'accueil avec vérification de la bas
 ## Development
 
 ```bash
-npm run check          # lint + types (web, api, infra) + tests + build
+npm run check          # lint + types (web, api, infra) + build + tests
 npm run test           # Vitest (dont des mois résolus par le solveur : exige uv)
 npm run test:coverage  # Vitest avec la couverture de code (rapport dans coverage/)
 npm run solver:test    # pytest du solveur (scénarios partagés, calendrier)

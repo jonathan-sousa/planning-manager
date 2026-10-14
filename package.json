@@ -10,7 +10,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run --passWithNoTests",
     "format": "prettier --write .",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "check": "npm run lint && npm run typecheck && npm run build && npm run test",
     "solver:test": "uv run --directory solver pytest",
     "infra:synth": "cdk synth --quiet",
     "infra:deploy": "tsx scripts/deploy.ts",

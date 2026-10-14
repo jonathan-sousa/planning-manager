@@ -12,13 +12,13 @@ Liste complète dans le [README](README.md#development) : `npm run check` avant 
 
 ## Déploiement AWS
 
-`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie : `npm run infra:deploy [-- <stage>]` (détail : `docs/architecture.md` § Déploiement et stages). Une modification de `infra/lib/mail.ts` est une mise en production. Claude valide avec `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc` ; aucun identifiant AWS requis) et inspecte `cdk.out/`. Rôle de `.env.local` : voir le README (§ Configuration).
+`cdk deploy` écrit dans AWS. Le profil de Claude (`jsconsulting-claude-dev`) est en lecture seule : c'est Jonathan qui déploie : `npm run infra:deploy [-- <stage>]` (détail : `docs/architecture.md` § Déploiement et stages). Une modification de `infra/lib/mail.ts` est une mise en production. Claude valide avec les invariants testés de `infra/lib/app.test.ts` (dans `npm run check`) et `npm run infra:synth` (exige `BOOTSTRAP_MANAGER_EMAIL`, posé par `.envrc` ; aucun identifiant AWS requis) et inspecte `cdk.out/`. Rôle de `.env.local` : voir le README (§ Configuration).
 
 ## Structure
 
 ```text
 infra/                      app CDK (tsconfig.infra.json)
-  bin/app.ts                stacks PlanningManager-<stage> (stage via -c stage=…), PlanningManagerMail, et PlanningManagerEdge-prod pour la production
+  bin/app.ts                stage via -c stage=… ; lib/app.ts définit ses stacks : PlanningManager-<stage>, PlanningManagerMail, et PlanningManagerEdge-prod pour la production (app.test.ts : invariants des stacks synthétisées)
   lib/stack.ts              assemble Auth, Database, Solver, Api (et Web en production) ; sorties CloudFormation
   lib/dns.ts                domaines de production et zone Route 53 parente
   lib/edge.ts               stack us-east-1 de la production : certificat ACM et web ACL WAF de CloudFront
