@@ -80,6 +80,10 @@ export function toErrorResponse(
       },
     };
   }
+  // A foreign key ON DELETE RESTRICT raises restrict_violation (23001).
+  if (pg?.code === '23001') {
+    return { status: 409, body: { error: 'Suppression impossible : élément encore utilisé' } };
+  }
   if (pg?.code === '23503') {
     // On DELETE the row is still referenced; on writes a referenced row is missing.
     return method === 'DELETE'
