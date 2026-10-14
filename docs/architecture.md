@@ -44,6 +44,17 @@ Alternatives écartées (raisons valables tant que le besoin ne change pas) :
 
 Coût mensuel estimé en usage réel : 0 à 5 € (Cognito dans le free tier, CloudFront et WAF sous le forfait CloudFront Free, HTTP API et Lambda dans le free tier, DSQL dans ou proche du free tier, journaux et sauvegardes pour quelques centimes). La consommation DSQL se suit sur CloudWatch (`TotalDPU`).
 
+## Organisation du code
+
+Noyau fonctionnel, coquille impérative : les décisions métier sont des fonctions pures, et le code qui parle au réseau, à la base ou au DOM se contente de les appeler. Le code est découpé par ressource, et les contrats sont partagés entre le frontend et l'API.
+
+- **Noyau pur, partagé** : `api/rules/` (validateur, compteurs, diagnostic de couverture), `api/calendar.ts`, `api/domain.ts`. Aucun accès au réseau ni à la base : le même code tourne dans la grille et dans l'API, et se teste unitairement.
+- **Contrats** : schémas d'entrée Zod (`api/schemas.ts`, utilisés par l'API et par les formulaires), type de l'API (`AppType`, d'où le frontend tire son client `hc` typé), `/config.json` (`src/app-config.ts`).
+- **Coquille de l'API** : un routeur Hono par ressource (`api/routes/`). Il valide l'entrée, lit en base, appelle le noyau, puis écrit et répond. Les requêtes Drizzle restent dans le routeur (une transaction par opération), sans couche repository ni service : à cette échelle, une indirection de plus ne protégerait rien. Les modules à part (`api/accounts.ts`, `api/solver-client.ts`, `api/shift-checks.ts`) enveloppent un service externe ou un contrôle partagé entre plusieurs routeurs.
+- **Coquille du frontend** : `src/lib/resources.ts` (une `queryOptions` et les écritures de chaque ressource), `CrudPage` et les champs de `form-fields.tsx` ; une page assemble ces briques. Les calculs dérivés d'un écran (tri, agrégats, textes) sont des fonctions pures à côté du composant, mémoïsées par un hook ; le composant affiche.
+
+La règle : une route ou un composant **charge, appelle une fonction pure, puis écrit ou affiche**. Un calcul, un filtre, la construction des lignes à écrire ou une machine à états est une fonction pure, exportée et testée, définie une seule fois (une notion partagée par l'API et le frontend vit dans `api/`, que `src/` importe).
+
 ## Déploiement et stages
 
 `infra/bin/app.ts` instancie `PlanningManager-<stage>` et `PlanningManagerMail`, plus `PlanningManagerEdge-prod` pour la production. Le stage vient du contexte CDK (`-c stage=…`, défaut : nom d'utilisateur du poste). `prod` active `deletionProtection`, `RemovalPolicy.RETAIN` et le plan AWS Backup ; les autres stages se détruisent librement (`npm run infra:destroy`). Les journaux Lambda sont conservés un mois. Toutes les ressources portent les tags `Project=planning-manager` et `Stage=<stage>` (`shared` pour `PlanningManagerMail`), activés comme tags de répartition des coûts dans Billing : Cost Explorer filtre la consommation par projet et par stage.
