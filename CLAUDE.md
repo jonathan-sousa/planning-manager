@@ -44,7 +44,7 @@ api/                        Hono (tsconfig.api.json, projet référencé par le 
   shift-checks.ts           contrôle du type de poste référencé (lecture en base, hors schémas)
   calendar.ts               jours, fériés, changement d'heure (seul usage de Date)
   format.ts                 dates et durées en texte (messages du validateur, frontend)
-  rules/                    validateur des règles de planification (partagé avec la grille), compteurs, diagnostic des manques de couverture, décisions des routes de planning (planning.ts : transitions, cases à écrire, soldes)
+  rules/                    pur, partagé avec la grille ; un fichier de tests par module : validate.ts (violations), counters.ts (heures, nuits, week-ends), coverage.ts (couverture des besoins), diagnose.ts (manques de couverture), planning.ts (transitions, cases à écrire, soldes), model.ts (types)
   validate.ts               zValidator qui lève une ValidationError (400 par champ)
   auth.ts                   middlewares : 403 hors de MANAGERS, ou hors d'ADMINS (claim cognito:groups)
   accounts.ts               comptes Cognito (liste, invitation, rôle admin, désactivation)

@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { countedOn } from '../api/calendar';
 import type { RuleInput } from '../api/rules/model';
-import { coverage, validatePlanning } from '../api/rules/validate';
+import { coverage } from '../api/rules/coverage';
+import { validatePlanning } from '../api/rules/validate';
 import { buildSeed } from './seed/build';
 import { solve } from './solve';
 

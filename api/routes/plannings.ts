@@ -33,7 +33,8 @@ import {
   openViolations,
   previousMonthOpen,
 } from '../rules/planning';
-import { countPlanning, validatePlanning } from '../rules/validate';
+import { countPlanning } from '../rules/counters';
+import { validatePlanning } from '../rules/validate';
 import {
   acceptViolationInput,
   cellsInput,

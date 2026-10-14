@@ -2,20 +2,19 @@
 // Pure function: the grid runs it on every edit, the API before publishing.
 import {
   addDays,
-  dayKind,
   dayOfWeek,
-  daysBetween,
-  isPublicHoliday,
+  fortnightStart,
   monthDates,
   monthOf,
   nominalMinutes,
   parisMinute,
   shiftInterval,
 } from '../calendar';
-import { type HoursRegime, type RuleCode, RULES } from '../domain';
+import { type RuleCode, RULES } from '../domain';
 import { formatDayMonth, formatMinutes } from '../format';
+import { countPlanning } from './counters';
+import { coverage } from './coverage';
 import {
-  type AgentCounters,
   inContract,
   type RuleAgent,
   type RuleCell,
@@ -23,15 +22,6 @@ import {
   type RuleShift,
   type Violation,
 } from './model';
-
-const HOUR = 60;
-
-/** Annual working time of a full-time agent, in minutes. */
-const ANNUAL_MINUTES: Record<Exclude<HoursRegime, 'MIXED_PRORATA'>, number> = {
-  STANDARD_1607: 1607 * HOUR,
-  VARIABLE_REST_1582: 1582 * HOUR,
-  NIGHT_1476: 1476 * HOUR,
-};
 
 interface WorkPeriod {
   date: string;
@@ -289,100 +279,4 @@ export function validatePlanning(input: RuleInput): Violation[] {
   }
 
   return violations;
-}
-
-export interface CoverageSlot {
-  date: string;
-  shiftTypeId: string;
-  gradeId: string;
-  skillId: string | null;
-  minCount: number;
-  /** Agents on that shift with the grade (and the skill, when required). */
-  count: number;
-}
-
-/** Coverage of each need of each day of the month; dated overrides replace the standard need of the same slot. */
-export function coverage(input: RuleInput): CoverageSlot[] {
-  const slotKey = (need: { shiftTypeId: string; gradeId: string; skillId: string | null }) =>
-    `${need.shiftTypeId}|${need.gradeId}|${need.skillId ?? ''}`;
-  const agentById = new Map(input.agents.map((agent) => [agent.id, agent]));
-  const cellsByDate = Map.groupBy(input.cells, (cell) => cell.date);
-  return monthDates(input.month).flatMap((date) => {
-    const needs = new Map(
-      input.needs
-        .filter((need) => need.dayKind === dayKind(date))
-        .map((need) => [slotKey(need), need])
-    );
-    for (const override of input.overrides.filter((item) => item.date === date)) {
-      needs.set(slotKey(override), { ...override, dayKind: dayKind(date) });
-    }
-    return [...needs.values()].map(({ shiftTypeId, gradeId, skillId, minCount }) => ({
-      date,
-      shiftTypeId,
-      gradeId,
-      skillId,
-      minCount,
-      count: (cellsByDate.get(date) ?? []).filter((cell) => {
-        const agent = agentById.get(cell.agentId);
-        return (
-          cell.shiftTypeId === shiftTypeId &&
-          agent?.gradeId === gradeId &&
-          (!skillId || agent.skillIds.includes(skillId))
-        );
-      }).length,
-    }));
-  });
-}
-
-/** First day of the fixed fortnight containing a date. */
-function fortnightStart(date: string, anchor: string): string {
-  return addDays(anchor, Math.floor(daysBetween(anchor, date) / 14) * 14);
-}
-
-/** Hours, nights, weekends and holidays of each agent over the month. */
-export function countPlanning(input: RuleInput): AgentCounters[] {
-  const dates = monthDates(input.month);
-  const shiftById = new Map(input.shiftTypes.map((shift) => [shift.id, shift]));
-  const cellsByAgent = Map.groupBy(input.cells, (cell) => cell.agentId);
-
-  return input.agents.map((agent) => {
-    const counters: AgentCounters = {
-      agentId: agent.id,
-      workedMinutes: 0,
-      creditedMinutes: 0,
-      targetMinutes: 0,
-      nights: 0,
-      weekendDays: 0,
-      holidays: 0,
-    };
-    let nightMinutes = 0;
-    for (const cell of cellsByAgent.get(agent.id) ?? []) {
-      const shift = shiftById.get(cell.shiftTypeId);
-      if (!shift || monthOf(cell.date) !== input.month) continue;
-      counters.creditedMinutes += cell.countedMinutes;
-      if (shift.kind !== 'WORK') continue;
-      counters.workedMinutes += cell.countedMinutes;
-      if (shift.isNight) {
-        counters.nights += 1;
-        nightMinutes += cell.countedMinutes;
-      }
-      if ([0, 6].includes(dayOfWeek(cell.date))) counters.weekendDays += 1;
-      if (isPublicHoliday(cell.date)) counters.holidays += 1;
-    }
-    // Annual obligation × work-time ratio, pro rata of the contract days in the
-    // month; a mixed regime moves from 1607 h towards 1476 h with its night share.
-    const annual =
-      agent.hoursRegime === 'MIXED_PRORATA'
-        ? ANNUAL_MINUTES.STANDARD_1607 -
-          (ANNUAL_MINUTES.STANDARD_1607 - ANNUAL_MINUTES.NIGHT_1476) *
-            (counters.workedMinutes ? nightMinutes / counters.workedMinutes : 0)
-        : ANNUAL_MINUTES[agent.hoursRegime];
-    const contractDays = dates.filter((date) => inContract(agent, date)).length;
-    const year = Number(input.month.slice(0, 4));
-    const yearDays = daysBetween(`${year}-01-01`, `${year + 1}-01-01`);
-    counters.targetMinutes = Math.round(
-      (annual * (agent.workTimeRatio / 100) * contractDays) / yearDays
-    );
-    return counters;
-  });
 }

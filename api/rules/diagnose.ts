@@ -3,7 +3,8 @@
 // hand as well as by the solver.
 import { countedOn } from '../calendar';
 import { inContract, type RuleAgent, type RuleInput, type Violation } from './model';
-import { type CoverageSlot, coverage, validatePlanning } from './validate';
+import { type CoverageSlot, coverage } from './coverage';
+import { validatePlanning } from './validate';
 
 export interface CoverageSlotKey {
   date: string;

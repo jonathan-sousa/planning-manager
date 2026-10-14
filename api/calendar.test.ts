@@ -4,6 +4,7 @@ import {
   addDays,
   addMonths,
   countedOn,
+  fortnightStart,
   isPublicHoliday,
   parisMinute,
   monthLabel,
@@ -67,6 +68,14 @@ describe('calendar', () => {
     expect(countedOn('2026-10-24', night)).toBe(780);
     expect(countedOn('2026-03-28', night)).toBe(660);
     expect(countedOn('2026-03-28', { ...night, kind: 'ABSENCE' })).toBe(720);
+  });
+
+  it('finds the fixed fortnight of a date from its anchor Monday', () => {
+    expect(fortnightStart('2026-01-05', '2026-01-05')).toBe('2026-01-05');
+    expect(fortnightStart('2026-01-18', '2026-01-05')).toBe('2026-01-05');
+    expect(fortnightStart('2026-01-19', '2026-01-05')).toBe('2026-01-19');
+    // Before the anchor too.
+    expect(fortnightStart('2026-01-04', '2026-01-05')).toBe('2025-12-22');
   });
 
   it('matches the solver calendar (fixtures/calendar.json)', () => {

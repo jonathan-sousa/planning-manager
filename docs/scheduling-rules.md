@@ -44,7 +44,7 @@ Le décret laisse de la marge sur ces points ; le validateur retient une lecture
 
 `api/rules/` (TypeScript, sans dépendance) est la seule définition de ce qu'est une violation : la grille l'exécute à chaque saisie, l'API avant la publication. Les scénarios `fixtures/rule-scenarios/*.json` (postes et paramètres communs dans `_shifts.json` et `_settings.json`) servent trois fois :
 
-- **Vitest** (`api/rules/scenarios.test.ts`) : le validateur produit exactement les violations attendues pour les règles que le scénario déclare.
+- **Vitest** (`api/rules/validate.test.ts`) : le validateur produit exactement les violations attendues pour les règles que le scénario déclare.
 - **pytest** (`solver/tests/test_scenarios.py`) : le modèle CP-SAT, toutes les cases figées comme dans le scénario, trouve une violation dure exactement quand le validateur en trouve une (champ `hard` du scénario, vérifié par Vitest).
 - **Bout en bout** (`scripts/solver.e2e.test.ts`) : une proposition du solveur sur le service fictif repasse dans le validateur, qui ne trouve aucune violation dure.
 - **Mois aléatoires** (`scripts/solver.random.test.ts`) : de petits mois générés (changement d'heure, cases de contexte et verrouillées, absences, contrats partiels, poste finissant à minuit, deux modes) ; quand le solveur annonce zéro violation dure, le validateur doit être d'accord.

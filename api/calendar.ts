@@ -158,3 +158,8 @@ export function countedOn(
   const { start, end } = shiftInterval(date, shift.startTime, shift.endTime);
   return shift.countedMinutes + (end - start - nominalMinutes(shift.startTime, shift.endTime));
 }
+
+/** First day of the fixed two-week period holding a date (`anchor`: a Monday that starts one). */
+export function fortnightStart(date: string, anchor: string): string {
+  return addDays(anchor, Math.floor(daysBetween(anchor, date) / 14) * 14);
+}
