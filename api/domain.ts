@@ -36,6 +36,11 @@ export const ADMIN_GROUP = 'ADMINS';
 
 export const SOLVE_STATUSES = ['PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED', 'APPLIED'] as const;
 export type SolveStatus = (typeof SOLVE_STATUSES)[number];
+/** A run in these statuses may still produce a proposal. */
+export const UNFINISHED_SOLVE_STATUSES = [
+  'PENDING',
+  'RUNNING',
+] as const satisfies readonly SolveStatus[];
 
 /** SES events recorded for the accounts page: the last one of an email tells whether it is reachable. */
 export const EMAIL_EVENT_KINDS = ['DELIVERY', 'BOUNCE', 'COMPLAINT'] as const;

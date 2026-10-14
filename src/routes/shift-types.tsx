@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import { nominalMinutes } from '../../api/calendar';
 import { shiftTypeInput, type ShiftTypeInput } from '../../api/schemas';
 import { CrudPage } from '@/components/crud-page';
 import { FormShell } from '@/components/form-fields';
 import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';
 import { Badge } from '@/components/ui/badge';
-import { formatMinutes, shiftMinutes } from '@/lib/format';
+import { formatMinutes } from '@/lib/format';
 import { optionsOf, shiftKindLabels } from '@/lib/labels';
 import { type ShiftType, shiftTypes } from '@/lib/resources';
 
@@ -89,7 +90,7 @@ function ShiftTypeForm({ row, onSaved }: { row: ShiftType | undefined; onSaved: 
     const { kind, startTime, endTime, breakMinutes } = form.state.values;
     if (row || kind !== 'WORK' || !startTime || !endTime) return;
     if (hoursChanged) form.setFieldValue('isNight', endTime < startTime && endTime !== '00:00');
-    const counted = shiftMinutes(startTime, endTime) - breakMinutes;
+    const counted = nominalMinutes(startTime, endTime) - breakMinutes;
     if (counted > 0) form.setFieldValue('countedMinutes', counted);
   };
   const hours = { onChange: () => proposeTiming(true) };

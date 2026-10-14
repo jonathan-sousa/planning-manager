@@ -15,10 +15,10 @@ import { validate } from '../validate';
 async function checkRequest(input: AgentRequestInput, id?: string): Promise<void> {
   const { kind, shiftTypeId } = input;
   if (kind === 'WISH_SHIFT') {
-    await requireShiftKind(shiftTypeId, WORK_SHIFT.kinds, WORK_SHIFT.message);
+    await requireShiftKind(shiftTypeId, WORK_SHIFT);
   }
   if (kind !== 'ABSENCE_APPROVED') return;
-  await requireShiftKind(shiftTypeId, ABSENCE_CODE.kinds, ABSENCE_CODE.message);
+  await requireShiftKind(shiftTypeId, ABSENCE_CODE);
   const [overlap] = await db
     .select({ id: agentRequests.id })
     .from(agentRequests)

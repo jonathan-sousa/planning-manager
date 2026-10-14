@@ -2,7 +2,7 @@
 // taking the shift that day. Reuses the validator, so it explains gaps left by
 // hand as well as by the solver.
 import { countedOn } from '../calendar';
-import type { RuleAgent, RuleInput, Violation } from './model';
+import { inContract, type RuleAgent, type RuleInput, type Violation } from './model';
 import { type CoverageSlot, coverage, validatePlanning } from './validate';
 
 export interface CoverageSlotKey {
@@ -78,9 +78,7 @@ export function diagnoseCoverage(
 
       if (slot.skillId && !agent.skillIds.includes(slot.skillId)) return result('NO_SKILL');
       if (current?.shiftTypeId === slot.shiftTypeId) return result('COUNTED');
-      if (slot.date < agent.startDate || (agent.endDate && slot.date > agent.endDate)) {
-        return result('OUT_OF_CONTRACT');
-      }
+      if (!inContract(agent, slot.date)) return result('OUT_OF_CONTRACT');
       const approvedAbsence = input.requests.some(
         (request) =>
           request.agentId === agent.id &&

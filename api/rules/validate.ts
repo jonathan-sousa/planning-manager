@@ -12,15 +12,15 @@ import {
   parisMinute,
   shiftInterval,
 } from '../calendar';
-import type { HoursRegime } from '../domain';
+import { type HoursRegime, type RuleCode, RULES } from '../domain';
+import { formatDayMonth, formatMinutes } from '../format';
 import {
   type AgentCounters,
+  inContract,
   type RuleAgent,
   type RuleCell,
-  type RuleCode,
   type RuleInput,
   type RuleShift,
-  RULES,
   type Violation,
 } from './model';
 
@@ -77,16 +77,11 @@ class AgentPlan {
   }
 
   inContract(date: string): boolean {
-    return date >= this.agent.startDate && (!this.agent.endDate || date <= this.agent.endDate);
+    return inContract(this.agent, date);
   }
 }
 
 const name = (agent: RuleAgent) => `${agent.firstName} ${agent.lastName}`;
-const hours = (minutes: number) => {
-  const rest = minutes % HOUR;
-  return `${Math.floor(minutes / HOUR)}h${rest ? String(rest).padStart(2, '0') : ''}`;
-};
-const dateFr = (date: string) => date.split('-').reverse().slice(0, 2).join('/');
 
 /**
  * Days d such that the predicate fails on d but not on d - 1: reports a run of
@@ -116,7 +111,7 @@ export function validatePlanning(input: RuleInput): Violation[] {
       // On the nominal span: a DST night lasting 13 h is not a longer shift.
       const span = nominalMinutes(shift.startTime, shift.endTime);
       if (span > settings.maxShiftAmplitudeMinutes) {
-        add('SHIFT_AMPLITUDE', date, `${shift.code} dure ${hours(span)}`, agent.id);
+        add('SHIFT_AMPLITUDE', date, `${shift.code} dure ${formatMinutes(span)}`, agent.id);
       }
       if (
         span - shift.breakMinutes > settings.breakThresholdMinutes &&
@@ -138,7 +133,12 @@ export function validatePlanning(input: RuleInput): Violation[] {
       const rest = periods[i]!.start - periods[i - 1]!.end;
       const date = inMonth(periods[i]!.date) ? periods[i]!.date : periods[i - 1]!.date;
       if (rest < settings.minDailyRestMinutes && inMonth(date)) {
-        add('DAILY_REST', date, `Repos de ${hours(Math.max(rest, 0))} avant ce poste`, agent.id);
+        add(
+          'DAILY_REST',
+          date,
+          `Repos de ${formatMinutes(Math.max(rest, 0))} avant ce poste`,
+          agent.id
+        );
       }
     }
 
@@ -151,7 +151,7 @@ export function validatePlanning(input: RuleInput): Violation[] {
       dates,
       (end) => weeklyMinutes(end) > settings.maxWeeklyMinutes
     )) {
-      add('WEEKLY_HOURS', date, `${hours(weeklyMinutes(date))} sur 7 jours`, agent.id);
+      add('WEEKLY_HOURS', date, `${formatMinutes(weeklyMinutes(date))} sur 7 jours`, agent.id);
     }
 
     // Every 7-day window must meet a rest period of the minimum length.
@@ -170,7 +170,7 @@ export function validatePlanning(input: RuleInput): Violation[] {
       add(
         'WEEKLY_REST',
         date,
-        `Pas de repos de ${hours(settings.minWeeklyRestMinutes)} sur 7 jours`,
+        `Pas de repos de ${formatMinutes(settings.minWeeklyRestMinutes)} sur 7 jours`,
         agent.id
       );
     }
@@ -193,7 +193,7 @@ export function validatePlanning(input: RuleInput): Violation[] {
         add(
           'FORTNIGHT_REST',
           shownOn,
-          `${restDays} jours de repos sur la quinzaine du ${dateFr(first)}`,
+          `${restDays} jours de repos sur la quinzaine du ${formatDayMonth(first)}`,
           agent.id
         );
       }
@@ -201,7 +201,7 @@ export function validatePlanning(input: RuleInput): Violation[] {
         add(
           'FORTNIGHT_REST',
           shownOn,
-          `Pas de repos de 2 jours avec un dimanche sur la quinzaine du ${dateFr(first)}`,
+          `Pas de repos de 2 jours avec un dimanche sur la quinzaine du ${formatDayMonth(first)}`,
           agent.id
         );
       }
@@ -246,9 +246,7 @@ export function validatePlanning(input: RuleInput): Violation[] {
     if (!agent) continue;
     const cells = new Map((cellsByAgent.get(agent.id) ?? []).map((cell) => [cell.date, cell]));
     for (let date = request.startDate; date <= request.endDate; date = addDays(date, 1)) {
-      if (!inMonth(date) || date < agent.startDate || (agent.endDate && date > agent.endDate)) {
-        continue;
-      }
+      if (!inMonth(date) || !inContract(agent, date)) continue;
       const cell = cells.get(date);
       const shift = cell && shiftById.get(cell.shiftTypeId);
       const expected = request.shiftTypeId && shiftById.get(request.shiftTypeId)?.code;
@@ -284,7 +282,7 @@ export function validatePlanning(input: RuleInput): Violation[] {
       add(
         'MONTHLY_HOURS',
         dates.at(-1)!,
-        `Heures du mois : ${sign}${hours(Math.abs(gap))} par rapport à la cible`,
+        `Heures du mois : ${sign}${formatMinutes(Math.abs(gap))} par rapport à la cible`,
         counters.agentId
       );
     }
@@ -379,9 +377,7 @@ export function countPlanning(input: RuleInput): AgentCounters[] {
           (ANNUAL_MINUTES.STANDARD_1607 - ANNUAL_MINUTES.NIGHT_1476) *
             (counters.workedMinutes ? nightMinutes / counters.workedMinutes : 0)
         : ANNUAL_MINUTES[agent.hoursRegime];
-    const contractDays = dates.filter(
-      (date) => date >= agent.startDate && (!agent.endDate || date <= agent.endDate)
-    ).length;
+    const contractDays = dates.filter((date) => inContract(agent, date)).length;
     const year = Number(input.month.slice(0, 4));
     const yearDays = daysBetween(`${year}-01-01`, `${year + 1}-01-01`);
     counters.targetMinutes = Math.round(

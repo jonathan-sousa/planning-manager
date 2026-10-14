@@ -1,13 +1,13 @@
 // Input and output of the planning rules. Structural types: the API rows and
 // their JSON form (frontend) both fit, so the same validator runs on both sides.
-import {
-  type DayKind,
-  type HoursRegime,
-  type NightMode,
-  type RequestKind,
-  type RuleCode,
+import type {
+  DayKind,
+  HoursRegime,
+  NightMode,
+  RequestKind,
+  RuleCode,
   RULES,
-  type ShiftKind,
+  ShiftKind,
 } from '../domain';
 
 export interface RuleShift {
@@ -92,10 +92,7 @@ export interface RuleInput {
   requests: RuleRequest[];
 }
 
-export { RULES };
-export type { RuleCode };
-
-export type Severity = (typeof RULES)[RuleCode];
+type Severity = (typeof RULES)[RuleCode];
 
 export interface Violation {
   rule: RuleCode;
@@ -120,6 +117,12 @@ export interface AgentCounters {
   weekendDays: number;
   holidays: number;
 }
+
+/** Whether a date falls within an agent's contract. */
+export const inContract = (
+  agent: { startDate: string; endDate: string | null },
+  date: string
+): boolean => date >= agent.startDate && (!agent.endDate || date <= agent.endDate);
 
 /** Agents of a month's grid: under contract during the month, and active or holding cells in it. */
 export function planningAgents<

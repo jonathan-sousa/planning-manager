@@ -15,14 +15,14 @@ export const coverageOverrideRoutes = new Hono()
 
   .post('/', validate('json', coverageOverrideInput), async (c) => {
     const input = c.req.valid('json');
-    await requireShiftKind(input.shiftTypeId, WORK_SHIFT.kinds, WORK_SHIFT.message);
+    await requireShiftKind(input.shiftTypeId, WORK_SHIFT);
     const [row] = await db.insert(coverageOverrides).values(input).returning();
     return c.json(row, 201);
   })
 
   .put('/:id', validate('param', idParam), validate('json', coverageOverrideInput), async (c) => {
     const input = c.req.valid('json');
-    await requireShiftKind(input.shiftTypeId, WORK_SHIFT.kinds, WORK_SHIFT.message);
+    await requireShiftKind(input.shiftTypeId, WORK_SHIFT);
     const [row] = await db
       .update(coverageOverrides)
       .set(input)
