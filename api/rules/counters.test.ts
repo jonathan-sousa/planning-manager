@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RuleInput } from './model';
-import { countPlanning } from './validate';
+import { countPlanning } from './counters';
 
 const base: Omit<RuleInput, 'agents' | 'cells'> = {
   month: '2026-11',

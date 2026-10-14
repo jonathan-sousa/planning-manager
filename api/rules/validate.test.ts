@@ -1,5 +1,6 @@
-// Replays the shared scenarios of fixtures/rule-scenarios/ (also used by the
-// solver tests): names and codes in the JSON are turned into ids here.
+// The validator, through the shared scenarios of fixtures/rule-scenarios/:
+// pytest replays the same files against the solver model, so both sides agree
+// on every rule. Names and codes in the JSON are turned into ids here.
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { RuleInput, RuleSettings, RuleShift } from './model';

@@ -10,7 +10,9 @@ import {
   type Violation,
   violationKey,
 } from '../../../api/rules/model';
-import { countPlanning, coverage, validatePlanning } from '../../../api/rules/validate';
+import { countPlanning } from '../../../api/rules/counters';
+import { coverage } from '../../../api/rules/coverage';
+import { validatePlanning } from '../../../api/rules/validate';
 import type { GridCell } from './cells';
 import type {
   AcceptedViolation,
