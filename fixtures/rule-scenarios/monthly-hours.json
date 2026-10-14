@@ -1,0 +1,23 @@
+{
+  "description": "Cible du mois (132 h 05 à temps plein en novembre) : 11 jours de 12 h restent dans la tolérance de 12 h, un mois vide non.",
+  "month": "2026-11",
+  "agents": [{ "name": "Plein" }, { "name": "Vide" }],
+  "cells": {
+    "Plein": {
+      "2026-11-02": "J",
+      "2026-11-03": "J",
+      "2026-11-05": "J",
+      "2026-11-06": "J",
+      "2026-11-09": "J",
+      "2026-11-10": "J",
+      "2026-11-12": "J",
+      "2026-11-13": "J",
+      "2026-11-16": "J",
+      "2026-11-17": "J",
+      "2026-11-19": "J"
+    }
+  },
+  "rules": ["MONTHLY_HOURS"],
+  "hard": false,
+  "expected": [{ "rule": "MONTHLY_HOURS", "agent": "Vide", "date": "2026-11-30" }]
+}

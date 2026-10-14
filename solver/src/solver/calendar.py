@@ -90,3 +90,18 @@ def nominal_minutes(start: str, end: str) -> int:
 
     span = minutes(end) - minutes(start)
     return span if span > 0 else span + 24 * 60
+
+
+def counted_on(day: str, shift: dict) -> int:
+    """Minutes credited for a shift on a date: a work shift follows DST."""
+    if shift["kind"] != "WORK" or not shift["startTime"]:
+        return shift["countedMinutes"]
+    start, end = shift_interval(day, shift["startTime"], shift["endTime"])
+    return shift["countedMinutes"] + (
+        end - start - nominal_minutes(shift["startTime"], shift["endTime"])
+    )
+
+
+def fortnight_start(day: str, anchor: str) -> str:
+    """First day of the fixed two-week period holding `day`."""
+    return add_days(anchor, (days_between(anchor, day) // 14) * 14)

@@ -19,15 +19,18 @@ from ortools.sat.python import cp_model
 
 from .calendar import (
     add_days,
+    counted_on,
     day_kind,
     day_of_week,
     days_between,
+    fortnight_start,
     is_public_holiday,
     month_dates,
     nominal_minutes,
     paris_minute,
     shift_interval,
 )
+from .literals import Lit, any_of, as_expr, both, negate, none_of
 
 CONTEXT_DAYS = 13
 ANNUAL_MINUTES = {
@@ -37,8 +40,6 @@ ANNUAL_MINUTES = {
 }
 TARGET_GAP_WEIGHT = 1
 """Weight of a person missing to reach a need's target (below the minimum is level 2)."""
-
-Lit = Any  # a CP-SAT literal, or the constants True / False
 
 
 class SolveError(Exception):
@@ -109,7 +110,7 @@ class PlanningModel:
             and shift["startTime"]
             and self._well_defined(shift)
         ]
-        self.hard: list[Any] = []  # violation indicators (bool or int vars)
+        self.hard: list[Any] = []  # violation indicators (bool vars)
         self.hard_constant = 0  # violations already fixed by constant cells
         self.slots: dict[tuple[str, str], Slot] = {}
         self._off: dict[tuple[str, str], Lit] = {}
@@ -128,11 +129,6 @@ class PlanningModel:
 
     # --- cells ------------------------------------------------------------
 
-    def _in_contract(self, agent: dict, day: str) -> bool:
-        return day >= agent["startDate"] and (
-            not agent.get("endDate") or day <= agent["endDate"]
-        )
-
     def _build_slots(self, first: str, last: str) -> None:
         existing = {(c["agentId"], c["date"]): c for c in self.p.cells}
         absences = self.absences
@@ -142,10 +138,8 @@ class PlanningModel:
                 key = (agent["id"], day)
                 cell = existing.get(key)
                 in_month = first <= day <= last
-                if not in_month or not self._in_contract(agent, day):
-                    self.slots[key] = Slot(fixed=cell["shiftTypeId"] if cell else None)
-                    continue
-                if self.frozen:
+                # Outside the month or the contract, or a frozen grid: as it is.
+                if not in_month or not in_contract(agent, day) or self.frozen:
                     self.slots[key] = Slot(fixed=cell["shiftTypeId"] if cell else None)
                     continue
                 if cell and (self.p.mode == "COMPLETE" or cell.get("locked")):
@@ -249,103 +243,118 @@ class PlanningModel:
     # --- hard rules ------------------------------------------------------------
 
     def add_hard_rules(self) -> None:
-        s = self.settings
+        self._fixed_absences()
+        for agent in self.p.agents:
+            self._fixed_work_cells(agent)
+            self._daily_rest(agent)
+            self._rolling_weeks(agent)
+            self._fortnights(agent)
+
+    def _fixed_absences(self) -> None:
+        """Approved absences hold their code (only a frozen grid can differ)."""
         first, last = self.dates[0], self.dates[-1]
-        # Approved absences hold their code (only a frozen grid can differ).
+        agents = {agent["id"]: agent for agent in self.p.agents}
         for (agent_id, day), code in self.absences.items():
             slot = self.slots.get((agent_id, day))
-            if first <= day <= last and slot and not slot.free and slot.fixed != code:
-                agent = next(a for a in self.p.agents if a["id"] == agent_id)
-                if self._in_contract(agent, day):
-                    self.hard_constant += 1
-        for agent in self.p.agents:
-            a = agent["id"]
-            # Fixed work cells: day/night mode, amplitude and break. Free cells
-            # only offer the shifts allowed to the agent and well defined.
-            for day in self.dates:
-                slot = self.slots[(a, day)]
-                shift = (
-                    self.shifts.get(slot.fixed)
-                    if not slot.free and slot.fixed
-                    else None
-                )
-                if not shift or shift["kind"] != "WORK" or not shift["startTime"]:
-                    continue
-                mode = agent["nightMode"]
-                self.hard_constant += sum(
-                    (
-                        mode == "DAY_ONLY" and shift["isNight"],
-                        mode == "NIGHT_ONLY" and not shift["isNight"],
-                        not self._well_defined(shift),
-                    )
-                )
-            # Daily rest between shifts of consecutive days (real time).
-            for day in self.window[:-1]:
-                if not (add_days(first, -1) <= day <= last):
-                    continue
-                for shift1, lit1 in self.options(a, day):
-                    for shift2, lit2 in self.options(a, add_days(day, 1)):
-                        _, end = shift_interval(
-                            day, shift1["startTime"], shift1["endTime"]
-                        )
-                        start, _ = shift_interval(
-                            add_days(day, 1), shift2["startTime"], shift2["endTime"]
-                        )
-                        if start - end < s["minDailyRestMinutes"]:
-                            self.clause([_negate(lit1), _negate(lit2)])
+            if (
+                first <= day <= last
+                and slot
+                and not slot.free
+                and slot.fixed != code
+                and in_contract(agents[agent_id], day)
+            ):
+                self.hard_constant += 1
 
-            for end in self.dates:
-                # 48 h over 7 rolling days.
-                week = [add_days(end, -i) for i in range(7)]
-                self.at_most(
-                    sum(self.counted(a, d, work_only=True) for d in week),
-                    s["maxWeeklyMinutes"],
-                    7 * 24 * 60,
-                )
-                # Consecutive worked days.
-                run = [
-                    add_days(end, -i) for i in range(s["maxConsecutiveWorkDays"] + 1)
-                ]
-                self.at_most(
-                    sum(self.works(a, d) for d in run), s["maxConsecutiveWorkDays"], 1
-                )
-                # A long rest meets every 7-day window: one starting after the work of
-                # the 8 days before the window's last day, or after that day itself
-                # when its work ends before the window does (midnight).
-                starts = [
-                    self.long_rest_after(a, add_days(end, -i)) for i in range(1, 9)
-                ]
-                starts.append(
-                    self.both(
-                        self.long_rest_after(a, end), _negate(self.ends_late(a, end))
-                    )
-                )
-                self.clause(starts)
-
-            # Fixed fortnights: rest days, two consecutive with a Sunday.
-            starts = sorted(
-                {fortnight_start(d, s["fortnightAnchorDate"]) for d in self.dates}
+    def _fixed_work_cells(self, agent: dict) -> None:
+        """Fixed work cells: day/night mode, amplitude and break. Free cells
+        only offer the shifts allowed to the agent and well defined."""
+        for day in self.dates:
+            slot = self.slots[(agent["id"], day)]
+            shift = (
+                self.shifts.get(slot.fixed) if not slot.free and slot.fixed else None
             )
-            for start in starts:
-                days = [add_days(start, i) for i in range(14)]
-                if not all(self._in_contract(agent, d) for d in days):
-                    continue
-                rest = {
-                    d: self.rest_day(a, d)
-                    for d in [add_days(start, -1), *days, add_days(start, 14)]
-                }
-                self.at_most(
-                    sum(1 - _as_expr(rest[d]) for d in days),
-                    14 - s["fortnightMinRestDays"],
-                    14,
+            if not shift or shift["kind"] != "WORK" or not shift["startTime"]:
+                continue
+            mode = agent["nightMode"]
+            self.hard_constant += sum(
+                (
+                    mode == "DAY_ONLY" and shift["isNight"],
+                    mode == "NIGHT_ONLY" and not shift["isNight"],
+                    not self._well_defined(shift),
                 )
-                pairs = []
-                for d in days:
-                    if day_of_week(d) != 0:
-                        continue
-                    for other in (add_days(d, -1), add_days(d, 1)):
-                        pairs.append(self.both(rest[d], rest[other]))
-                self.clause(pairs)
+            )
+
+    def _daily_rest(self, agent: dict) -> None:
+        """Daily rest between shifts of consecutive days (real time), from the
+        last day of the previous month."""
+        a = agent["id"]
+        for day in [add_days(self.dates[0], -1), *self.dates]:
+            for shift1, lit1 in self.options(a, day):
+                for shift2, lit2 in self.options(a, add_days(day, 1)):
+                    _, end = shift_interval(day, shift1["startTime"], shift1["endTime"])
+                    start, _ = shift_interval(
+                        add_days(day, 1), shift2["startTime"], shift2["endTime"]
+                    )
+                    if start - end < self.settings["minDailyRestMinutes"]:
+                        self.clause([negate(lit1), negate(lit2)])
+
+    def _rolling_weeks(self, agent: dict) -> None:
+        """Every 7 rolling days ending in the month: hours, consecutive days, long rest."""
+        s = self.settings
+        a = agent["id"]
+        for end in self.dates:
+            # 48 h over 7 rolling days.
+            week = [add_days(end, -i) for i in range(7)]
+            self.at_most(
+                sum(self.counted(a, d, work_only=True) for d in week),
+                s["maxWeeklyMinutes"],
+                7 * 24 * 60,
+            )
+            # Consecutive worked days.
+            run = [add_days(end, -i) for i in range(s["maxConsecutiveWorkDays"] + 1)]
+            self.at_most(
+                sum(self.works(a, d) for d in run), s["maxConsecutiveWorkDays"], 1
+            )
+            # A long rest meets every 7-day window: one starting after the work of
+            # the 8 days before the window's last day, or after that day itself
+            # when its work ends before the window does (midnight).
+            starts = [self.long_rest_after(a, add_days(end, -i)) for i in range(1, 9)]
+            starts.append(
+                both(
+                    self.m, self.long_rest_after(a, end), negate(self.ends_late(a, end))
+                )
+            )
+            self.clause(starts)
+
+    def _fortnights(self, agent: dict) -> None:
+        """Fixed fortnights: rest days, two consecutive with a Sunday."""
+        s = self.settings
+        a = agent["id"]
+        starts = sorted(
+            {fortnight_start(d, s["fortnightAnchorDate"]) for d in self.dates}
+        )
+        for start in starts:
+            days = [add_days(start, i) for i in range(14)]
+            if not all(in_contract(agent, d) for d in days):
+                continue
+            rest = {
+                d: self.rest_day(a, d)
+                for d in [add_days(start, -1), *days, add_days(start, 14)]
+            }
+            self.at_most(
+                sum(1 - as_expr(rest[d]) for d in days),
+                14 - s["fortnightMinRestDays"],
+                14,
+            )
+            pairs = []
+            for d in days:
+                if day_of_week(d) != 0:
+                    continue
+                for other in (add_days(d, -1), add_days(d, 1)):
+                    pairs.append(both(self.m, rest[d], rest[other]))
+            self.clause(pairs)
+
+    # --- derived literals ------------------------------------------------------
 
     def off(self, agent_id: str, day: str) -> Lit:
         """True when no work shift starts that day."""
@@ -355,19 +364,10 @@ class PlanningModel:
             if any(lit is True for _, lit in options):
                 self._off[key] = False
             else:
-                self._off[key] = self.off_from(
-                    [lit for _, lit in options if lit is not False]
+                self._off[key] = none_of(
+                    self.m, [lit for _, lit in options if lit is not False]
                 )
         return self._off[key]
-
-    def off_from(self, literals: list[Any]) -> Lit:
-        """True when none of the literals is."""
-        if not literals:
-            return True
-        var = self.m.new_bool_var("")
-        self.m.add(sum(literals) == 0).only_enforce_if(var)
-        self.m.add(sum(literals) >= 1).only_enforce_if(var.Not())
-        return var
 
     def ends_late(self, agent_id: str, day: str) -> Lit:
         """True when the work starting that day ends at or after the next midnight."""
@@ -379,25 +379,13 @@ class PlanningModel:
         ]
         if any(lit is True for lit in late):
             return True
-        return _negate(self.off_from([lit for lit in late if lit is not False]))
+        return negate(none_of(self.m, [lit for lit in late if lit is not False]))
 
     def night_on(self, agent_id: str, day: str) -> Lit:
         nights = [lit for shift, lit in self.options(agent_id, day) if shift["isNight"]]
         if any(lit is True for lit in nights):
             return True
-        return _negate(self.off_from([lit for lit in nights if lit is not False]))
-
-    def both(self, lit1: Lit, lit2: Lit) -> Lit:
-        if lit1 is False or lit2 is False:
-            return False
-        if lit1 is True:
-            return lit2
-        if lit2 is True:
-            return lit1
-        var = self.m.new_bool_var("")
-        self.m.add_bool_and([lit1, lit2]).only_enforce_if(var)
-        self.m.add_bool_or([lit1.Not(), lit2.Not()]).only_enforce_if(var.Not())
-        return var
+        return negate(none_of(self.m, [lit for lit in nights if lit is not False]))
 
     def rest_day(self, agent_id: str, day: str) -> Lit:
         """No work shift starts that day, nor (optionally) a night the day before."""
@@ -405,8 +393,8 @@ class PlanningModel:
         if key not in self._rest:
             off = self.off(agent_id, day)
             if self.settings["restDayExcludesPreviousNight"]:
-                off = self.both(
-                    off, _negate(self.night_on(agent_id, add_days(day, -1)))
+                off = both(
+                    self.m, off, negate(self.night_on(agent_id, add_days(day, -1)))
                 )
             self._rest[key] = off
         return self._rest[key]
@@ -416,7 +404,7 @@ class PlanningModel:
         days off after it, or one day off and a compatible shift two days later."""
         off1 = self.off(agent_id, add_days(day, 1))
         off2 = self.off(agent_id, add_days(day, 2))
-        three = self.both(off1, off2)
+        three = both(self.m, off1, off2)
         if three is True or off1 is False:
             return three
         # One day off, then shifts far enough apart.
@@ -428,23 +416,18 @@ class PlanningModel:
                     add_days(day, 2), shift2["startTime"], shift2["endTime"]
                 )
                 if start - end < self.settings["minWeeklyRestMinutes"]:
-                    conflicts.append(self.both(lit1, lit2))
+                    conflicts.append(both(self.m, lit1, lit2))
         if any(c is True for c in conflicts):
             two = False
         else:
             live = [c for c in conflicts if c is not False]
-            two = self.both(off1, self.off_from(live)) if live else off1
+            two = both(self.m, off1, none_of(self.m, live)) if live else off1
         if two is True or three is True:
             return True
         literals = [lit for lit in (two, three) if lit is not False]
         if not literals:
             return False
-        if len(literals) == 1:
-            return literals[0]
-        var = self.m.new_bool_var("")
-        self.m.add_bool_or(literals).only_enforce_if(var)
-        self.m.add_bool_and([lit.Not() for lit in literals]).only_enforce_if(var.Not())
-        return var
+        return any_of(self.m, literals)
 
     # --- coverage and soft terms -----------------------------------------------
 
@@ -469,7 +452,7 @@ class PlanningModel:
                     slots[key] = {**slots.get(key, {}), **override, "targetCount": None}
             for (shift_id, grade_id, skill_id), need in slots.items():
                 count = sum(
-                    _as_expr(self.assigned(a, day, shift_id))
+                    as_expr(self.assigned(a, day, shift_id))
                     for a, agent in agents.items()
                     if agent["gradeId"] == grade_id
                     and (not skill_id or skill_id in agent["skillIds"])
@@ -506,19 +489,19 @@ class PlanningModel:
             for day in self.dates:
                 slot = self.slots[(a, day)]
                 fixed = self.shifts.get(slot.fixed) if slot.fixed else None
-                if not self._in_contract(agent, day) or (
-                    fixed and fixed["kind"] != "REST"
-                ):
+                if not in_contract(agent, day) or (fixed and fixed["kind"] != "REST"):
                     continue
-                isolated = self.both(
+                isolated = both(
+                    self.m,
                     self.off(a, day),
-                    self.both(
+                    both(
+                        self.m,
                         self.worked(a, add_days(day, -1)),
                         self.worked(a, add_days(day, 1)),
                     ),
                 )
                 if isolated is not False:
-                    terms.append(s["isolatedRestDayWeight"] * _as_expr(isolated))
+                    terms.append(s["isolatedRestDayWeight"] * as_expr(isolated))
         # Wishes.
         for request in self.p.requests:
             day = request["startDate"]
@@ -532,7 +515,7 @@ class PlanningModel:
                         granted = self.assigned(
                             request["agentId"], day, request["shiftTypeId"]
                         )
-                        terms.append(s["wishWeight"] * (1 - _as_expr(granted)))
+                        terms.append(s["wishWeight"] * (1 - as_expr(granted)))
                 day = add_days(day, 1)
         # Fairness within each grade: spread between the most and least loaded.
         for agents in by_grade.values():
@@ -561,15 +544,15 @@ class PlanningModel:
             for (a, day), slot in self.slots.items():
                 if slot.free and (a, day) in current:
                     kept = slot.choices.get(current[(a, day)], False)
-                    terms.append(s["stabilityWeight"] * (1 - _as_expr(kept)))
+                    terms.append(s["stabilityWeight"] * (1 - as_expr(kept)))
         return terms
 
     def worked(self, agent_id: str, day: str) -> Lit:
-        return _negate(self.off(agent_id, day))
+        return negate(self.off(agent_id, day))
 
     def nights(self, agent: dict) -> Any:
         return sum(
-            _as_expr(lit)
+            as_expr(lit)
             for d in self.dates
             for shift, lit in self.options(agent["id"], d)
             if shift["isNight"]
@@ -590,7 +573,7 @@ class PlanningModel:
         annual = ANNUAL_MINUTES.get(
             agent["hoursRegime"], ANNUAL_MINUTES["STANDARD_1607"]
         )
-        days = sum(1 for d in self.dates if self._in_contract(agent, d))
+        days = sum(1 for d in self.dates if in_contract(agent, d))
         year = int(self.p.month[:4])
         year_days = days_between(f"{year}-01-01", f"{year + 1}-01-01")
         return round(annual * agent["workTimeRatio"] / 100 * days / year_days)
@@ -678,28 +661,11 @@ def absences_of(requests: list[dict]) -> dict[tuple[str, str], str]:
     return absences
 
 
-def counted_on(day: str, shift: dict) -> int:
-    """Minutes credited for a shift on a date: a work shift follows DST."""
-    if shift["kind"] != "WORK" or not shift["startTime"]:
-        return shift["countedMinutes"]
-    start, end = shift_interval(day, shift["startTime"], shift["endTime"])
-    return shift["countedMinutes"] + (
-        end - start - nominal_minutes(shift["startTime"], shift["endTime"])
+def in_contract(agent: dict, day: str) -> bool:
+    """Mirror of inContract (api/rules/model.ts)."""
+    return day >= agent["startDate"] and (
+        not agent.get("endDate") or day <= agent["endDate"]
     )
-
-
-def fortnight_start(day: str, anchor: str) -> str:
-    return add_days(anchor, (days_between(anchor, day) // 14) * 14)
-
-
-def _negate(lit: Lit) -> Lit:
-    if isinstance(lit, bool):
-        return not lit
-    return lit.Not()
-
-
-def _as_expr(lit: Lit) -> Any:
-    return int(lit) if isinstance(lit, bool) else lit
 
 
 def solve(problem: Problem) -> dict:

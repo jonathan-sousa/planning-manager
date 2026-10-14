@@ -1,0 +1,10 @@
+{
+  "description": "Pause minimale portée à 30 min : un poste de 12 h avec 20 min de pause ne la respecte pas, un poste de 7 h 30 avec 30 min si.",
+  "month": "2026-11",
+  "settings": { "minBreakMinutes": 30 },
+  "agents": [{ "name": "Jour" }, { "name": "Matin" }],
+  "cells": { "Jour": { "2026-11-05": "J" }, "Matin": { "2026-11-05": "M" } },
+  "rules": ["SHIFT_BREAK"],
+  "hard": true,
+  "expected": [{ "rule": "SHIFT_BREAK", "agent": "Jour", "date": "2026-11-05" }]
+}
