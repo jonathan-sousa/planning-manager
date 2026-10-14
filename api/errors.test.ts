@@ -40,6 +40,7 @@ describe('toErrorResponse', () => {
   it('maps a foreign key violation by method', () => {
     expect(toErrorResponse(pgFailure('23503'), 'DELETE')?.status).toBe(409);
     expect(toErrorResponse(pgFailure('23503'), 'POST')?.status).toBe(400);
+    expect(toErrorResponse(pgFailure('23001'), 'DELETE')?.status).toBe(409);
   });
 
   it('leaves unexpected errors to the 500 handler', () => {
