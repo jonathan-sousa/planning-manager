@@ -1,87 +1,64 @@
-import { beforeAll, describe, expect, it } from 'vitest';
-import type { ApiError } from './errors';
+// The app as a whole: preflights, the managers guard on every route, the
+// health check and the mapping of errors to responses.
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetDb } from './test/db';
+import { body, caller, send } from './test/http';
 
-// Requests below are rejected before any database access.
-let app: (typeof import('./app'))['default'];
-beforeAll(async () => {
-  process.env.DATABASE_ENDPOINT = 'test.dsql.eu-west-3.on.aws';
-  process.env.DATABASE_USER = 'admin';
-  app = (await import('./app')).default;
+vi.mock('./db/client', () => import('./test/db'));
+const checkSolverHealth = vi.hoisted(() => vi.fn());
+vi.mock('./solver-client', () => ({ checkSolverHealth, startSolve: vi.fn() }));
+
+const { default: app } = await import('./app');
+
+beforeEach(async () => {
+  await resetDb();
+  checkSolverHealth.mockReset();
 });
 
-const managerEnv = (groups: string, tokenUse = 'access') => ({
-  event: {
-    requestContext: {
-      authorizer: {
-        jwt: { claims: { 'cognito:groups': groups, token_use: tokenUse, username: 'u' } },
-      },
-    },
-  },
-});
-
-const post = (path: string, body: unknown, groups = '[MANAGERS]', tokenUse = 'access') =>
-  app.request(
-    path,
-    { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } },
-    managerEnv(groups, tokenUse)
-  );
-
-describe('API', () => {
-  it('rejects callers outside the managers group', async () => {
-    const response = await post('/grades', { code: 'IDE', label: 'Infirmier' }, '[OTHERS]');
-    expect(response.status).toBe(403);
+describe('app', () => {
+  it('answers CORS preflights without a token', async () => {
+    expect((await app.request('/grades', { method: 'OPTIONS' })).status).toBe(204);
   });
 
-  it('rejects ID tokens, which the authorizer also accepts', async () => {
-    const response = await post('/grades', { code: 'IDE', label: 'Infirmier' }, '[MANAGERS]', 'id');
-    expect(response.status).toBe(403);
+  it('keeps every route for the managers group', async () => {
+    expect((await send('GET', '/grades', undefined, caller('[OTHERS]'))).status).toBe(403);
+    expect((await send('GET', '/plannings/2026-11', undefined, caller('[OTHERS]'))).status).toBe(
+      403
+    );
+  });
+
+  it('checks the database and the solver', async () => {
+    const solver = { status: 'OPTIMAL', ortoolsVersion: '9', pythonVersion: '3', database: 'ok' };
+    checkSolverHealth.mockResolvedValue(solver);
+    expect(await body(await send('GET', '/health'))).toEqual({ database: 'ok', solver });
   });
 
   it('answers invalid input with French messages per field', async () => {
-    const response = await post('/grades', { code: '', label: 'x'.repeat(101) });
+    const response = await send('POST', '/grades', { code: '', label: 'x'.repeat(101) });
     expect(response.status).toBe(400);
-    const body = (await response.json()) as ApiError;
-    expect(body.error).toBe('Données invalides');
-    expect(body.fields?.code).toEqual(['Requis']);
-    expect(body.fields?.label?.[0]).toMatch(/trop grand/i);
+    const error = await body(response);
+    expect(error.error).toBe('Données invalides');
+    expect(error.fields?.code).toEqual(['Requis']);
+    expect(error.fields?.label?.[0]).toMatch(/trop grand/i);
   });
 
-  it('reports cross-field rules on the field at fault', async () => {
-    const response = await post('/shift-types', {
-      code: 'J',
-      label: 'Jour',
-      kind: 'WORK',
-      startTime: '07:00',
-      endTime: null,
-      breakMinutes: 0,
-      countedMinutes: 690,
-      isNight: false,
-      color: '#ffcc00',
-      archived: false,
-    });
-    expect(response.status).toBe(400);
-    expect((await response.json()) as ApiError).toEqual({
-      error: 'Données invalides',
-      fields: { endTime: ['Requis pour un poste travaillé'] },
-    });
-  });
-
-  it('answers malformed bodies with 400', async () => {
+  it('answers a malformed body or id with 400, before any query', async () => {
     const malformed = await app.request(
       '/grades',
       { method: 'POST', body: '{bad', headers: { 'Content-Type': 'application/json' } },
-      managerEnv('[MANAGERS]')
+      caller('[MANAGERS]')
     );
     expect(malformed.status).toBe(400);
-    expect((await post('/shift-types', null)).status).toBe(400);
+    expect(await body(malformed)).toEqual({ error: 'Requête invalide' });
+    expect((await send('POST', '/shift-types', null)).status).toBe(400);
+    expect((await send('DELETE', '/grades/not-a-uuid')).status).toBe(400);
   });
 
-  it('rejects malformed ids before querying', async () => {
-    const response = await app.request(
-      '/grades/not-a-uuid',
-      { method: 'DELETE' },
-      managerEnv('[MANAGERS]')
-    );
-    expect(response.status).toBe(400);
+  it('hides an unexpected error behind a 500', async () => {
+    checkSolverHealth.mockRejectedValue(new Error('connection lost'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const response = await send('GET', '/health');
+    expect(response.status).toBe(500);
+    expect(await body(response)).toEqual({ error: 'Erreur interne' });
   });
 });

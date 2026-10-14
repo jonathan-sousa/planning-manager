@@ -1,0 +1,120 @@
+import { Hono } from 'hono';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  inviteAccount,
+  listAccounts,
+  requireActiveAdmin,
+  resendInvitation,
+  resetMfa,
+  setAccountEnabled,
+  updateAccount,
+} from './accounts';
+import type { Bindings } from './auth';
+import { pool } from './test/cognito';
+import { ADMIN, caller, uuid } from './test/http';
+
+vi.mock('@aws-sdk/client-cognito-identity-provider', async (original) => ({
+  ...(await original<object>()),
+  CognitoIdentityProviderClient: (await import('./test/cognito')).FakeCognitoClient,
+}));
+
+const commands = () => pool.calls.map(([name]) => name);
+
+beforeEach(() => {
+  pool.reset();
+  pool.add({ username: uuid(1), email: 'admin@example.org', name: 'Admin' }, [
+    'MANAGERS',
+    'ADMINS',
+  ]);
+  pool.add({ username: uuid(2), email: 'cadre@example.org', name: 'Cadre' }, ['MANAGERS']);
+});
+
+describe('accounts', () => {
+  it('lists the members of the managers group, across pages, with their admin flag', async () => {
+    pool.add({ username: uuid(3), email: 'hors@example.org' });
+    pool.add({ username: uuid(4), email: 'autre@example.org', enabled: false }, ['MANAGERS']);
+    const accounts = await listAccounts();
+    expect(accounts.map((account) => [account.email, account.admin, account.enabled])).toEqual([
+      ['admin@example.org', true, true],
+      ['cadre@example.org', false, true],
+      ['autre@example.org', false, false],
+    ]);
+    expect(accounts[0]).toMatchObject({ username: uuid(1), name: 'Admin', status: 'CONFIRMED' });
+    // Two users a page: the users and both groups are read to the end.
+    expect(commands().filter((name) => name === 'ListUsersCommand')).toHaveLength(2);
+  });
+
+  it('invites a new account into the managers group, admin on request', async () => {
+    const outcome = await inviteAccount({ email: 'new@example.org', name: 'Nouveau', admin: true });
+    expect(outcome).toMatchObject({ created: true });
+    const { username } = outcome as { username: string };
+    expect(pool.get(username)).toMatchObject({
+      email: 'new@example.org',
+      name: 'Nouveau',
+      status: 'FORCE_CHANGE_PASSWORD',
+      groups: new Set(['MANAGERS', 'ADMINS']),
+    });
+  });
+
+  it('gives an existing user outside the app its groups, and reports an existing manager', async () => {
+    pool.add({ username: uuid(5), email: 'half@example.org' });
+    expect(await inviteAccount({ email: 'half@example.org', name: 'X', admin: false })).toEqual({
+      username: uuid(5),
+      created: false,
+    });
+    expect(pool.get(uuid(5))!.groups).toEqual(new Set(['MANAGERS']));
+    expect(await inviteAccount({ email: 'cadre@example.org', name: 'X', admin: false })).toBe(
+      'exists'
+    );
+  });
+
+  it('renames and grants or removes the admin role', async () => {
+    await updateAccount(uuid(2), { name: 'Cadre de santé', admin: true });
+    expect(pool.get(uuid(2))).toMatchObject({
+      name: 'Cadre de santé',
+      groups: new Set(['MANAGERS', 'ADMINS']),
+    });
+    await updateAccount(uuid(2), { name: 'Cadre de santé', admin: false });
+    expect(pool.get(uuid(2))!.groups).toEqual(new Set(['MANAGERS']));
+  });
+
+  it('disables with a sign-out, enables again', async () => {
+    await setAccountEnabled(uuid(2), false);
+    expect(pool.get(uuid(2))!.enabled).toBe(false);
+    expect(commands()).toEqual(['AdminDisableUserCommand', 'AdminUserGlobalSignOutCommand']);
+    await setAccountEnabled(uuid(2), true);
+    expect(pool.get(uuid(2))!.enabled).toBe(true);
+  });
+
+  it('forgets the authenticator app and signs the user out', async () => {
+    await resetMfa(uuid(2));
+    expect(pool.get(uuid(2))!.mfa).toBe(false);
+    expect(commands()).toEqual([
+      'AdminSetUserMFAPreferenceCommand',
+      'AdminUserGlobalSignOutCommand',
+    ]);
+  });
+
+  it('resends the invitation to the email', async () => {
+    await resendInvitation('cadre@example.org');
+    expect(pool.calls).toEqual([
+      [
+        'AdminCreateUserCommand',
+        expect.objectContaining({ Username: 'cadre@example.org', MessageAction: 'RESEND' }),
+      ],
+    ]);
+  });
+
+  it('lets through an admin who is still enabled and in the admins group, read live', async () => {
+    const app = new Hono<{ Bindings: Bindings }>().get('/', requireActiveAdmin, (c) =>
+      c.text('ok')
+    );
+    const status = async () => (await app.request('/', {}, caller(ADMIN, uuid(1)))).status;
+    expect(await status()).toBe(200);
+    pool.get(uuid(1))!.groups.delete('ADMINS');
+    expect(await status()).toBe(403);
+    pool.get(uuid(1))!.groups.add('ADMINS');
+    pool.get(uuid(1))!.enabled = false;
+    expect(await status()).toBe(403);
+  });
+});
