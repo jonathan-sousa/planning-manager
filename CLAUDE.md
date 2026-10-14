@@ -76,6 +76,7 @@ docs/                       architecture, modèle de domaine, règles de planifi
 
 ## Conventions
 
+- **Organisation du code** : noyau fonctionnel, coquille impérative ; une route ou un composant charge, appelle une fonction pure, puis écrit ou affiche (`docs/architecture.md` § Organisation du code).
 - **Versions** : toujours la dernière stable, vérifiée sur le registre (`npm view`, PyPI). Ne jamais se fier à la mémoire. Un écart se justifie par une incompatibilité constatée et se documente dans `docs/architecture.md`.
 - **Schéma et DSQL** : toute modification de `api/db/schema.ts` passe par `npm run db:generate` et le SQL généré est committé, sans jamais retoucher une migration déjà appliquée (le générateur réécrit 0001, 0006 et 0008 : les restaurer avec `git checkout`). Règles DSQL (FK `NOT VALID` + validation, tri, OCC, 3 000 lignes, rôles `solver` et `mailer` à qui accorder toute nouvelle table qu'ils utilisent) : `docs/architecture.md` § Base de données.
 - **Données, dates, identifiants** : `docs/domain-model.md` § Conventions. Données fictives uniquement tant que l'hôpital n'a pas validé l'hébergement (jeu de démonstration : `scripts/seed/data.ts`).
