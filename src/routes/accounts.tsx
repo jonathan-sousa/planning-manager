@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { KeyRound, Mail, Pencil, Plus, UserCheck, UserX } from 'lucide-react';
+import { KeyRound, Mail, UserCheck, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { accountInput, accountUpdateInput } from '../../api/schemas';
 import { useIsAdmin, useSession } from '@/auth/session';
+import { CrudPage } from '@/components/crud-page';
 import { FormShell } from '@/components/form-fields';
 import {
   AlertDialog,
@@ -18,15 +19,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';
 import { formatDate } from '@/lib/format';
 import { type Account, accounts } from '@/lib/resources';
@@ -42,7 +34,6 @@ function AccountsPage() {
   const queryClient = useQueryClient();
   const { data, error } = useQuery({ ...accounts.query, enabled: isAdmin });
   const own = useSession()?.username;
-  const [editing, setEditing] = useState<Account | 'new' | null>(null);
   const [disabling, setDisabling] = useState<Account | null>(null);
   const [resettingMfa, setResettingMfa] = useState<Account | null>(null);
   const reload = () => queryClient.invalidateQueries({ queryKey: accounts.query.queryKey });
@@ -71,146 +62,104 @@ function AccountsPage() {
     return <p className="text-muted-foreground text-sm">Page réservée aux admins.</p>;
   }
 
+  const label = (account: Account) => account.name || account.email;
+  const action = (title: string, account: Account) => ({
+    variant: 'ghost' as const,
+    size: 'icon-sm' as const,
+    title,
+    'aria-label': `${title} : ${label(account)}`,
+  });
+
   return (
-    <div className="max-w-5xl space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Comptes</h1>
-          <p className="text-muted-foreground text-sm">
-            Les admins gèrent les comptes et les règles de planification ; les managers, tout le
-            reste. Un compte désactivé garde l'accès au plus une heure (durée de sa session).
-          </p>
-        </div>
-        <Button onClick={() => setEditing('new')}>
-          <Plus />
-          Inviter
-        </Button>
-      </div>
-
-      {error && <p className="text-destructive text-sm">{error.message}</p>}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nom</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Rôle</TableHead>
-            <TableHead>État</TableHead>
-            <TableHead className="w-40" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data?.map((account) => (
-            <TableRow key={account.username} className={account.enabled ? '' : 'opacity-60'}>
-              <TableCell className="font-medium">{account.name || '—'}</TableCell>
-              <TableCell>
-                <div className="flex flex-wrap items-center gap-2">
-                  {account.email}
-                  {account.emailIssue && (
-                    <Badge
-                      variant="destructive"
-                      title={`${account.emailIssue.detail ?? ''} — ${day(account.emailIssue.occurredAt)}`}
-                    >
-                      {account.emailIssue.kind === 'BOUNCE' ? 'Email rejeté' : 'Signalé comme spam'}
-                    </Badge>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>{account.admin ? 'Admin' : 'Manager'}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {!account.enabled
-                  ? 'Désactivé'
-                  : account.status === 'FORCE_CHANGE_PASSWORD'
-                    ? `Invité le ${day(account.createdAt)}`
-                    : 'Actif'}
-              </TableCell>
-              <TableCell>
-                <div className="flex justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Modifier"
-                    onClick={() => setEditing(account)}
+    <>
+      <CrudPage
+        title="Comptes"
+        description="Les admins gèrent les comptes et les règles de planification ; les managers, tout le reste. Un compte désactivé garde l'accès au plus une heure (durée de sa session)."
+        noun={{ article: 'un', name: 'compte' }}
+        createLabel="Inviter"
+        resource={accounts}
+        rows={data}
+        rowId={(account) => account.username}
+        error={error}
+        rowLabel={label}
+        rowClassName={(account) => (account.enabled ? '' : 'opacity-60')}
+        columns={[
+          {
+            header: 'Nom',
+            cell: (account) => account.name || '—',
+            className: 'font-medium',
+          },
+          {
+            header: 'Email',
+            cell: (account) => (
+              <div className="flex flex-wrap items-center gap-2">
+                {account.email}
+                {account.emailIssue && (
+                  <Badge
+                    variant="destructive"
+                    title={`${account.emailIssue.detail ?? ''} — ${day(account.emailIssue.occurredAt)}`}
                   >
-                    <Pencil />
-                  </Button>
-                  {account.enabled && account.status === 'FORCE_CHANGE_PASSWORD' && (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      title="Renvoyer l'invitation"
-                      disabled={resend.isPending}
-                      onClick={() => resend.mutate(account)}
-                    >
-                      <Mail />
-                    </Button>
-                  )}
-                  {account.username !== own &&
-                    account.enabled &&
-                    account.status === 'CONFIRMED' && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        title="Réinitialiser le MFA (téléphone perdu ou changé)"
-                        onClick={() => setResettingMfa(account)}
-                      >
-                        <KeyRound />
-                      </Button>
-                    )}
-                  {account.username !== own &&
-                    (account.enabled ? (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        title="Désactiver"
-                        onClick={() => setDisabling(account)}
-                      >
-                        <UserX />
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        title="Réactiver"
-                        disabled={setEnabled.isPending}
-                        onClick={() => setEnabled.mutate({ account, enabled: true })}
-                      >
-                        <UserCheck />
-                      </Button>
-                    ))}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {editing === 'new' ? 'Inviter un compte' : 'Modifier le compte'}
-            </DialogTitle>
-          </DialogHeader>
-          {editing === 'new' && (
-            <InviteForm
-              onSaved={() => {
-                setEditing(null);
-                void reload();
-              }}
-            />
-          )}
-          {editing && editing !== 'new' && (
-            <EditForm
-              account={editing}
-              self={editing.username === own}
-              onSaved={() => {
-                setEditing(null);
-                void reload();
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+                    {account.emailIssue.kind === 'BOUNCE' ? 'Email rejeté' : 'Signalé comme spam'}
+                  </Badge>
+                )}
+              </div>
+            ),
+          },
+          { header: 'Rôle', cell: (account) => (account.admin ? 'Admin' : 'Manager') },
+          {
+            header: 'État',
+            className: 'text-muted-foreground',
+            cell: (account) =>
+              !account.enabled
+                ? 'Désactivé'
+                : account.status === 'FORCE_CHANGE_PASSWORD'
+                  ? `Invité le ${day(account.createdAt)}`
+                  : 'Actif',
+          },
+        ]}
+        rowActions={(account) => (
+          <>
+            {account.enabled && account.status === 'FORCE_CHANGE_PASSWORD' && (
+              <Button
+                {...action("Renvoyer l'invitation", account)}
+                disabled={resend.isPending}
+                onClick={() => resend.mutate(account)}
+              >
+                <Mail />
+              </Button>
+            )}
+            {account.username !== own && account.enabled && account.status === 'CONFIRMED' && (
+              <Button
+                {...action('Réinitialiser le MFA (téléphone perdu ou changé)', account)}
+                onClick={() => setResettingMfa(account)}
+              >
+                <KeyRound />
+              </Button>
+            )}
+            {account.username !== own &&
+              (account.enabled ? (
+                <Button {...action('Désactiver', account)} onClick={() => setDisabling(account)}>
+                  <UserX />
+                </Button>
+              ) : (
+                <Button
+                  {...action('Réactiver', account)}
+                  disabled={setEnabled.isPending}
+                  onClick={() => setEnabled.mutate({ account, enabled: true })}
+                >
+                  <UserCheck />
+                </Button>
+              ))}
+          </>
+        )}
+        renderForm={({ row, onSaved }) =>
+          row ? (
+            <EditForm account={row} self={row.username === own} onSaved={onSaved} />
+          ) : (
+            <InviteForm onSaved={onSaved} />
+          )
+        }
+      />
 
       <AlertDialog
         open={resettingMfa !== null}
@@ -219,7 +168,7 @@ function AccountsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Réinitialiser le MFA de {resettingMfa?.name || resettingMfa?.email} ?
+              Réinitialiser le MFA de {resettingMfa && label(resettingMfa)} ?
             </AlertDialogTitle>
             <AlertDialogDescription>
               Son application d'authentification est oubliée : à la prochaine connexion, il en
@@ -242,7 +191,7 @@ function AccountsPage() {
       <AlertDialog open={disabling !== null} onOpenChange={(open) => !open && setDisabling(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Désactiver {disabling?.name || disabling?.email} ?</AlertDialogTitle>
+            <AlertDialogTitle>Désactiver {disabling && label(disabling)} ?</AlertDialogTitle>
             <AlertDialogDescription>
               Le compte ne pourra plus se connecter ; sa session en cours expire dans l'heure. Il
               reste réactivable.
@@ -259,7 +208,7 @@ function AccountsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
 

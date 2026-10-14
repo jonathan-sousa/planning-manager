@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { countedOn } from '../../../api/calendar';
-import type { SolveMode } from '../../../api/domain';
-import { cellKey, type GridCell } from './cells';
-import { plannings, type ShiftType } from '@/lib/resources';
+import { type SolveMode, UNFINISHED_SOLVE_STATUSES } from '../../../api/domain';
+import { cellKey, type GridCell, withChanges } from './cells';
+import { invalidatePlanning, plannings, type ShiftType } from '@/lib/resources';
 
 const POLL_MS = 2000;
+
+const unfinished = (status: string | undefined) =>
+  (UNFINISHED_SOLVE_STATUSES as readonly string[]).includes(status ?? '');
 
 /**
  * A solver run on the month: start it, follow it until it ends, then preview
@@ -20,7 +22,7 @@ export function useSolveRun(month: string, cells: Map<string, GridCell>, shifts:
     ...plannings.solveRun(month, runId ?? ''),
     enabled: runId !== null,
     refetchInterval: (query) =>
-      ['PENDING', 'RUNNING'].includes(query.state.data?.status ?? 'PENDING') ? POLL_MS : false,
+      unfinished(query.state.data?.status ?? 'PENDING') ? POLL_MS : false,
   });
 
   const start = useMutation({
@@ -37,7 +39,7 @@ export function useSolveRun(month: string, cells: Map<string, GridCell>, shifts:
     mutationFn: () => plannings.applySolveRun(month, runId!),
     onSuccess: async () => {
       // The applied cells replace the preview only once they are loaded.
-      await queryClient.invalidateQueries({ queryKey: plannings.query(month).queryKey });
+      await invalidatePlanning(queryClient, month);
       setRunId(null);
       toast.success('Proposition appliquée');
     },
@@ -48,35 +50,26 @@ export function useSolveRun(month: string, cells: Map<string, GridCell>, shifts:
   const result = status === 'SUCCEEDED' ? run.data?.result : null;
 
   // The proposal laid over the current cells, and the cells it changes.
-  let preview: { cells: Map<string, GridCell>; changed: Set<string> } | null = null;
-  if (result) {
-    const shiftById = new Map(shifts.map((shift) => [shift.id, shift]));
-    const next = new Map(cells);
-    const changed = new Set<string>();
-    for (const change of result.cells) {
-      const key = cellKey(change.agentId, change.date);
-      changed.add(key);
-      const shift = change.shiftTypeId && shiftById.get(change.shiftTypeId);
-      if (change.shiftTypeId) {
-        next.set(key, {
-          agentId: change.agentId,
-          date: change.date,
-          shiftTypeId: change.shiftTypeId,
-          countedMinutes: shift ? countedOn(change.date, shift) : 0,
-          locked: false,
-        });
-      } else {
-        next.delete(key);
-      }
-    }
-    preview = { cells: next, changed };
-  }
+  const preview = useMemo(
+    () =>
+      result
+        ? {
+            cells: withChanges(
+              cells,
+              result.cells,
+              new Map(shifts.map((shift) => [shift.id, shift]))
+            ),
+            changed: new Set(result.cells.map((change) => cellKey(change.agentId, change.date))),
+          }
+        : null,
+    [result, cells, shifts]
+  );
 
   return {
     start: (mode: SolveMode) => start.mutate(mode),
     apply: () => apply.mutate(),
     discard: () => setRunId(null),
-    running: start.isPending || (!run.isError && (status === 'PENDING' || status === 'RUNNING')),
+    running: start.isPending || (!run.isError && unfinished(status)),
     applying: apply.isPending,
     failed:
       status === 'FAILED'

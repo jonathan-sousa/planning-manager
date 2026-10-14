@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { type QueryKey, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
@@ -22,41 +22,57 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Resource } from '@/lib/resources';
 
 export type Column<Row> = { header: string; cell: (row: Row) => ReactNode; className?: string };
 
-type CrudPageProps<Row extends { id: string }, Input> = {
+type CrudPageProps<Row> = {
   title: string;
+  /** Under the title. */
+  description?: ReactNode;
   /** Singular noun for the buttons and dialogs, e.g. « un grade ». */
   noun: { article: string; name: string };
-  resource: Resource<Input>;
+  /** Verb of the create button and dialog. */
+  createLabel?: string;
+  /** The list query to reload after a write; `remove` adds a delete button. */
+  resource: { query: { queryKey: QueryKey }; remove?: (id: string) => Promise<void> };
   rows: Row[] | undefined;
+  /** Identifier of a row: its `id` unless told otherwise. */
+  rowId?: (row: Row) => string;
   error: Error | null;
   columns: Column<Row>[];
   rowLabel: (row: Row) => string;
+  rowClassName?: (row: Row) => string;
+  /** More buttons of a row, before the edit one. */
+  rowActions?: (row: Row) => ReactNode;
   /** The create/edit form; calls `onSaved` once the API accepted it. */
   renderForm: (props: { row: Row | undefined; onSaved: () => void }) => ReactNode;
 };
 
-/** List of a resource with create, edit and delete dialogs. */
-export function CrudPage<Row extends { id: string }, Input>({
+const ownId = (row: unknown) => (row as { id: string }).id;
+
+/** List of a resource with create, edit and (optionally) delete dialogs. */
+export function CrudPage<Row>({
   title,
+  description,
   noun,
+  createLabel = 'Ajouter',
   resource,
   rows,
+  rowId = ownId,
   error,
   columns,
   rowLabel,
+  rowClassName,
+  rowActions,
   renderForm,
-}: CrudPageProps<Row, Input>) {
+}: CrudPageProps<Row>) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<Row | 'new' | null>(null);
   const [deleting, setDeleting] = useState<Row | null>(null);
   const invalidate = () => queryClient.invalidateQueries({ queryKey: resource.query.queryKey });
 
   const remove = useMutation({
-    mutationFn: (row: Row) => resource.remove(row.id),
+    mutationFn: (row: Row) => resource.remove!(rowId(row)),
     onSuccess: invalidate,
     onError: (error) => toast.error(error.message),
     onSettled: () => setDeleting(null),
@@ -65,10 +81,13 @@ export function CrudPage<Row extends { id: string }, Input>({
   return (
     <div className="max-w-5xl space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">{title}</h1>
+          {description && <p className="text-muted-foreground text-sm">{description}</p>}
+        </div>
         <Button onClick={() => setEditing('new')}>
           <Plus />
-          Ajouter
+          {createLabel}
         </Button>
       </div>
 
@@ -81,7 +100,7 @@ export function CrudPage<Row extends { id: string }, Input>({
                 {column.header}
               </TableHead>
             ))}
-            <TableHead className="w-20" />
+            <TableHead className="w-px" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -93,29 +112,34 @@ export function CrudPage<Row extends { id: string }, Input>({
             </TableRow>
           )}
           {rows?.map((row) => (
-            <TableRow key={row.id}>
+            <TableRow key={rowId(row)} className={rowClassName?.(row)}>
               {columns.map((column) => (
                 <TableCell key={column.header} className={column.className}>
                   {column.cell(row)}
                 </TableCell>
               ))}
               <TableCell className="text-right whitespace-nowrap">
+                {rowActions?.(row)}
                 <Button
                   variant="ghost"
                   size="icon-sm"
                   aria-label={`Modifier ${rowLabel(row)}`}
+                  title="Modifier"
                   onClick={() => setEditing(row)}
                 >
                   <Pencil />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Supprimer ${rowLabel(row)}`}
-                  onClick={() => setDeleting(row)}
-                >
-                  <Trash2 />
-                </Button>
+                {resource.remove && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Supprimer ${rowLabel(row)}`}
+                    title="Supprimer"
+                    onClick={() => setDeleting(row)}
+                  >
+                    <Trash2 />
+                  </Button>
+                )}
               </TableCell>
             </TableRow>
           ))}
@@ -127,7 +151,7 @@ export function CrudPage<Row extends { id: string }, Input>({
           <DialogHeader>
             <DialogTitle>
               {editing === 'new'
-                ? `Ajouter ${noun.article} ${noun.name}`
+                ? `${createLabel} ${noun.article} ${noun.name}`
                 : `Modifier ${editing ? rowLabel(editing) : ''}`}
             </DialogTitle>
           </DialogHeader>

@@ -19,10 +19,10 @@ function SkillsPage() {
       resource={skills}
       rows={data}
       error={error}
-      rowLabel={(grade) => grade.code}
+      rowLabel={(skill) => skill.code}
       columns={[
-        { header: 'Code', cell: (grade) => grade.code, className: 'w-28 font-medium' },
-        { header: 'Libellé', cell: (grade) => grade.label },
+        { header: 'Code', cell: (skill) => skill.code, className: 'w-28 font-medium' },
+        { header: 'Libellé', cell: (skill) => skill.label },
       ]}
       renderForm={(props) => <SkillForm {...props} />}
     />

@@ -7,7 +7,7 @@ import { FormShell } from '@/components/form-fields';
 import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';
 import { dayKindLabels, optionsOf } from '@/lib/labels';
 import { useReferences } from '@/lib/options';
-import { type CoverageNeed, coverageNeeds } from '@/lib/resources';
+import { type CoverageNeed, coverageNeeds, omitMeta } from '@/lib/resources';
 
 export const Route = createFileRoute('/coverage-needs')({
   component: CoverageNeedsPage,
@@ -74,7 +74,7 @@ function CoverageNeedForm({
 }) {
   const refs = useReferences({ shiftTypeId: row?.shiftTypeId });
   const form = useAppForm({
-    defaultValues: row ? toInput(row) : emptyNeed,
+    defaultValues: row ? omitMeta(row) : emptyNeed,
     validationLogic,
     validators: {
       onDynamic: coverageNeedInput,
@@ -112,9 +112,4 @@ function CoverageNeedForm({
       </FormShell>
     </form.AppForm>
   );
-}
-
-function toInput(need: CoverageNeed): CoverageNeedInput {
-  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...input } = need;
-  return input;
 }

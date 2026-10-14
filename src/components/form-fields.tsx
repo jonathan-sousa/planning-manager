@@ -245,7 +245,7 @@ export function ColorField(props: FieldProps) {
   );
 }
 
-export function SubmitButton({ label = 'Enregistrer' }: { label?: string }) {
+function SubmitButton({ label = 'Enregistrer' }: { label?: string }) {
   const form = useFormContext();
   return (
     <form.Subscribe selector={(state) => state.isSubmitting}>
@@ -259,7 +259,7 @@ export function SubmitButton({ label = 'Enregistrer' }: { label?: string }) {
 }
 
 /** Form-level error (an API error that is not tied to a field). */
-export function FormError() {
+function FormError() {
   const form = useFormContext();
   return (
     <form.Subscribe selector={(state) => state.errorMap.onSubmit}>

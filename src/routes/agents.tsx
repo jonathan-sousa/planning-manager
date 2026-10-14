@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/format';
 import { hoursRegimeLabels, nightModeLabels, optionsOf } from '@/lib/labels';
 import { useReferences } from '@/lib/options';
-import { type Agent, agents } from '@/lib/resources';
+import { type Agent, agents, omitMeta } from '@/lib/resources';
 
 export const Route = createFileRoute('/agents')({
   component: AgentsPage,
@@ -81,7 +81,7 @@ function AgentForm({ row, onSaved }: { row: Agent | undefined; onSaved: () => vo
   const { gradeOptions, skillOptions } = useReferences();
 
   const form = useAppForm({
-    defaultValues: row ? toInput(row) : emptyAgent,
+    defaultValues: row ? omitMeta(row) : emptyAgent,
     validationLogic,
     validators: {
       onDynamic: agentInput,
@@ -147,9 +147,4 @@ function AgentForm({ row, onSaved }: { row: Agent | undefined; onSaved: () => vo
       </FormShell>
     </form.AppForm>
   );
-}
-
-function toInput(agent: Agent): AgentInput {
-  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...input } = agent;
-  return input;
 }

@@ -1,4 +1,4 @@
-import { type QueryKey, queryOptions } from '@tanstack/react-query';
+import { type QueryClient, queryOptions } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
 import type { PlanningStatus, SolveMode } from '../../api/domain';
 import type {
@@ -17,12 +17,17 @@ import type {
 } from '../../api/schemas';
 import { api, expectOk, unwrap } from './api-client';
 
-/** Writes of a CRUD resource, and the list query they invalidate. */
-export interface Resource<Input> {
-  query: { queryKey: QueryKey };
-  create: (input: Input) => Promise<unknown>;
-  update: (id: string, input: Input) => Promise<unknown>;
-  remove: (id: string) => Promise<void>;
+/** Database and solver check of the home page. */
+export const health = {
+  query: queryOptions({ queryKey: ['health'], queryFn: () => api.health.$get().then(unwrap) }),
+};
+
+/** The form input of a row: the row without its id and timestamps. */
+export function omitMeta<Row extends { id: string; createdAt?: string; updatedAt: string }>(
+  row: Row
+): Omit<Row, 'id' | 'createdAt' | 'updatedAt'> {
+  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...input } = row;
+  return input;
 }
 
 export const grades = {
@@ -145,6 +150,10 @@ export const plannings = {
       .$delete({ param: { month, id } })
       .then(expectOk),
 };
+
+/** Reloads a month: its cells, status, acceptances and balances. */
+export const invalidatePlanning = (queryClient: QueryClient, month: string) =>
+  queryClient.invalidateQueries({ queryKey: plannings.query(month).queryKey });
 
 export type Grade = InferResponseType<typeof api.grades.$get, 200>[number];
 export type Skill = InferResponseType<typeof api.skills.$get, 200>[number];

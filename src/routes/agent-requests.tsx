@@ -7,7 +7,7 @@ import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';
 import { formatDate } from '@/lib/format';
 import { optionsOf, requestKindLabels } from '@/lib/labels';
 import { useReferences } from '@/lib/options';
-import { type AgentRequest, agentRequests } from '@/lib/resources';
+import { type AgentRequest, agentRequests, omitMeta } from '@/lib/resources';
 
 export const Route = createFileRoute('/agent-requests')({
   component: AgentRequestsPage,
@@ -67,7 +67,7 @@ function AgentRequestForm({
 }) {
   const refs = useReferences({ shiftTypeId: row?.shiftTypeId, agentId: row?.agentId });
   const form = useAppForm({
-    defaultValues: row ? toInput(row) : emptyRequest,
+    defaultValues: row ? omitMeta(row) : emptyRequest,
     validationLogic,
     validators: {
       onDynamic: agentRequestInput,
@@ -134,9 +134,4 @@ function AgentRequestForm({
       </FormShell>
     </form.AppForm>
   );
-}
-
-function toInput(request: AgentRequest): AgentRequestInput {
-  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...input } = request;
-  return input;
 }

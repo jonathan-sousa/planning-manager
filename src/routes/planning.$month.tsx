@@ -13,6 +13,7 @@ import {
   coverageNeeds,
   coverageOverrides,
   grades,
+  invalidatePlanning,
   plannings,
   ruleSettings,
   shiftTypes,
@@ -39,7 +40,7 @@ function PlanningPage() {
   };
   const create = useMutation({
     mutationFn: () => plannings.create(month),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: plannings.query(month).queryKey }),
+    onSuccess: () => invalidatePlanning(queryClient, month),
     onError: (error) => toast.error(error.message),
   });
 

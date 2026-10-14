@@ -1,17 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { api, unwrap } from '@/lib/api-client';
+import { health as healthCheck } from '@/lib/resources';
 
 export const Route = createFileRoute('/')({
   component: HomePage,
 });
 
 function HomePage() {
-  const health = useQuery({
-    queryKey: ['health'],
-    queryFn: () => api.health.$get().then(unwrap),
-  });
+  const health = useQuery(healthCheck.query);
 
   return (
     <div className="space-y-6">
