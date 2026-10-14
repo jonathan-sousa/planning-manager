@@ -67,17 +67,16 @@ repos:
     hooks:
       - id: prettier
         types_or: [javascript, jsx, ts, tsx, css, scss, json, yaml, markdown, html]
-  # Python — ruff lint + format (auto-fix).
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.1
-    hooks:
-      - id: ruff
-        args: [--fix]
-      - id: ruff-format
-  # Project hook, outside the baseline fragments: the project lints TS with
-  # oxlint (npm run lint), not eslint. `npx --no` uses the project's own oxlint;
-  # warnings block too, as pre-commit hides the output of a passing hook.
-  # `baseline-init --force` rewrites this file: add this hook back afterwards.
+  # oxlint — added only when the project actually uses oxlint: a `.oxlintrc*`
+  # config, or oxlint in package.json. Same reasoning as node-eslint.yaml: a hook
+  # that cannot run would only train you to commit with --no-verify.
+  #
+  # `npx --no` resolves the project's own oxlint and refuses to download one, so
+  # CI and local agree on the version.
+  #
+  # `--deny-warnings`: oxlint exits 0 on warnings, and pre-commit hides the output
+  # of a passing hook, so a warning (a leftover `debugger`) would go unseen.
+  # Projects align their `lint` script on the same flag.
   - repo: local
     hooks:
       - id: oxlint
@@ -87,3 +86,11 @@ repos:
         types_or: [javascript, jsx, ts, tsx]
         require_serial: true
         pass_filenames: true
+        stages: [pre-commit]
+  # Python — ruff lint + format (auto-fix).
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.1
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
