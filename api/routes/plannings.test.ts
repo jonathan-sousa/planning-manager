@@ -43,6 +43,9 @@ describe('creating a month', () => {
       endDate: '2026-11-05',
     });
     await absenceRequest({ agentId: joly.id, shiftTypeId: day.id, kind: 'WISH_SHIFT' });
+    // An absence whose code was archived since is not written.
+    const oldLeave = await shiftType({ ...LEAVE, code: 'CA2', archived: true });
+    await absenceRequest({ agentId: joly.id, shiftTypeId: oldLeave.id, startDate: '2026-11-01' });
 
     const response = await send('POST', '/plannings/2026-11');
     expect(response.status).toBe(201);

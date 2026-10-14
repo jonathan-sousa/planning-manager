@@ -109,7 +109,7 @@ export function cellRows(
 
 /**
  * Cells a new draft starts with: each approved absence on the days of the
- * month within the agent's contract, locked with its code.
+ * month within the agent's contract, locked with its code (unless archived).
  */
 export function absenceCells(
   requests: { agentId: string; startDate: string; endDate: string; shiftTypeId: string | null }[],
@@ -121,6 +121,9 @@ export function absenceCells(
   return requests.flatMap((request) => {
     const agent = agentById.get(request.agentId)!;
     const shift = shiftById.get(request.shiftTypeId!)!;
+    // A cell is never written with an archived code: the validator flags the
+    // absence, the manager picks a current code.
+    if (shift.archived) return [];
     return dates
       .filter(
         (date) => date >= request.startDate && date <= request.endDate && inContract(agent, date)
