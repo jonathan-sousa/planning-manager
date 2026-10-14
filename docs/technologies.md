@@ -244,4 +244,4 @@ Les requêtes SQL du solveur ne sont vérifiées qu'en conditions réelles, faut
 
 ### oxlint
 
-Linter JavaScript et TypeScript écrit en Rust, alternative très rapide à ESLint : variables ou imports inutilisés, erreurs fréquentes, règles des hooks React. `npm run lint` est la première étape de `npm run check` ; les types sont vérifiés à part par `tsc -b` (`npm run typecheck`).
+Linter JavaScript et TypeScript écrit en Rust, alternative très rapide à ESLint : variables ou imports inutilisés, erreurs fréquentes, règles des hooks React. `npm run lint` est la première étape de `npm run check`, et oxlint passe aussi sur les fichiers de chaque commit ; un avertissement bloque autant qu'une erreur. Les types sont vérifiés à part par `tsc -b` (`npm run typecheck`).
