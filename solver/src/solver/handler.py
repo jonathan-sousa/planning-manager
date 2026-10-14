@@ -1,31 +1,26 @@
 """Lambda entry point for the planning solver."""
 
-import os
 import platform
 from importlib.metadata import version
 
-import aurora_dsql_psycopg as dsql
 from ortools.sat.python import cp_model
 
 from . import db, model
 
 
 def check_database() -> str:
-    with (
-        dsql.connect(host=os.environ["DATABASE_ENDPOINT"], user=db.USER) as conn,
-        conn.cursor() as cur,
-    ):
+    with db.connect() as conn, conn.cursor() as cur:
         cur.execute("SELECT 1")
         cur.fetchone()
     return "ok"
 
 
 def health() -> dict:
-    model = cp_model.CpModel()
-    x = model.new_bool_var("x")
-    model.add(x == 1)
+    probe = cp_model.CpModel()
+    x = probe.new_bool_var("x")
+    probe.add(x == 1)
     solver = cp_model.CpSolver()
-    status = solver.solve(model)
+    status = solver.solve(probe)
     return {
         "status": solver.status_name(status),
         "ortoolsVersion": version("ortools"),

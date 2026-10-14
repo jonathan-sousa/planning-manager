@@ -117,6 +117,7 @@ describe('solver on random months', () => {
     () => {
       const problems = Array.from({ length: 12 }, (_, seed) => randomMonth(seed + 1));
       const results = solve(problems.map((problem) => ({ ...problem, timeLimitSeconds: 3 })));
+      let checked = 0;
       problems.forEach((problem, index) => {
         const result = results[index]!;
         const cells = new Map(problem.cells.map((cell) => [`${cell.agentId}|${cell.date}`, cell]));
@@ -138,9 +139,13 @@ describe('solver on random months', () => {
           (violation) => violation.severity === 'HARD'
         );
         if (result.stats.hard === 0) {
+          checked += 1;
           expect(hard, `seed ${index + 1}: ${JSON.stringify(hard.slice(0, 3))}`).toEqual([]);
         }
       });
+      // Only the months the solver claims clean are checked: 5 of these 12 with
+      // the seeded generator. Fewer would mean the test checks next to nothing.
+      expect(checked, 'months without hard violation').toBeGreaterThanOrEqual(5);
     }
   );
 });

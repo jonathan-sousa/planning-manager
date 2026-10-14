@@ -139,7 +139,7 @@ Modes :
 
 Dans les deux modes, une absence validée est posée avec son code sur une case libre (vide, ou poste non verrouillé en réoptimisation) ; une case verrouillée qui la contredit est gardée et reste une violation dure visible. Le solveur ne pose que des postes travaillés non archivés et bien définis (amplitude, pause) ; une case vide est un repos.
 
-Modèle CP-SAT (`model.py`) : une variable booléenne par case libre et poste travaillé autorisé (mode jour/nuit), au plus une par case. Chaque instance de règle dure reçoit un indicateur de violation au lieu d'être imposée : le modèle a toujours une solution, et l'objectif est lexicographique :
+Modèle CP-SAT (`model.py`, combinaisons de littéraux dans `literals.py`) : une variable booléenne par case libre et poste travaillé autorisé (mode jour/nuit), au plus une par case. Chaque instance de règle dure reçoit un indicateur de violation au lieu d'être imposée : le modèle a toujours une solution, et l'objectif est lexicographique :
 
 1. le moins possible de violations dures (zéro, sauf si des cases fixées en imposent) ;
 2. le moins possible de manque de couverture sous les minimums ;
