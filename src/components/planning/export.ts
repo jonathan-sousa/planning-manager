@@ -1,17 +1,19 @@
 // Exports of a month's planning: A3 PDF for display, CSV for other tools.
 // Built in the browser from what the grid shows; jsPDF loads on first use.
-import {
-  dayOfWeek,
-  isPublicHoliday,
-  monthLabel,
-  today,
-  weekdayLetter,
-} from '../../../api/calendar';
+import { monthLabel, today, weekdayLetter } from '../../../api/calendar';
 import type { PlanningStatus } from '../../../api/domain';
-import type { AgentCounters } from '../../../api/rules/model';
-import type { CoverageRow } from './planning-grid';
+import { type AgentCounters, inContract } from '../../../api/rules/model';
 import { cellKey, type GridCell } from './cells';
-import { formatBalance, formatDate, formatMinutes } from '@/lib/format';
+import {
+  agentName,
+  type CoverageRow,
+  coverageText,
+  hoursText,
+  isOffDay,
+  isShort,
+  monthGap,
+} from './planning-model';
+import { formatBalance, formatDate } from '@/lib/format';
 import { planningStatusLabels } from '@/lib/labels';
 import type { Agent, ShiftType } from '@/lib/resources';
 import geistBoldUrl from '@/assets/fonts/Geist-Bold.ttf?url';
@@ -30,12 +32,6 @@ export interface PlanningExport {
   openingBalance: Map<string, number>;
   coverage: CoverageRow[];
 }
-
-const inContract = (agent: Agent, date: string) =>
-  date >= agent.startDate && (!agent.endDate || date <= agent.endDate);
-
-const isOffDay = (date: string) =>
-  dayOfWeek(date) === 0 || dayOfWeek(date) === 6 || isPublicHoliday(date);
 
 const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
@@ -182,21 +178,16 @@ export async function buildPdf(data: PlanningExport, fonts: PdfFonts) {
     body: data.agents.map((agent) => {
       const count = data.counters.get(agent.id);
       return [
-        `${agent.lastName} ${agent.firstName}`,
+        agentName(agent),
         data.gradeCode.get(agent.gradeId) ?? '',
         ...data.dates.map((date) => {
           const cell = data.cells.get(cellKey(agent.id, date));
           return (cell && shiftById.get(cell.shiftTypeId)?.code) ?? '';
         }),
-        count
-          ? `${formatMinutes(count.creditedMinutes)} / ${formatMinutes(count.targetMinutes)}`
-          : '',
+        count ? hoursText(count) : '',
         String(count?.nights ?? ''),
         String(count?.weekendDays ?? ''),
-        formatBalance(
-          (data.openingBalance.get(agent.id) ?? 0) +
-            (count ? count.creditedMinutes - count.targetMinutes : 0)
-        ),
+        formatBalance((data.openingBalance.get(agent.id) ?? 0) + monthGap(count)),
       ];
     }),
     foot: data.coverage.map((line) => [
@@ -204,7 +195,7 @@ export async function buildPdf(data: PlanningExport, fonts: PdfFonts) {
       '',
       ...data.dates.map((date) => {
         const need = line.byDate.get(date);
-        return need ? (need.min ? `${need.count}/${need.min}` : String(need.count)) : '';
+        return need ? coverageText(need) : '';
       }),
       '',
       '',
@@ -227,8 +218,7 @@ export async function buildPdf(data: PlanningExport, fonts: PdfFonts) {
         else if (isOffDay(date)) cell.styles.fillColor = OFF_DAY;
       }
       if (section === 'foot') {
-        const need = data.coverage[row.index]!.byDate.get(date);
-        if (need && need.count < need.min) {
+        if (isShort(data.coverage[row.index]!.byDate.get(date))) {
           cell.styles.textColor = SHORT;
           cell.styles.fontStyle = 'bold';
         }

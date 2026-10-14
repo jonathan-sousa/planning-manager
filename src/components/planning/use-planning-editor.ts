@@ -1,10 +1,15 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { countedOn } from '../../../api/calendar';
-import { type CellEdit, cellKey, type GridCell } from './cells';
+import { type CellEdit, cellKey, type GridCell, withChanges } from './cells';
 import { ApiRequestError } from '@/lib/api-client';
-import { type Assignment, type MonthPlanning, plannings, type ShiftType } from '@/lib/resources';
+import {
+  type Assignment,
+  invalidatePlanning,
+  type MonthPlanning,
+  plannings,
+  type ShiftType,
+} from '@/lib/resources';
 
 const SAVE_DELAY_MS = 400;
 
@@ -24,6 +29,7 @@ const toGridCell = (row: Assignment): GridCell => ({
  */
 export function usePlanningEditor(month: string, data: MonthPlanning, shifts: ShiftType[]) {
   const queryClient = useQueryClient();
+  const shiftById = useMemo(() => new Map(shifts.map((shift) => [shift.id, shift])), [shifts]);
   const [cells, setCells] = useState(
     () => new Map(data.assignments.map((row) => [cellKey(row.agentId, row.date), toGridCell(row)]))
   );
@@ -48,10 +54,7 @@ export function usePlanningEditor(month: string, data: MonthPlanning, shifts: Sh
     setCells(fresh);
   }, [data]);
 
-  const reload = useCallback(
-    () => queryClient.invalidateQueries({ queryKey: plannings.query(month).queryKey }),
-    [queryClient, month]
-  );
+  const reload = useCallback(() => invalidatePlanning(queryClient, month), [queryClient, month]);
 
   /** Sends the pending edits, batch after batch, one request at a time. */
   const flush = useCallback(async () => {
@@ -88,31 +91,18 @@ export function usePlanningEditor(month: string, data: MonthPlanning, shifts: Sh
   const apply = useCallback(
     (edits: CellEdit[], { recordUndo = true } = {}) => {
       if (edits.length === 0) return;
-      const shiftById = new Map(shifts.map((shift) => [shift.id, shift]));
       const current = cellsRef.current;
-      const next = new Map(current);
-      const previous: CellEdit[] = [];
-      for (const edit of edits) {
-        const key = cellKey(edit.agentId, edit.date);
-        const before = current.get(key);
-        previous.push({
-          agentId: edit.agentId,
-          date: edit.date,
+      const previous = edits.map(({ agentId, date }): CellEdit => {
+        const before = current.get(cellKey(agentId, date));
+        return {
+          agentId,
+          date,
           shiftTypeId: before?.shiftTypeId ?? null,
           locked: before?.locked ?? false,
-        });
-        pending.current.set(key, edit);
-        if (edit.shiftTypeId) {
-          const shift = shiftById.get(edit.shiftTypeId);
-          next.set(key, {
-            ...edit,
-            shiftTypeId: edit.shiftTypeId,
-            countedMinutes: shift ? countedOn(edit.date, shift) : 0,
-          });
-        } else {
-          next.delete(key);
-        }
-      }
+        };
+      });
+      for (const edit of edits) pending.current.set(cellKey(edit.agentId, edit.date), edit);
+      const next = withChanges(current, edits, shiftById);
       if (recordUndo) undoStack.current.push(previous);
       cellsRef.current = next;
       setCells(next);
@@ -121,7 +111,7 @@ export function usePlanningEditor(month: string, data: MonthPlanning, shifts: Sh
       clearTimeout(timer.current);
       timer.current = setTimeout(() => void flush(), SAVE_DELAY_MS);
     },
-    [flush, shifts]
+    [flush, shiftById]
   );
 
   const undo = useCallback(() => {

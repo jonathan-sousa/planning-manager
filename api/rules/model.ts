@@ -118,6 +118,10 @@ export interface AgentCounters {
   holidays: number;
 }
 
+/** Identifies an accepted violation: one rule, one agent, one day. */
+export const violationKey = (item: { agentId?: string; date: string; rule: string }) =>
+  `${item.agentId}|${item.date}|${item.rule}`;
+
 /** Whether a date falls within an agent's contract. */
 export const inContract = (
   agent: { startDate: string; endDate: string | null },

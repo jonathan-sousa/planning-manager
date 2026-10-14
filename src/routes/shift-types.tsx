@@ -8,7 +8,7 @@ import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';
 import { Badge } from '@/components/ui/badge';
 import { formatMinutes } from '@/lib/format';
 import { optionsOf, shiftKindLabels } from '@/lib/labels';
-import { type ShiftType, shiftTypes } from '@/lib/resources';
+import { omitMeta, type ShiftType, shiftTypes } from '@/lib/resources';
 
 export const Route = createFileRoute('/shift-types')({
   component: ShiftTypesPage,
@@ -73,7 +73,7 @@ const emptyShift: ShiftTypeInput = {
 
 function ShiftTypeForm({ row, onSaved }: { row: ShiftType | undefined; onSaved: () => void }) {
   const form = useAppForm({
-    defaultValues: row ? toInput(row) : emptyShift,
+    defaultValues: row ? omitMeta(row) : emptyShift,
     validationLogic,
     validators: {
       onDynamic: shiftTypeInput,
@@ -145,9 +145,4 @@ function ShiftTypeForm({ row, onSaved }: { row: ShiftType | undefined; onSaved: 
       </FormShell>
     </form.AppForm>
   );
-}
-
-function toInput(shift: ShiftType): ShiftTypeInput {
-  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...input } = shift;
-  return input;
 }

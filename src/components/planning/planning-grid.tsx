@@ -1,48 +1,43 @@
 import { Lock } from 'lucide-react';
-import { type ClipboardEvent, type KeyboardEvent, useMemo, useState } from 'react';
+import { type ClipboardEvent, type KeyboardEvent, useMemo } from 'react';
 import { toast } from 'sonner';
-import { dayOfWeek, isPublicHoliday, weekdayLetter } from '../../../api/calendar';
-import type { AgentCounters, Violation } from '../../../api/rules/model';
+import { weekdayLetter } from '../../../api/calendar';
+import { inContract, violationKey } from '../../../api/rules/model';
 import { cn } from 'cn';
 import { type CellEdit, cellKey, type GridCell } from './cells';
-import { formatBalance, formatMinutes } from '@/lib/format';
+import { blockText, parsePaste } from './grid-clipboard';
+import {
+  type CoverageRow,
+  coverageText,
+  hoursText,
+  isOffDay,
+  isShort,
+  monthGap,
+  type PlanningModel,
+} from './planning-model';
+import { useGridSelection } from './use-grid-selection';
+import { formatBalance } from '@/lib/format';
 import type { Agent, ShiftType } from '@/lib/resources';
-
-export interface CoverageRow {
-  label: string;
-  slot: { shiftTypeId: string; gradeId: string; skillId: string | null };
-  /** Per date: required minimum and agents counted, or undefined when no need. */
-  byDate: Map<string, { count: number; min: number }>;
-}
 
 interface PlanningGridProps {
   /** Last days of the previous month, shown read-only for continuity. */
   contextDates: string[];
   dates: string[];
-  agents: Agent[];
-  gradeCode: Map<string, string>;
+  /** Rows, violations (accepted ones by key), counters, balances and coverage lines. */
+  model: Pick<
+    PlanningModel,
+    'rows' | 'gradeCode' | 'violations' | 'accepted' | 'counters' | 'openingBalance' | 'coverage'
+  >;
   shifts: ShiftType[];
   cells: Map<string, GridCell>;
   /** Cells a solver proposal changes (`agentId|date`). */
   changed?: Set<string>;
-  violations: Violation[];
-  /** Keys `agentId|date|rule` of hard violations accepted with a justification. */
-  accepted: Set<string>;
-  counters: Map<string, AgentCounters>;
-  /** Hour balance of each agent at the start of the month, in minutes. */
-  openingBalance: Map<string, number>;
-  coverage: CoverageRow[];
   readOnly: boolean;
   onApply: (edits: CellEdit[]) => void;
   onUndo: () => void;
   /** Opens the explanation of an unmet coverage minimum. */
   onDiagnose: (line: CoverageRow, date: string) => void;
 }
-
-type Position = { row: number; col: number };
-
-const inContract = (agent: Agent, date: string) =>
-  date >= agent.startDate && (!agent.endDate || date <= agent.endDate);
 
 /**
  * Agents × days grid, edited like a spreadsheet: arrows move (Shift extends
@@ -53,24 +48,21 @@ const inContract = (agent: Agent, date: string) =>
 export function PlanningGrid({
   contextDates,
   dates,
-  agents,
-  gradeCode,
+  model,
   shifts,
   cells,
   changed,
-  violations,
-  accepted,
-  counters,
-  openingBalance,
-  coverage,
   readOnly,
   onApply,
   onUndo,
   onDiagnose,
 }: PlanningGridProps) {
-  const [anchor, setAnchor] = useState<Position>({ row: 0, col: 0 });
-  const [focus, setFocus] = useState<Position>({ row: 0, col: 0 });
-  const [typed, setTyped] = useState('');
+  const { rows: agents, gradeCode, violations, accepted, counters, openingBalance } = model;
+  const { focus, bounds, single, isSelected, move, typed, setTyped } = useGridSelection(
+    agents.length,
+    dates.length
+  );
+  const { top, bottom, left, right } = bounds;
 
   const shiftById = useMemo(() => new Map(shifts.map((shift) => [shift.id, shift])), [shifts]);
   const codes = useMemo(
@@ -89,13 +81,6 @@ export function PlanningGrid({
     [violations]
   );
 
-  const top = Math.min(anchor.row, focus.row);
-  const bottom = Math.max(anchor.row, focus.row);
-  const left = Math.min(anchor.col, focus.col);
-  const right = Math.max(anchor.col, focus.col);
-  const isSelected = (row: number, col: number) =>
-    row >= top && row <= bottom && col >= left && col <= right;
-
   /** Editable cells of the selection (in contract). */
   const selection = () => {
     const result: { agent: Agent; date: string; cell?: GridCell }[] = [];
@@ -109,16 +94,6 @@ export function PlanningGrid({
       }
     }
     return result;
-  };
-
-  const move = (row: number, col: number, extend = false) => {
-    const next = {
-      row: Math.max(0, Math.min(agents.length - 1, row)),
-      col: Math.max(0, Math.min(dates.length - 1, col)),
-    };
-    setFocus(next);
-    if (!extend) setAnchor(next);
-    setTyped('');
   };
 
   /** Fills the selection with a shift (or empties it), skipping locked cells. */
@@ -146,7 +121,7 @@ export function PlanningGrid({
       return;
     }
     fill(shift);
-    if (top === bottom && left === right) move(focus.row, focus.col + 1);
+    if (single) move(focus.row, focus.col + 1);
   };
 
   const toggleLock = () => {
@@ -205,49 +180,38 @@ export function PlanningGrid({
     }
   };
 
+  const codeAt = (agentId: string, date: string) => {
+    const cell = cells.get(cellKey(agentId, date));
+    return cell ? (shiftById.get(cell.shiftTypeId)?.code ?? '') : '';
+  };
+
   const onCopy = (event: ClipboardEvent) => {
-    const rows = [];
-    for (let row = top; row <= bottom; row++) {
-      const codesOfRow = [];
-      for (let col = left; col <= right; col++) {
-        const cell = cells.get(cellKey(agents[row]!.id, dates[col]!));
-        codesOfRow.push(cell ? (shiftById.get(cell.shiftTypeId)?.code ?? '') : '');
-      }
-      rows.push(codesOfRow.join('\t'));
-    }
-    event.clipboardData.setData('text/plain', rows.join('\n'));
+    const block = agents
+      .slice(top, bottom + 1)
+      .map((agent) => dates.slice(left, right + 1).map((date) => codeAt(agent.id, date)));
+    event.clipboardData.setData('text/plain', blockText(block));
     event.preventDefault();
   };
 
   const onPaste = (event: ClipboardEvent) => {
     if (readOnly) return;
     event.preventDefault();
-    const grid = event.clipboardData
-      .getData('text/plain')
-      .replace(/\r/g, '')
-      .split('\n')
-      .filter((line, index, all) => line || index < all.length - 1)
-      .map((line) => line.split('\t'));
-    const edits: CellEdit[] = [];
-    const unknown = new Set<string>();
-    grid.forEach((line, dRow) =>
-      line.forEach((raw, dCol) => {
+    const { edits, unknown } = parsePaste(
+      event.clipboardData.getData('text/plain'),
+      (dRow, dCol) => {
         const agent = agents[top + dRow];
         const date = dates[left + dCol];
-        if (!agent || !date || !inContract(agent, date)) return;
-        if (cells.get(cellKey(agent.id, date))?.locked) return;
-        const code = raw.trim().toUpperCase();
-        const shift = code ? codes.get(code) : null;
-        if (shift === undefined) return void unknown.add(code);
-        edits.push({ agentId: agent.id, date, shiftTypeId: shift?.id ?? null, locked: false });
-      })
+        if (!agent || !date || !inContract(agent, date)) return undefined;
+        if (cells.get(cellKey(agent.id, date))?.locked) return undefined;
+        return { agentId: agent.id, date };
+      },
+      codes
     );
     onApply(edits);
-    if (unknown.size) toast.error(`Codes inconnus ignorés : ${[...unknown].join(', ')}`);
+    if (unknown.length) toast.error(`Codes inconnus ignorés : ${unknown.join(', ')}`);
   };
 
-  const dayClass = (date: string) =>
-    cn((dayOfWeek(date) === 0 || dayOfWeek(date) === 6 || isPublicHoliday(date)) && 'bg-muted/60');
+  const dayClass = (date: string) => cn(isOffDay(date) && 'bg-muted/60');
 
   return (
     <div
@@ -301,25 +265,20 @@ export function PlanningGrid({
                   <span className="font-medium">{agent.lastName}</span> {agent.firstName}{' '}
                   <span className="text-muted-foreground">{gradeCode.get(agent.gradeId)}</span>
                 </th>
-                {contextDates.map((date) => {
-                  const cell = cells.get(cellKey(agent.id, date));
-                  return (
-                    <td
-                      key={date}
-                      className="text-muted-foreground/70 bg-muted/40 h-8 border-b border-l text-center"
-                    >
-                      {cell && shiftById.get(cell.shiftTypeId)?.code}
-                    </td>
-                  );
-                })}
+                {contextDates.map((date) => (
+                  <td
+                    key={date}
+                    className="text-muted-foreground/70 bg-muted/40 h-8 border-b border-l text-center"
+                  >
+                    {codeAt(agent.id, date)}
+                  </td>
+                ))}
                 {dates.map((date, col) => {
                   const cell = cells.get(cellKey(agent.id, date));
                   const shift = cell && shiftById.get(cell.shiftTypeId);
                   const issues = violationsByCell.get(cellKey(agent.id, date)) ?? [];
                   const open = issues.filter(
-                    (issue) =>
-                      issue.severity === 'SOFT' ||
-                      !accepted.has(`${issue.agentId}|${issue.date}|${issue.rule}`)
+                    (issue) => issue.severity === 'SOFT' || !accepted.has(violationKey(issue))
                   );
                   const hard = open.some((issue) => issue.severity === 'HARD');
                   const selected = isSelected(row, col);
@@ -363,23 +322,19 @@ export function PlanningGrid({
                   );
                 })}
                 <td className="border-b border-l px-2 text-right whitespace-nowrap tabular-nums">
-                  {count &&
-                    `${formatMinutes(count.creditedMinutes)} / ${formatMinutes(count.targetMinutes)}`}
+                  {count && hoursText(count)}
                 </td>
                 <td className="border-b border-l px-2 text-center tabular-nums">{count?.nights}</td>
                 <td className="border-b border-l px-2 text-center tabular-nums">
                   {count?.weekendDays}
                 </td>
-                <BalanceCell
-                  opening={openingBalance.get(agent.id) ?? 0}
-                  month={count ? count.creditedMinutes - count.targetMinutes : 0}
-                />
+                <BalanceCell opening={openingBalance.get(agent.id) ?? 0} month={monthGap(count)} />
               </tr>
             );
           })}
         </tbody>
         <tfoot className="bg-background sticky bottom-0 z-20">
-          {coverage.map((line) => (
+          {model.coverage.map((line) => (
             <tr key={line.label}>
               <th className="bg-background sticky left-0 z-30 border-t px-2 text-left font-normal whitespace-nowrap">
                 {line.label}
@@ -389,7 +344,7 @@ export function PlanningGrid({
               ))}
               {dates.map((date) => {
                 const need = line.byDate.get(date);
-                const short = need !== undefined && need.count < need.min;
+                const short = isShort(need);
                 return (
                   <td
                     key={date}
@@ -405,11 +360,10 @@ export function PlanningGrid({
                         onClick={() => onDiagnose(line, date)}
                         className="hover:bg-destructive/25 focus-visible:ring-ring/50 size-full cursor-pointer outline-none focus-visible:ring-2"
                       >
-                        {need.count}/{need.min}
+                        {coverageText(need)}
                       </button>
                     ) : (
-                      // A need with no minimum (target only) shows the headcount.
-                      need && (need.min ? `${need.count}/${need.min}` : need.count)
+                      need && coverageText(need)
                     )}
                   </td>
                 );

@@ -4,7 +4,13 @@
 import { addDays, countedOn, monthDates } from '../calendar';
 import { type AssignmentSource, type PlanningStatus, UNFINISHED_SOLVE_STATUSES } from '../domain';
 import { ValidationError } from '../errors';
-import { type AgentCounters, inContract, type RuleShift, type Violation } from './model';
+import {
+  type AgentCounters,
+  inContract,
+  type RuleShift,
+  type Violation,
+  violationKey,
+} from './model';
 
 /** Days of the neighbouring months loaded with a month, for rules spanning two months. */
 export const CONTEXT_DAYS = 13;
@@ -24,10 +30,6 @@ const TRANSITIONS: Record<PlanningStatus, PlanningStatus[]> = {
 
 export const canTransition = (from: PlanningStatus, to: PlanningStatus) =>
   TRANSITIONS[from].includes(to);
-
-/** Identifies an accepted violation: one rule, one agent, one day. */
-export const violationKey = (item: { agentId?: string; date: string; rule: string }) =>
-  `${item.agentId}|${item.date}|${item.rule}`;
 
 /** Hard violations not accepted with a justification: they block the validation. */
 export function openViolations(

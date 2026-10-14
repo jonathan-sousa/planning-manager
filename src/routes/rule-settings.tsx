@@ -6,7 +6,7 @@ import { ruleSettingsInput, type RuleSettingsInput } from '../../api/schemas';
 import { useIsAdmin } from '@/auth/session';
 import { FormShell } from '@/components/form-fields';
 import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';
-import { type RuleSettings, ruleSettings } from '@/lib/resources';
+import { omitMeta, type RuleSettings, ruleSettings } from '@/lib/resources';
 
 export const Route = createFileRoute('/rule-settings')({
   component: RuleSettingsPage,
@@ -46,7 +46,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function RuleSettingsForm({ settings, readOnly }: { settings: RuleSettings; readOnly: boolean }) {
   const queryClient = useQueryClient();
-  const { id: _id, updatedAt: _updatedAt, ...defaultValues } = settings;
+  const defaultValues = omitMeta(settings);
   const form = useAppForm({
     defaultValues: defaultValues satisfies RuleSettingsInput,
     validationLogic,

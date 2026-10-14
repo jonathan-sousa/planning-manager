@@ -6,7 +6,7 @@ import { FormShell } from '@/components/form-fields';
 import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';
 import { formatDate } from '@/lib/format';
 import { useReferences } from '@/lib/options';
-import { type CoverageOverride, coverageOverrides } from '@/lib/resources';
+import { type CoverageOverride, coverageOverrides, omitMeta } from '@/lib/resources';
 
 export const Route = createFileRoute('/coverage-overrides')({
   component: CoverageOverridesPage,
@@ -58,7 +58,7 @@ function CoverageOverrideForm({
 }) {
   const refs = useReferences({ shiftTypeId: row?.shiftTypeId });
   const form = useAppForm({
-    defaultValues: row ? toInput(row) : emptyOverride,
+    defaultValues: row ? omitMeta(row) : emptyOverride,
     validationLogic,
     validators: {
       onDynamic: coverageOverrideInput,
@@ -91,9 +91,4 @@ function CoverageOverrideForm({
       </FormShell>
     </form.AppForm>
   );
-}
-
-function toInput(item: CoverageOverride): CoverageOverrideInput {
-  const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...input } = item;
-  return input;
 }

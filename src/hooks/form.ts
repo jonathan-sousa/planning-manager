@@ -6,10 +6,8 @@ import {
   CheckboxListField,
   ColorField,
   DurationField,
-  FormError,
   NumberField,
   SelectField,
-  SubmitButton,
   SwitchField,
   TextareaField,
   TextField,
@@ -30,7 +28,8 @@ export const { useAppForm } = createFormHook({
     SwitchField,
     ColorField,
   },
-  formComponents: { SubmitButton, FormError },
+  // FormShell renders the submit button and the form error.
+  formComponents: {},
 });
 
 /** Validate on submit, then on every change (no errors on untouched fields). */
