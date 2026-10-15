@@ -36,15 +36,11 @@ infra/                      app CDK (tsconfig.infra.json)
 api/                        Lambda de l'API HTTP, Hono (tsconfig.server.json ; référencé par le frontend pour AppType)
   index.ts                  point d'entrée Lambda (adaptateur Hono)
   app.ts                    monte les routeurs, gestion d'erreurs ; export type AppType
-  routes/                   un routeur Hono par ressource (CRUD), un fichier de tests chacun
-  planning.ts               décisions pures des routes de planning (transitions, cases à écrire, soldes)
-  validate.ts               zValidator qui lève une ValidationError (400 par champ)
-  errors.ts                 forme ApiError { error, fields? }, mapping des erreurs PostgreSQL
-  shift-checks.ts           contrôle du type de poste référencé (lecture en base, hors schémas)
-  auth.ts                   middlewares : 403 hors de MANAGERS, ou hors d'ADMINS (claim cognito:groups)
-  accounts.ts               comptes Cognito (liste, invitation, rôle admin, désactivation)
-  solver-client.ts          invocation de la Lambda solveur
-  sort.ts                   tri des libellés en français
+  routes/                   controllers : un routeur Hono par ressource, un fichier de tests chacun
+  middleware/               auth.ts (403 hors de MANAGERS ou d'ADMINS, admin revérifié en direct dans Cognito), validate.ts (zValidator → 400 par champ)
+  domain/                   métier propre à l'API : planning.ts (pur : transitions, cases à écrire, soldes), shift-checks.ts (type du poste référencé, lit la base)
+  services/                 systèmes externes : accounts.ts (comptes Cognito), solver.ts (invocation de la Lambda solveur)
+  lib/                      errors.ts (forme ApiError { error, fields? }, mapping des erreurs PostgreSQL), sort.ts (tri des libellés en français)
   test/                     outils des tests : PostgreSQL en mémoire (PGlite, migrations committées), Cognito simulé, fabriques de données, appel de l'app, cycle CRUD commun
 email-events/               Lambda SNS : remises, rebonds et plaintes SES → table email_events (rôle mailer) ; index.ts
 shared/                     code pur commun au frontend et aux Lambdas (tsconfig.shared.json : ni Node ni DOM)
@@ -85,7 +81,7 @@ docs/                       architecture, modèle de domaine, règles de planifi
 - **Données, dates, identifiants** : `docs/domain-model.md` § Conventions. Données fictives uniquement tant que l'hôpital n'a pas validé l'hébergement (jeu de démonstration : `scripts/seed/data.ts`).
 - **Authentification** : Cognito Managed Login ; `aws-amplify` ne sert qu'à la redirection OAuth et aux jetons. Pas de formulaire de connexion dans l'app, pas d'Amplify UI.
 - **Formulaires** : TanStack Form validé par les schémas de `shared/schemas.ts` (`onDynamic` + `revalidateLogic` : validation à la soumission, puis à chaque frappe), écriture dans `onSubmitAsync` via `submitToApi`. Pas de second schéma côté client.
-- **Autorisations** : le JWT est validé par API Gateway, l'appartenance au groupe `MANAGERS` (et `ADMINS` pour les comptes et les règles) par `api/auth.ts`. Pas d'autorisation par propriétaire : les données du service sont partagées.
+- **Autorisations** : le JWT est validé par API Gateway, l'appartenance au groupe `MANAGERS` (et `ADMINS` pour les comptes et les règles) par `api/middleware/auth.ts`. Pas d'autorisation par propriétaire : les données du service sont partagées.
 - **Validation des règles de planification** : une seule définition, en TypeScript, testée avec le solveur sur des scénarios partagés (`docs/scheduling-rules.md` § Un seul validateur).
 - **Taille du bundle solveur** : mesurer avec `npm run infra:synth && npm run infra:size` avant d'ajouter une dépendance Python ; limite Lambda 250 Mo décompressés. Le SDK AWS est exclu du bundle (fourni par le runtime).
 - **npm** : `npm audit` doit rester à 0, dev compris. Le preset Tailwind de shadcn est vendorisé dans `src/styles/shadcn-tailwind.css` (le CLI `shadcn` n'est pas installé : `npx shadcn@latest add …`). `overrides.esbuild` aligne tous les esbuild transitifs (drizzle-kit en embarque un vieux) sur la version du projet.

@@ -2,10 +2,10 @@ import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../../db/client';
 import { skills } from '../../db/schema';
-import { notFound } from '../errors';
+import { notFound } from '../lib/errors';
 import { idParam, skillInput } from '../../shared/schemas';
-import { compareFr } from '../sort';
-import { validate } from '../validate';
+import { compareFr } from '../lib/sort';
+import { validate } from '../middleware/validate';
 
 export const skillRoutes = new Hono()
   .get('/', async (c) => {

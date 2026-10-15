@@ -1,21 +1,19 @@
-import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   inviteAccount,
   listAccounts,
-  requireActiveAdmin,
+  liveState,
   resendInvitation,
   resetMfa,
   setAccountEnabled,
   updateAccount,
 } from './accounts';
-import type { Bindings } from './auth';
-import { pool } from './test/cognito';
-import { ADMIN, caller, uuid } from './test/http';
+import { pool } from '../test/cognito';
+import { uuid } from '../test/http';
 
 vi.mock('@aws-sdk/client-cognito-identity-provider', async (original) => ({
   ...(await original<object>()),
-  CognitoIdentityProviderClient: (await import('./test/cognito')).FakeCognitoClient,
+  CognitoIdentityProviderClient: (await import('../test/cognito')).FakeCognitoClient,
 }));
 
 const commands = () => pool.calls.map(([name]) => name);
@@ -105,16 +103,18 @@ describe('accounts', () => {
     ]);
   });
 
-  it('lets through an admin who is still enabled and in the admins group, read live', async () => {
-    const app = new Hono<{ Bindings: Bindings }>().get('/', requireActiveAdmin, (c) =>
-      c.text('ok')
-    );
-    const status = async () => (await app.request('/', {}, caller(ADMIN, uuid(1)))).status;
-    expect(await status()).toBe(200);
-    pool.get(uuid(1))!.groups.delete('ADMINS');
-    expect(await status()).toBe(403);
-    pool.get(uuid(1))!.groups.add('ADMINS');
-    pool.get(uuid(1))!.enabled = false;
-    expect(await status()).toBe(403);
+  it('reads the groups and the enabled flag live, by username or email', async () => {
+    expect(await liveState(uuid(1))).toEqual({
+      username: uuid(1),
+      enabled: true,
+      manager: true,
+      admin: true,
+    });
+    pool.get(uuid(2))!.enabled = false;
+    expect(await liveState('cadre@example.org')).toMatchObject({
+      username: uuid(2),
+      enabled: false,
+      admin: false,
+    });
   });
 });

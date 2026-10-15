@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ValidationError } from './errors';
+import { ValidationError } from '../lib/errors';
 import { ABSENCE_CODE, requireShiftKind, WORK_SHIFT } from './shift-checks';
-import { resetDb } from './test/db';
-import { LEAVE, shiftType } from './test/factories';
-import { uuid } from './test/http';
+import { resetDb } from '../test/db';
+import { LEAVE, shiftType } from '../test/factories';
+import { uuid } from '../test/http';
 
-vi.mock('../db/client', () => import('./test/db'));
+vi.mock('../../db/client', () => import('../test/db'));
 
 beforeEach(async () => {
   await resetDb();

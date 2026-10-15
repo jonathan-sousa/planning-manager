@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ValidationError } from './errors';
-import type { Violation } from '../shared/rules/model';
+import { ValidationError } from '../lib/errors';
+import type { Violation } from '../../shared/rules/model';
 import {
   absenceCells,
   canTransition,

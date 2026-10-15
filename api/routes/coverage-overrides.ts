@@ -2,10 +2,10 @@ import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../../db/client';
 import { coverageOverrides } from '../../db/schema';
-import { notFound } from '../errors';
+import { notFound } from '../lib/errors';
 import { idParam, coverageOverrideInput } from '../../shared/schemas';
-import { requireShiftKind, WORK_SHIFT } from '../shift-checks';
-import { validate } from '../validate';
+import { requireShiftKind, WORK_SHIFT } from '../domain/shift-checks';
+import { validate } from '../middleware/validate';
 
 export const coverageOverrideRoutes = new Hono()
   .get('/', async (c) => {

@@ -1,6 +1,19 @@
 import { Hono } from 'hono';
-import { describe, expect, it } from 'vitest';
-import { type Bindings, callerName, requireAdmin, requireManager } from './auth';
+import { describe, expect, it, vi } from 'vitest';
+import { pool } from '../test/cognito';
+import { ADMIN, caller, uuid } from '../test/http';
+import {
+  type Bindings,
+  callerName,
+  requireActiveAdmin,
+  requireAdmin,
+  requireManager,
+} from './auth';
+
+vi.mock('@aws-sdk/client-cognito-identity-provider', async (original) => ({
+  ...(await original<object>()),
+  CognitoIdentityProviderClient: (await import('../test/cognito')).FakeCognitoClient,
+}));
 
 const app = new Hono<{ Bindings: Bindings }>()
   .get('/manager', requireManager, (c) => c.text(callerName(c.env.event)))
@@ -39,5 +52,20 @@ describe('auth', () => {
     const response = await app.request('/manager', {}, as(access('[MANAGERS]', 'u-42')));
     expect(await response.text()).toBe('u-42');
     expect(await status('/manager', access('[MANAGERS]', ''))).toBe(401);
+  });
+
+  it('lets an admin through only while Cognito still has them enabled and admin', async () => {
+    pool.reset();
+    pool.add({ username: uuid(1), email: 'admin@example.org' }, ['MANAGERS', 'ADMINS']);
+    const live = new Hono<{ Bindings: Bindings }>().get('/', requireActiveAdmin, (c) =>
+      c.text('ok')
+    );
+    const status = async () => (await live.request('/', {}, caller(ADMIN, uuid(1)))).status;
+    expect(await status()).toBe(200);
+    pool.get(uuid(1))!.groups.delete('ADMINS');
+    expect(await status()).toBe(403);
+    pool.get(uuid(1))!.groups.add('ADMINS');
+    pool.get(uuid(1))!.enabled = false;
+    expect(await status()).toBe(403);
   });
 });

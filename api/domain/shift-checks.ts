@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
-import type { ShiftKind } from '../shared/domain';
-import { db } from '../db/client';
-import { shiftTypes } from '../db/schema';
-import { ValidationError } from './errors';
+import type { ShiftKind } from '../../shared/domain';
+import { db } from '../../db/client';
+import { shiftTypes } from '../../db/schema';
+import { ValidationError } from '../lib/errors';
 
 /**
  * Rejects a reference to a shift type of the wrong kind (e.g. a coverage need

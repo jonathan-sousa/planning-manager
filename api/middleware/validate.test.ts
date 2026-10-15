@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { ValidationError } from './errors';
+import { ValidationError } from '../lib/errors';
 import { validate } from './validate';
 
 const app = new Hono()

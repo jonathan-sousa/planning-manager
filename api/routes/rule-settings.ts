@@ -1,11 +1,10 @@
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { requireActiveAdmin } from '../accounts';
-import { type Bindings, requireAdmin } from '../auth';
+import { type Bindings, requireActiveAdmin, requireAdmin } from '../middleware/auth';
 import { db } from '../../db/client';
 import { ruleSettings } from '../../db/schema';
 import { ruleSettingsInput } from '../../shared/schemas';
-import { validate } from '../validate';
+import { validate } from '../middleware/validate';
 
 // Single row, inserted by the migration.
 const DEFAULT_ID = 'default';

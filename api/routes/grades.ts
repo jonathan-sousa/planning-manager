@@ -2,10 +2,10 @@ import { eq, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../../db/client';
 import { grades } from '../../db/schema';
-import { notFound } from '../errors';
+import { notFound } from '../lib/errors';
 import { gradeInput, idParam } from '../../shared/schemas';
-import { compareFr } from '../sort';
-import { validate } from '../validate';
+import { compareFr } from '../lib/sort';
+import { validate } from '../middleware/validate';
 
 export const gradeRoutes = new Hono()
   .get('/', async (c) => {

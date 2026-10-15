@@ -49,7 +49,7 @@ export class Api extends Construct {
     });
     props.database.cluster.grantConnectAdmin(this.function);
     props.solver.function.grantInvoke(this.function);
-    // Accounts page (api/accounts.ts): no user deletion, accounts are disabled.
+    // Accounts page (api/services/accounts.ts): no user deletion, accounts are disabled.
     props.auth.userPool.grant(
       this.function,
       'cognito-idp:ListUsers',

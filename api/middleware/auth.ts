@@ -1,7 +1,8 @@
 import type { LambdaEvent } from '@hono/aws-lambda';
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
-import { ADMIN_GROUP, MANAGER_GROUP } from '../shared/domain';
+import { ADMIN_GROUP, MANAGER_GROUP } from '../../shared/domain';
+import { liveState } from '../services/accounts';
 
 export type Bindings = {
   event: LambdaEvent;
@@ -50,3 +51,14 @@ const requireGroup = (group: string) =>
 export const requireManager = requireGroup(MANAGER_GROUP);
 /** Rejects callers that are not in the admins group. */
 export const requireAdmin = requireGroup(ADMIN_GROUP);
+
+/**
+ * Admin routes also check the caller live in Cognito: an access token keeps
+ * its groups up to an hour, so a demoted or disabled admin could otherwise
+ * undo it.
+ */
+export const requireActiveAdmin = createMiddleware<{ Bindings: Bindings }>(async (c, next) => {
+  const caller = await liveState(callerName(c.env.event));
+  if (!caller.enabled || !caller.admin) return c.json({ error: 'Forbidden' }, 403);
+  await next();
+});

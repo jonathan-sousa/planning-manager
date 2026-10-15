@@ -1,20 +1,20 @@
 // Decisions of the planning routes (api/routes/plannings.ts), without the
 // database: what a month loads, which status changes are allowed, which cells
 // to write, which violations still block, how balances open.
-import { addDays, countedOn, monthDates } from '../shared/calendar';
+import { addDays, countedOn, monthDates } from '../../shared/calendar';
 import {
   type AssignmentSource,
   type PlanningStatus,
   UNFINISHED_SOLVE_STATUSES,
-} from '../shared/domain';
-import { ValidationError } from './errors';
+} from '../../shared/domain';
+import { ValidationError } from '../lib/errors';
 import {
   type AgentCounters,
   inContract,
   type RuleShift,
   type Violation,
   violationKey,
-} from '../shared/rules/model';
+} from '../../shared/rules/model';
 
 /** Days of the neighbouring months loaded with a month, for rules spanning two months. */
 export const CONTEXT_DAYS = 13;

@@ -1,6 +1,6 @@
 import { and, between, eq, gte, inArray, lt, lte, max, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { type Bindings, callerName } from '../auth';
+import { type Bindings, callerName } from '../middleware/auth';
 import { addMonths, monthDates, monthOf } from '../../shared/calendar';
 import { db } from '../../db/client';
 import {
@@ -18,7 +18,7 @@ import {
   solveRuns,
 } from '../../db/schema';
 import { type AssignmentSource, UNFINISHED_SOLVE_STATUSES } from '../../shared/domain';
-import { type ApiError, notFound, ValidationError } from '../errors';
+import { type ApiError, notFound, ValidationError } from '../lib/errors';
 import { planningAgents, type RuleInput } from '../../shared/rules/model';
 import {
   absenceCells,
@@ -32,7 +32,7 @@ import {
   openingChangedSincePublication,
   openViolations,
   previousMonthOpen,
-} from '../planning';
+} from '../domain/planning';
 import { countPlanning } from '../../shared/rules/counters';
 import { validatePlanning } from '../../shared/rules/validate';
 import {
@@ -43,8 +43,8 @@ import {
   solveInput,
   statusInput,
 } from '../../shared/schemas';
-import { startSolve } from '../solver-client';
-import { validate } from '../validate';
+import { startSolve } from '../services/solver';
+import { validate } from '../middleware/validate';
 
 const stale: ApiError = {
   error: 'Le planning a été modifié entre-temps : rechargez la page.',
@@ -85,7 +85,7 @@ async function loadRuleInput(month: string): Promise<RuleInput> {
 }
 
 /**
- * The balances of a month (api/planning.ts), from the hours recorded at
+ * The balances of a month (api/domain/planning.ts), from the hours recorded at
  * each publication: a republished month thus updates the months after it.
  */
 async function loadBalances(month: string) {

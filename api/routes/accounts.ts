@@ -4,19 +4,18 @@ import {
   type Account,
   inviteAccount,
   listAccounts,
-  requireActiveAdmin,
   resendInvitation,
   resetMfa,
   setAccountEnabled,
   updateAccount,
-} from '../accounts';
-import { type Bindings, callerName, requireAdmin } from '../auth';
+} from '../services/accounts';
+import { type Bindings, callerName, requireActiveAdmin, requireAdmin } from '../middleware/auth';
 import { db } from '../../db/client';
 import { emailEvents } from '../../db/schema';
-import { type ApiError, notFound } from '../errors';
+import { type ApiError, notFound } from '../lib/errors';
 import { accountInput, accountUpdateInput, usernameParam } from '../../shared/schemas';
-import { compareFr } from '../sort';
-import { validate } from '../validate';
+import { compareFr } from '../lib/sort';
+import { validate } from '../middleware/validate';
 
 const refused = (error: string): ApiError => ({ error });
 

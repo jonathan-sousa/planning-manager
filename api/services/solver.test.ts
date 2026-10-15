@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { checkSolverHealth, startSolve } from './solver-client';
+import { checkSolverHealth, startSolve } from './solver';
 
 const send = vi.hoisted(() => vi.fn());
 vi.mock('@aws-sdk/client-lambda', async (original) => ({
