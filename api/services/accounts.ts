@@ -16,9 +16,7 @@ import {
   ListUsersInGroupCommand,
   type UserType,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { createMiddleware } from 'hono/factory';
-import { type Bindings, callerName } from './auth';
-import { ADMIN_GROUP, MANAGER_GROUP } from '../shared/domain';
+import { ADMIN_GROUP, MANAGER_GROUP } from '../../shared/domain';
 
 const cognito = new CognitoIdentityProviderClient({});
 const userPoolId = () => process.env.USER_POOL_ID;
@@ -81,7 +79,7 @@ export async function listAccounts(): Promise<Account[]> {
 }
 
 /** Groups and enabled flag of a user, read live from Cognito (not from a token). */
-async function liveState(username: string) {
+export async function liveState(username: string) {
   const [user, groups] = await Promise.all([
     cognito.send(new AdminGetUserCommand({ UserPoolId: userPoolId(), Username: username })),
     cognito.send(
@@ -96,16 +94,6 @@ async function liveState(username: string) {
     admin: names.has(ADMIN_GROUP),
   };
 }
-
-/**
- * Admin routes check the caller live: an access token keeps its groups up to
- * an hour, so a demoted or disabled admin could otherwise undo it.
- */
-export const requireActiveAdmin = createMiddleware<{ Bindings: Bindings }>(async (c, next) => {
-  const caller = await liveState(callerName(c.env.event));
-  if (!caller.enabled || !caller.admin) return c.json({ error: 'Forbidden' }, 403);
-  await next();
-});
 
 async function setGroup(username: string, group: string, member: boolean) {
   const Command = member ? AdminAddUserToGroupCommand : AdminRemoveUserFromGroupCommand;

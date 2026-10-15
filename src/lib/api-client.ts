@@ -1,7 +1,7 @@
 import { fetchAuthSession, signInWithRedirect } from 'aws-amplify/auth';
 import { type ClientResponse, hc } from 'hono/client';
 import type { AppType } from '../../api/app';
-import type { ApiError } from '../../api/errors';
+import type { ApiError } from '../../api/lib/errors';
 import { config } from '@/config';
 
 /**

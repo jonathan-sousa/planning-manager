@@ -1,5 +1,5 @@
 // Calls the app as API Gateway would, with the claims of a Cognito access token.
-import type { ApiError } from '../errors';
+import type { ApiError } from '../lib/errors';
 
 export const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 

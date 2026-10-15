@@ -7,7 +7,7 @@ import {
   plannings,
   solveRuns,
 } from '../../db/schema';
-import type { ApiError } from '../errors';
+import type { ApiError } from '../lib/errors';
 import { db, resetDb } from '../test/db';
 import {
   absenceRequest,
@@ -24,7 +24,7 @@ import { send, uuid } from '../test/http';
 
 vi.mock('../../db/client', () => import('../test/db'));
 const startSolve = vi.hoisted(() => vi.fn(async (_id: string) => {}));
-vi.mock('../solver-client', () => ({ startSolve, checkSolverHealth: vi.fn() }));
+vi.mock('../services/solver', () => ({ startSolve, checkSolverHealth: vi.fn() }));
 
 beforeEach(async () => {
   await resetDb();

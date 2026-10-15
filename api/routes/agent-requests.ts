@@ -2,10 +2,10 @@ import { and, desc, eq, gte, lte, ne } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../../db/client';
 import { agentRequests } from '../../db/schema';
-import { notFound, ValidationError } from '../errors';
+import { notFound, ValidationError } from '../lib/errors';
 import { type AgentRequestInput, idParam, agentRequestInput } from '../../shared/schemas';
-import { ABSENCE_CODE, requireShiftKind, WORK_SHIFT } from '../shift-checks';
-import { validate } from '../validate';
+import { ABSENCE_CODE, requireShiftKind, WORK_SHIFT } from '../domain/shift-checks';
+import { validate } from '../middleware/validate';
 
 /**
  * Checks against other rows: the code's kind (a shift wish names a work shift,

@@ -2,10 +2,10 @@ import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { db } from '../../db/client';
 import { agentSkills, agents } from '../../db/schema';
-import { notFound } from '../errors';
+import { notFound } from '../lib/errors';
 import { agentInput, idParam } from '../../shared/schemas';
-import { compareFr } from '../sort';
-import { validate } from '../validate';
+import { compareFr } from '../lib/sort';
+import { validate } from '../middleware/validate';
 
 type Agent = typeof agents.$inferSelect;
 type AgentInput = Omit<Agent, 'id' | 'createdAt' | 'updatedAt'> & { skillIds: string[] };

@@ -1,8 +1,8 @@
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { type Bindings, requireManager } from './auth';
+import { type Bindings, requireManager } from './middleware/auth';
 import { db } from '../db/client';
-import { toErrorResponse } from './errors';
+import { toErrorResponse } from './lib/errors';
 import { accountRoutes } from './routes/accounts';
 import { agentRequestRoutes } from './routes/agent-requests';
 import { agentRoutes } from './routes/agents';
@@ -13,7 +13,7 @@ import { planningRoutes } from './routes/plannings';
 import { ruleSettingsRoutes } from './routes/rule-settings';
 import { shiftTypeRoutes } from './routes/shift-types';
 import { skillRoutes } from './routes/skills';
-import { checkSolverHealth } from './solver-client';
+import { checkSolverHealth } from './services/solver';
 
 const app = new Hono<{ Bindings: Bindings }>()
   // CORS preflights: API Gateway adds the CORS headers itself.

@@ -9,10 +9,10 @@ import {
   coverageOverrides,
   shiftTypes,
 } from '../../db/schema';
-import { type ApiError, notFound } from '../errors';
+import { type ApiError, notFound } from '../lib/errors';
 import { idParam, shiftTypeInput } from '../../shared/schemas';
-import { compareFr } from '../sort';
-import { validate } from '../validate';
+import { compareFr } from '../lib/sort';
+import { validate } from '../middleware/validate';
 
 /**
  * Needs, overrides and requests depend on whether a shift type is worked or

@@ -6,7 +6,7 @@ import { body, caller, send } from './test/http';
 
 vi.mock('../db/client', () => import('./test/db'));
 const checkSolverHealth = vi.hoisted(() => vi.fn());
-vi.mock('./solver-client', () => ({ checkSolverHealth, startSolve: vi.fn() }));
+vi.mock('./services/solver', () => ({ checkSolverHealth, startSolve: vi.fn() }));
 
 const { default: app } = await import('./app');
 

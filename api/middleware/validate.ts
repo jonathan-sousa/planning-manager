@@ -1,7 +1,7 @@
 import { zValidator } from '@hono/zod-validator';
 import type { ValidationTargets } from 'hono';
 import { flattenError, type z } from 'zod';
-import { ValidationError } from './errors';
+import { ValidationError } from '../lib/errors';
 
 /** zValidator that throws a ValidationError, rendered as 400 with per-field messages. */
 export const validate = <Target extends keyof ValidationTargets, Schema extends z.ZodType>(

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { emailEvents } from '../../db/schema';
-import type { ApiError } from '../errors';
+import type { ApiError } from '../lib/errors';
 import { pool } from '../test/cognito';
 import { db, resetDb } from '../test/db';
 import { ADMIN, caller, MANAGER, send, uuid } from '../test/http';
