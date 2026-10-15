@@ -1,5 +1,5 @@
-// The app as a whole: preflights, the managers guard on every route, the
-// health check and the mapping of errors to responses.
+// The app as a whole: preflights, the managers guard on every route, unknown
+// routes and the mapping of errors to responses.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetDb } from './test/db';
 import { body, caller, send } from './test/http';
@@ -27,10 +27,10 @@ describe('app', () => {
     );
   });
 
-  it('checks the database and the solver', async () => {
-    const solver = { status: 'OPTIMAL', ortoolsVersion: '9', pythonVersion: '3', database: 'ok' };
-    checkSolverHealth.mockResolvedValue(solver);
-    expect(await body(await send('GET', '/health'))).toEqual({ database: 'ok', solver });
+  it('answers an unknown route with a 404 in the shape of every error', async () => {
+    const response = await send('GET', '/nothing-here');
+    expect(response.status).toBe(404);
+    expect(await body(response)).toEqual({ error: 'Introuvable' });
   });
 
   it('answers invalid input with French messages per field', async () => {
