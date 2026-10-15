@@ -59,6 +59,7 @@ src/                        frontend
   auth/auth-gate.tsx        redirige vers Managed Login (signInWithRedirect) tant qu'il n'y a pas de session
   auth/session.ts           utilisateur connecté (username, email, groupes du jeton d'accès), useIsAdmin
   auth/manager-gate.tsx     « Accès refusé » hors du groupe MANAGERS (l'API refuse aussi)
+  components/not-found.tsx  page « introuvable » d'une adresse inconnue (notFoundComponent de la route racine)
   lib/api-client.ts         hc<AppType> avec le jeton d'accès Cognito ; unwrap() lève ApiRequestError
   lib/resources.ts          requêtes et écritures de chaque ressource, types des lignes
   lib/options.ts            listes de référence (codes par id, options des selects)

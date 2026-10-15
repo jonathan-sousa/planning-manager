@@ -1,19 +1,17 @@
-import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { type Bindings, requireManager } from './middleware/auth';
-import { db } from '../db/client';
-import { toErrorResponse } from './lib/errors';
+import { notFound, toErrorResponse } from './lib/errors';
 import { accountRoutes } from './routes/accounts';
 import { agentRequestRoutes } from './routes/agent-requests';
 import { agentRoutes } from './routes/agents';
 import { coverageNeedRoutes } from './routes/coverage-needs';
 import { coverageOverrideRoutes } from './routes/coverage-overrides';
 import { gradeRoutes } from './routes/grades';
+import { healthRoutes } from './routes/health';
 import { planningRoutes } from './routes/plannings';
 import { ruleSettingsRoutes } from './routes/rule-settings';
 import { shiftTypeRoutes } from './routes/shift-types';
 import { skillRoutes } from './routes/skills';
-import { checkSolverHealth } from './services/solver';
 
 const app = new Hono<{ Bindings: Bindings }>()
   // CORS preflights: API Gateway adds the CORS headers itself.
@@ -25,13 +23,9 @@ const app = new Hono<{ Bindings: Bindings }>()
     console.error(error);
     return c.json({ error: 'Erreur interne' }, 500);
   })
+  .notFound((c) => c.json(notFound, 404))
 
-  .get('/health', async (c) => {
-    await db.execute(sql`select 1`);
-    const solver = await checkSolverHealth();
-    return c.json({ database: 'ok', solver });
-  })
-
+  .route('/health', healthRoutes)
   .route('/grades', gradeRoutes)
   .route('/skills', skillRoutes)
   .route('/agents', agentRoutes)
