@@ -25,7 +25,10 @@
   "include": ["src"],
   "references": [
     {
-      "path": "./tsconfig.api.json"
+      "path": "./tsconfig.shared.json"
+    },
+    {
+      "path": "./tsconfig.server.json"
     }
   ]
 }

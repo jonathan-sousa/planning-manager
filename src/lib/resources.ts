@@ -1,6 +1,6 @@
 import { type QueryClient, queryOptions } from '@tanstack/react-query';
 import type { InferResponseType } from 'hono/client';
-import type { PlanningStatus, SolveMode } from '../../api/domain';
+import type { PlanningStatus, SolveMode } from '../../shared/domain';
 import type {
   AcceptViolationInput,
   AccountInput,
@@ -14,7 +14,7 @@ import type {
   RuleSettingsInput,
   ShiftTypeInput,
   SkillInput,
-} from '../../api/schemas';
+} from '../../shared/schemas';
 import { api, expectOk, unwrap } from './api-client';
 
 /** Database and solver check of the home page. */

@@ -1,9 +1,9 @@
 import { eq, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { db } from '../db/client';
-import { grades } from '../db/schema';
+import { db } from '../../db/client';
+import { grades } from '../../db/schema';
 import { notFound } from '../errors';
-import { gradeInput, idParam } from '../schemas';
+import { gradeInput, idParam } from '../../shared/schemas';
 import { compareFr } from '../sort';
 import { validate } from '../validate';
 

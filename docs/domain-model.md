@@ -1,6 +1,6 @@
 # Modèle de domaine
 
-Tables Aurora DSQL définies dans `api/db/schema.ts` (Drizzle). L'API n'est accessible qu'au groupe `MANAGERS` ; les comptes et la modification des règles, au groupe `ADMINS`. Les comptes eux-mêmes vivent dans Cognito, pas en base. Il n'y a pas d'autorisation par propriétaire : les données du service sont partagées entre ses managers.
+Tables Aurora DSQL définies dans `db/schema.ts` (Drizzle). L'API n'est accessible qu'au groupe `MANAGERS` ; les comptes et la modification des règles, au groupe `ADMINS`. Les comptes eux-mêmes vivent dans Cognito, pas en base. Il n'y a pas d'autorisation par propriétaire : les données du service sont partagées entre ses managers.
 
 > En base : `Grade` à `RuleSettings` (référentiels), `Planning`, `Assignment`, `AcceptedViolation`, `MonthBalance`, `SolveRun` et `EmailEvent`. Les noms ci-dessous sont ceux des entités ; les tables sont en `snake_case` pluriel (`skillIds[]` est la table `agent_skills`).
 
@@ -23,7 +23,7 @@ Tables Aurora DSQL définies dans `api/db/schema.ts` (Drizzle). L'API n'est acce
 
 ## Conventions
 
-- **Dates et heures** : dates en `YYYY-MM-DD`, heures en `HH:mm`, durées en minutes calculées en heure de Paris (les nuits de changement d'heure font 11h ou 13h). Tout calcul de calendrier, de jour férié ou de durée passe par `api/calendar.ts`, seul endroit qui manipule un `Date` côté TypeScript ; `solver/src/solver/calendar.py` en est le miroir Python.
+- **Dates et heures** : dates en `YYYY-MM-DD`, heures en `HH:mm`, durées en minutes calculées en heure de Paris (les nuits de changement d'heure font 11h ou 13h). Tout calcul de calendrier, de jour férié ou de durée passe par `shared/calendar.ts`, seul endroit qui manipule un `Date` côté TypeScript ; `solver/src/solver/calendar.py` en est le miroir Python.
 - **Minimisation RGPD** : aucun code révélant un motif médical (`ABS` générique, pas `MAL`).
 - **Identifiants** : UUID aléatoires (`gen_random_uuid()`), jamais de séquence monotone (répartition des écritures DSQL). Exceptions : table de liaison `agent_skills` (clé composite) et ligne unique `rule_settings` (`default`). Les identifiants composites du tableau (`[agentId, date]`) deviennent des contraintes d'unicité.
 - **Application d'une proposition** : l'API écrit les cases dans une transaction unique (une ligne par case, sous la limite DSQL de 3 000), avec vérification de `plannings.version` dans la même transaction.

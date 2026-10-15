@@ -1,6 +1,12 @@
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { acceptedViolations, assignments, monthBalances, plannings, solveRuns } from '../db/schema';
+import {
+  acceptedViolations,
+  assignments,
+  monthBalances,
+  plannings,
+  solveRuns,
+} from '../../db/schema';
 import type { ApiError } from '../errors';
 import { db, resetDb } from '../test/db';
 import {
@@ -16,7 +22,7 @@ import {
 } from '../test/factories';
 import { send, uuid } from '../test/http';
 
-vi.mock('../db/client', () => import('../test/db'));
+vi.mock('../../db/client', () => import('../test/db'));
 const startSolve = vi.hoisted(() => vi.fn(async (_id: string) => {}));
 vi.mock('../solver-client', () => ({ startSolve, checkSolverHealth: vi.fn() }));
 

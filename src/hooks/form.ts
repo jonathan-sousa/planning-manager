@@ -1,5 +1,5 @@
 // Form kit: `useAppForm` with the shadcn field components. Validation comes
-// from the API's Zod schemas (api/schemas.ts); server errors are mapped back
+// from the API's Zod schemas (shared/schemas.ts); server errors are mapped back
 // onto the fields by `submitToApi`.
 import { createFormHook, revalidateLogic } from '@tanstack/react-form';
 import {

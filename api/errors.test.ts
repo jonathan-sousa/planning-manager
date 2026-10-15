@@ -22,7 +22,7 @@ describe('pgError', () => {
 
 describe('toErrorResponse', () => {
   it('knows constraints that exist in the migrations', () => {
-    const dir = 'api/db/migrations';
+    const dir = 'db/migrations';
     const sql = readdirSync(dir)
       .filter((file) => file.endsWith('.sql'))
       .map((file) => readFileSync(`${dir}/${file}`, 'utf8'))

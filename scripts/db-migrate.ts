@@ -24,7 +24,7 @@ const iamRoles = Object.entries(LAMBDA_ROLES).map(([role, key]) => {
 
 const db = drizzle({ connection: { host, user: 'admin', max: 1 } });
 try {
-  const result = await migrate(db, { migrationsFolder: 'api/db/migrations' });
+  const result = await migrate(db, { migrationsFolder: 'db/migrations' });
   if (!result.success) throw new Error(result.error.message);
   console.log(`Migrations applied on ${host}`);
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Violation } from '../../../api/rules/model';
+import type { Violation } from '../../../shared/rules/model';
 import {
   coverageText,
   isOffDay,

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('./db/client', () => ({ db: {} }));
-const { parseMessage, toRows } = await import('./email-events');
+vi.mock('../db/client', () => ({ db: {} }));
+const { parseMessage, toRows } = await import('./index');
 
 describe('SES events', () => {
   it('records a bounce per recipient', () => {

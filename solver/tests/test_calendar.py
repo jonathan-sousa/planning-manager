@@ -49,7 +49,7 @@ def test_shift_lengths_follow_daylight_saving_time():
 
 
 def test_matches_the_validator_calendar():
-    """fixtures/calendar.json is also checked by api/calendar.test.ts."""
+    """fixtures/calendar.json is also checked by shared/calendar.test.ts."""
     shared = json.loads(
         (Path(__file__).parents[2] / "fixtures" / "calendar.json").read_text()
     )

@@ -1,6 +1,6 @@
 """Calendar arithmetic on 'YYYY-MM-DD' / 'HH:mm' strings, in Paris time.
 
-Mirror of api/calendar.ts: the same holidays, day kinds and daylight-saving
+Mirror of shared/calendar.ts: the same holidays, day kinds and daylight-saving
 rules, so the solver and the TypeScript validator agree on every duration.
 """
 

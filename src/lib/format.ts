@@ -1,8 +1,8 @@
 // Display helpers of the frontend; the forms shared with the validator are in
-// api/format.ts. Dates stay 'YYYY-MM-DD' strings: no Date round trip.
-import { formatMinutes } from '../../api/format';
+// shared/format.ts. Dates stay 'YYYY-MM-DD' strings: no Date round trip.
+import { formatMinutes } from '../../shared/format';
 
-export { formatDate, formatMinutes } from '../../api/format';
+export { formatDate, formatMinutes } from '../../shared/format';
 
 /** 'h:mm' or 'h', signed for a balance ('-7:30') → minutes; NaN when malformed. */
 export function parseDuration(text: string): number {

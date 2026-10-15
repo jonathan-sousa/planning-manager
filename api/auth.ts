@@ -1,7 +1,7 @@
 import type { LambdaEvent } from '@hono/aws-lambda';
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
-import { ADMIN_GROUP, MANAGER_GROUP } from './domain';
+import { ADMIN_GROUP, MANAGER_GROUP } from '../shared/domain';
 
 export type Bindings = {
   event: LambdaEvent;

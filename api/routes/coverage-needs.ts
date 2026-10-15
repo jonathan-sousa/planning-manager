@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { db } from '../db/client';
-import { coverageNeeds } from '../db/schema';
+import { db } from '../../db/client';
+import { coverageNeeds } from '../../db/schema';
 import { notFound } from '../errors';
-import { idParam, coverageNeedInput } from '../schemas';
+import { idParam, coverageNeedInput } from '../../shared/schemas';
 import { requireShiftKind, WORK_SHIFT } from '../shift-checks';
 import { validate } from '../validate';
 

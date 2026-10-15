@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { nominalMinutes } from '../../api/calendar';
-import { shiftTypeInput, type ShiftTypeInput } from '../../api/schemas';
+import { nominalMinutes } from '../../shared/calendar';
+import { shiftTypeInput, type ShiftTypeInput } from '../../shared/schemas';
 import { CrudPage } from '@/components/crud-page';
 import { FormShell } from '@/components/form-fields';
 import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';

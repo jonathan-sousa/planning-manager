@@ -15,7 +15,7 @@ export interface EmailEventsProps {
 
 /**
  * SES configuration set of the stage's user pool: deliveries, bounces and
- * complaints go through SNS to a Lambda (api/email-events.ts) that records
+ * complaints go through SNS to a Lambda (email-events/index.ts) that records
  * them for the accounts page.
  */
 export class EmailEvents extends Construct {
@@ -35,7 +35,7 @@ export class EmailEvents extends Construct {
     });
 
     this.function = nodeFunction(this, 'Function', {
-      entry: 'api/email-events.ts',
+      entry: 'email-events/index.ts',
       removalPolicy: props.removalPolicy,
       environment: {
         DATABASE_ENDPOINT: props.database.cluster.clusterEndpoint,

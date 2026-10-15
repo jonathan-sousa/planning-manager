@@ -1,18 +1,18 @@
 // What the planning screen derives from a month's data: rows in grid order,
 // violations and counters, coverage lines, balances and texts. Pure, shared
 // by the editor, the grid and the exports; usePlanningModel memoizes it.
-import { dayKind } from '../../../api/calendar';
-import { formatMinutes } from '../../../api/format';
+import { dayKind } from '../../../shared/calendar';
+import { formatMinutes } from '../../../shared/format';
 import {
   type AgentCounters,
   planningAgents,
   type RuleInput,
   type Violation,
   violationKey,
-} from '../../../api/rules/model';
-import { countPlanning } from '../../../api/rules/counters';
-import { coverage } from '../../../api/rules/coverage';
-import { validatePlanning } from '../../../api/rules/validate';
+} from '../../../shared/rules/model';
+import { countPlanning } from '../../../shared/rules/counters';
+import { coverage } from '../../../shared/rules/coverage';
+import { validatePlanning } from '../../../shared/rules/validate';
 import type { GridCell } from './cells';
 import type {
   AcceptedViolation,

@@ -2,9 +2,9 @@ import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { requireActiveAdmin } from '../accounts';
 import { type Bindings, requireAdmin } from '../auth';
-import { db } from '../db/client';
-import { ruleSettings } from '../db/schema';
-import { ruleSettingsInput } from '../schemas';
+import { db } from '../../db/client';
+import { ruleSettings } from '../../db/schema';
+import { ruleSettingsInput } from '../../shared/schemas';
 import { validate } from '../validate';
 
 // Single row, inserted by the migration.

@@ -3,8 +3,8 @@ import {
   type CandidateStatus,
   type CoverageSlotKey,
   diagnoseCoverage,
-} from '../../../api/rules/diagnose';
-import type { RuleInput } from '../../../api/rules/model';
+} from '../../../shared/rules/diagnose';
+import type { RuleInput } from '../../../shared/rules/model';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatDate } from '@/lib/format';

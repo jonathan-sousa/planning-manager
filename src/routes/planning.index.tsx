@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { currentMonth } from '../../api/calendar';
+import { currentMonth } from '../../shared/calendar';
 
 export const Route = createFileRoute('/planning/')({
   beforeLoad: () => {

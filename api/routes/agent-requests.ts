@@ -1,9 +1,9 @@
 import { and, desc, eq, gte, lte, ne } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { db } from '../db/client';
-import { agentRequests } from '../db/schema';
+import { db } from '../../db/client';
+import { agentRequests } from '../../db/schema';
 import { notFound, ValidationError } from '../errors';
-import { type AgentRequestInput, idParam, agentRequestInput } from '../schemas';
+import { type AgentRequestInput, idParam, agentRequestInput } from '../../shared/schemas';
 import { ABSENCE_CODE, requireShiftKind, WORK_SHIFT } from '../shift-checks';
 import { validate } from '../validate';
 

@@ -85,7 +85,7 @@ def load_problem(conn, month: str, mode: str) -> Problem:
         agent["skillIds"] = [
             link["skillId"] for link in links if link["agentId"] == agent["id"]
         ]
-    # Same agents as the grid (api/rules/model.ts planningAgents).
+    # Same agents as the grid (shared/rules/model.ts planningAgents).
     with_cells = {cell["agentId"] for cell in cells if cell["date"].startswith(month)}
     agents = [
         agent

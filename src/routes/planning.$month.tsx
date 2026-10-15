@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { addMonths, monthLabel } from '../../api/calendar';
+import { addMonths, monthLabel } from '../../shared/calendar';
 import { PlanningEditor } from '@/components/planning/planning-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

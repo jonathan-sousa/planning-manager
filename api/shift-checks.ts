@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
-import type { ShiftKind } from './domain';
-import { db } from './db/client';
-import { shiftTypes } from './db/schema';
+import type { ShiftKind } from '../shared/domain';
+import { db } from '../db/client';
+import { shiftTypes } from '../db/schema';
 import { ValidationError } from './errors';
 
 /**

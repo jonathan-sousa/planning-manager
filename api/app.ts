@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { type Bindings, requireManager } from './auth';
-import { db } from './db/client';
+import { db } from '../db/client';
 import { toErrorResponse } from './errors';
 import { accountRoutes } from './routes/accounts';
 import { agentRequestRoutes } from './routes/agent-requests';

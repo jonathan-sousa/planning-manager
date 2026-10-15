@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ruleSettings } from '../db/schema';
+import { ruleSettings } from '../../db/schema';
 import { pool } from '../test/cognito';
 import { db, resetDb } from '../test/db';
 import { ADMIN, body, caller, send, uuid } from '../test/http';
 
-vi.mock('../db/client', () => import('../test/db'));
+vi.mock('../../db/client', () => import('../test/db'));
 vi.mock('@aws-sdk/client-cognito-identity-provider', async (original) => ({
   ...(await original<object>()),
   CognitoIdentityProviderClient: (await import('../test/cognito')).FakeCognitoClient,

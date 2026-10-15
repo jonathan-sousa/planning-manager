@@ -18,7 +18,7 @@ import {
 } from '@aws-sdk/client-cognito-identity-provider';
 import { createMiddleware } from 'hono/factory';
 import { type Bindings, callerName } from './auth';
-import { ADMIN_GROUP, MANAGER_GROUP } from './domain';
+import { ADMIN_GROUP, MANAGER_GROUP } from '../shared/domain';
 
 const cognito = new CognitoIdentityProviderClient({});
 const userPoolId = () => process.env.USER_POOL_ID;

@@ -11,10 +11,10 @@ import {
   updateAccount,
 } from '../accounts';
 import { type Bindings, callerName, requireAdmin } from '../auth';
-import { db } from '../db/client';
-import { emailEvents } from '../db/schema';
+import { db } from '../../db/client';
+import { emailEvents } from '../../db/schema';
 import { type ApiError, notFound } from '../errors';
-import { accountInput, accountUpdateInput, usernameParam } from '../schemas';
+import { accountInput, accountUpdateInput, usernameParam } from '../../shared/schemas';
 import { compareFr } from '../sort';
 import { validate } from '../validate';
 

@@ -3,9 +3,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
-import * as schema from '../db/schema';
+import * as schema from '../../db/schema';
 
-const MIGRATIONS = 'api/db/migrations';
+const MIGRATIONS = 'db/migrations';
 
 const client = new PGlite();
 

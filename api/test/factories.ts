@@ -10,7 +10,7 @@ import {
   plannings,
   shiftTypes,
   solveRuns,
-} from '../db/schema';
+} from '../../db/schema';
 
 type Insert<T extends { $inferInsert: unknown }> = Partial<T['$inferInsert']>;
 

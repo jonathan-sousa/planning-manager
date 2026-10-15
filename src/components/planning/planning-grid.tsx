@@ -1,8 +1,8 @@
 import { Lock } from 'lucide-react';
 import { type ClipboardEvent, type KeyboardEvent, useMemo } from 'react';
 import { toast } from 'sonner';
-import { weekdayLetter } from '../../../api/calendar';
-import { inContract, violationKey } from '../../../api/rules/model';
+import { weekdayLetter } from '../../../shared/calendar';
+import { inContract, violationKey } from '../../../shared/rules/model';
 import { cn } from 'cn';
 import { type CellEdit, cellKey, type GridCell } from './cells';
 import { blockText, parsePaste } from './grid-clipboard';

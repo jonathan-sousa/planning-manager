@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { signOut } from 'aws-amplify/auth';
-import { MANAGER_GROUP } from '../../api/domain';
+import { MANAGER_GROUP } from '../../shared/domain';
 import { sessionQuery } from './session';
 
 /** Blocks signed-in users that are not managers. The API enforces the same rule. */

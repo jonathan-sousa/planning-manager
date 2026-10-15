@@ -3,7 +3,7 @@ import { expectCrudLifecycle } from '../test/crud';
 import { resetDb } from '../test/db';
 import { body, send } from '../test/http';
 
-vi.mock('../db/client', () => import('../test/db'));
+vi.mock('../../db/client', () => import('../test/db'));
 
 beforeEach(async () => {
   await resetDb();

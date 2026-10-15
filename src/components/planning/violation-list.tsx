@@ -1,5 +1,5 @@
-import { violationKey, type Violation } from '../../../api/rules/model';
-import { acceptViolationInput } from '../../../api/schemas';
+import { violationKey, type Violation } from '../../../shared/rules/model';
+import { acceptViolationInput } from '../../../shared/schemas';
 import type { CoverageSlot, PlanningModel } from './planning-model';
 import { FormShell } from '@/components/form-fields';
 import { Button } from '@/components/ui/button';

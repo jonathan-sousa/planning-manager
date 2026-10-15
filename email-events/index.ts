@@ -2,9 +2,9 @@
 // (deliveries, bounces, complaints), delivered by SNS: one row per recipient.
 // The accounts page flags an email whose last event is a bounce or a complaint.
 import type { SNSEvent } from 'aws-lambda';
-import { db } from './db/client';
-import { emailEvents } from './db/schema';
-import type { EmailEventKind } from './domain';
+import { db } from '../db/client';
+import { emailEvents } from '../db/schema';
+import type { EmailEventKind } from '../shared/domain';
 
 /** SES event publishing format, fields in use only. */
 interface SesEvent {

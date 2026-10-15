@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { KeyRound, Mail, UserCheck, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { accountInput, accountUpdateInput } from '../../api/schemas';
+import { accountInput, accountUpdateInput } from '../../shared/schemas';
 import { useIsAdmin, useSession } from '@/auth/session';
 import { CrudPage } from '@/components/crud-page';
 import { FormShell } from '@/components/form-fields';
