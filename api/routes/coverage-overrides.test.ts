@@ -4,7 +4,7 @@ import { resetDb } from '../test/db';
 import { grade, LEAVE, shiftType } from '../test/factories';
 import { body, send } from '../test/http';
 
-vi.mock('../db/client', () => import('../test/db'));
+vi.mock('../../db/client', () => import('../test/db'));
 
 beforeEach(async () => {
   await resetDb();

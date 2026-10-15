@@ -17,7 +17,7 @@ API Gateway ──► API (Lambda Node, Hono) ──► Solveur (Lambda Python, 
 ```
 
 - **Frontend (`src/`)** : l'application dans le navigateur. Les référentiels (agents, grades, postes, besoins, demandes, règles, comptes) et la grille du mois, saisie au clavier comme un tableur, avec sauvegarde automatique, violations en direct, compteurs, soldes, couverture et exports PDF et CSV.
-- **API (`api/`)** : une seule Lambda, un routeur par ressource. Elle vérifie les droits, valide les saisies, lit et écrit en base, lance le solveur. Le cœur métier (`api/rules/` : validateur, compteurs, diagnostic) est du code pur, exécuté aussi bien par l'API que par la grille : les règles sont les mêmes des deux côtés.
+- **API (`api/`)** : une seule Lambda, un routeur par ressource. Elle vérifie les droits, valide les saisies, lit et écrit en base, lance le solveur. Le cœur métier (`shared/rules/` : validateur, compteurs, diagnostic) est du code pur, exécuté aussi bien par l'API que par la grille : les règles sont les mêmes des deux côtés.
 - **Solveur (`solver/`)** : une Lambda Python qui propose un planning (compléter les cases vides, ou réoptimiser), en arrière-plan ; le cadre applique ou abandonne la proposition.
 - **Base de données** : Aurora DSQL, du PostgreSQL serverless.
 - **Infrastructure (`infra/`)** : tout est décrit en code (CDK), une stack par stage (un stage personnel par développeur, et la production).
@@ -69,15 +69,15 @@ Son atout ici : le **client typé** (Hono RPC). L'API exporte son type (`AppType
 
 Bibliothèque de validation : on décrit la forme attendue d'une donnée, Zod vérifie une valeur reçue, la nettoie (espaces, minuscules) et en donne le type TypeScript. TypeScript contrôle le code à la compilation, Zod contrôle ce qui arrive de l'extérieur à l'exécution.
 
-Les schémas de `api/schemas.ts` sont la **seule définition** de la validation : l'API les applique à chaque requête (400 avec un message par champ), les formulaires du frontend les réutilisent. Les règles croisées y vivent (fin après le début, horaires d'un poste travaillé…), en français. Ce qui demande la base (un code déjà pris, un chevauchement d'absences) reste dans l'API.
+Les schémas de `shared/schemas.ts` sont la **seule définition** de la validation : l'API les applique à chaque requête (400 avec un message par champ), les formulaires du frontend les réutilisent. Les règles croisées y vivent (fin après le début, horaires d'un poste travaillé…), en français. Ce qui demande la base (un code déjà pris, un chevauchement d'absences) reste dans l'API.
 
 ### Drizzle
 
 ORM TypeScript léger, proche du SQL :
 
-- **le schéma** est décrit en TypeScript (`api/db/schema.ts`), d'où découlent les types des lignes ;
+- **le schéma** est décrit en TypeScript (`db/schema.ts`), d'où découlent les types des lignes ;
 - **les requêtes** s'écrivent en TypeScript typé (`db.select().from(agents).where(eq(agents.id, id))`) : une colonne inexistante ne compile pas ;
-- **les migrations** sont générées par `npm run db:generate`, committées dans `api/db/migrations/` et appliquées au déploiement.
+- **les migrations** sont générées par `npm run db:generate`, committées dans `db/migrations/` et appliquées au déploiement.
 
 Un adaptateur officiel AWS (`@aws/aurora-dsql-drizzle`) gère la connexion à Aurora DSQL par jeton IAM et rejoue une transaction en conflit (`transactionWithRetry`). Dans les tests, le même code tourne sur PGlite, un PostgreSQL en mémoire.
 
@@ -118,11 +118,11 @@ Particularités gérées dans le code ([architecture.md § Base de données](arc
 
 Exécute du code sans serveur à gérer : AWS lance la fonction quand un événement arrive et facture à la milliseconde. Sans trafic, rien ne tourne ; sous la charge, AWS lance autant d'exemplaires que nécessaire. Limites : 15 min, 10 Go de mémoire, un paquet de 250 Mo décompressé (`npm run infra:size` mesure celui du solveur). Le premier appel après une pause est plus lent (démarrage à froid).
 
-| Lambda                                   | Langage          | Déclenchée par       | Rôle                                  |
-| ---------------------------------------- | ---------------- | -------------------- | ------------------------------------- |
-| API (`api/index.ts`)                     | Node, Hono       | API Gateway          | Toutes les routes                     |
-| Solveur (`solver/`)                      | Python, OR-Tools | L'API, sans attendre | Calcule une proposition de planning   |
-| Événements email (`api/email-events.ts`) | Node             | SNS (événements SES) | Enregistre remises, rebonds, plaintes |
+| Lambda                                     | Langage          | Déclenchée par       | Rôle                                  |
+| ------------------------------------------ | ---------------- | -------------------- | ------------------------------------- |
+| API (`api/index.ts`)                       | Node, Hono       | API Gateway          | Toutes les routes                     |
+| Solveur (`solver/`)                        | Python, OR-Tools | L'API, sans attendre | Calcule une proposition de planning   |
+| Événements email (`email-events/index.ts`) | Node             | SNS (événements SES) | Enregistre remises, rebonds, plaintes |
 
 Toutes tournent sur ARM64, chacune avec son rôle IAM et son rôle en base.
 
@@ -237,7 +237,7 @@ Le framework de tests du code TypeScript, construit sur Vite (il en réutilise l
 Le framework de tests de référence en Python : des fonctions `test_…` avec de simples `assert`, `parametrize` pour rejouer un test sur une liste de cas, `monkeypatch` pour remplacer une fonction le temps d'un test. Lancé par `npm run solver:test` :
 
 - les scénarios de règles partagés : le modèle CP-SAT trouve une violation dure exactement quand le validateur TypeScript en trouve une ;
-- le calendrier Python, comparé à `api/calendar.ts` sur `fixtures/calendar.json` ;
+- le calendrier Python, comparé à `shared/calendar.ts` sur `fixtures/calendar.json` ;
 - le handler de la Lambda (santé, run enregistré, run en échec) et la conversion des lignes de la base.
 
 Les requêtes SQL du solveur ne sont vérifiées qu'en conditions réelles, faute de base dans pytest.

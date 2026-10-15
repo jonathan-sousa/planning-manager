@@ -2,14 +2,14 @@
   "app": "npx tsx infra/bin/app.ts",
   "output": "cdk.out",
   "watch": {
-    "include": ["infra/**", "api/**", "solver/**"],
+    "include": ["infra/**", "api/**", "email-events/**", "shared/**", "db/**", "solver/**"],
     "exclude": [
       "**/node_modules/**",
       "**/.venv/**",
       "**/__pycache__/**",
       "**/*.d.ts",
       "solver/tests/**",
-      "api/db/migrations/**"
+      "db/migrations/**"
     ]
   },
   "context": {

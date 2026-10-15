@@ -1,16 +1,16 @@
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
-import { SHIFT_KINDS } from '../domain';
-import { db } from '../db/client';
+import { SHIFT_KINDS } from '../../shared/domain';
+import { db } from '../../db/client';
 import {
   agentRequests,
   assignments,
   coverageNeeds,
   coverageOverrides,
   shiftTypes,
-} from '../db/schema';
+} from '../../db/schema';
 import { type ApiError, notFound } from '../errors';
-import { idParam, shiftTypeInput } from '../schemas';
+import { idParam, shiftTypeInput } from '../../shared/schemas';
 import { compareFr } from '../sort';
 import { validate } from '../validate';
 

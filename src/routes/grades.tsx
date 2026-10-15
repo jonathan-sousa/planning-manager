@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { gradeInput } from '../../api/schemas';
+import { gradeInput } from '../../shared/schemas';
 import { CrudPage } from '@/components/crud-page';
 import { FormShell } from '@/components/form-fields';
 import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';

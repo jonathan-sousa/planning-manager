@@ -46,7 +46,7 @@ export const UNFINISHED_SOLVE_STATUSES = [
 export const EMAIL_EVENT_KINDS = ['DELIVERY', 'BOUNCE', 'COMPLAINT'] as const;
 export type EmailEventKind = (typeof EMAIL_EVENT_KINDS)[number];
 
-/** Planning rules and their severity (api/rules/ applies them). */
+/** Planning rules and their severity (shared/rules/ applies them). */
 export const RULES = {
   APPROVED_ABSENCE: 'HARD',
   DAILY_REST: 'HARD',

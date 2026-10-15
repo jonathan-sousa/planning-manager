@@ -4,6 +4,6 @@ import { defineConfig } from 'drizzle-kit';
 // then rewrites the SQL for Aurora DSQL (CREATE INDEX ASYNC, etc.).
 export default defineConfig({
   dialect: 'postgresql',
-  schema: './api/db/schema.ts',
-  out: './api/db/migrations',
+  schema: './db/schema.ts',
+  out: './db/migrations',
 });

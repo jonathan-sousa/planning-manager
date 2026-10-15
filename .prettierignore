@@ -23,5 +23,5 @@ cdk.out/
 .parcel-cache/
 .turbo/
 src/routeTree.gen.ts
-api/db/migrations/
+db/migrations/
 src/styles/shadcn-tailwind.css

@@ -1,8 +1,8 @@
 // Exports of a month's planning: A3 PDF for display, CSV for other tools.
 // Built in the browser from what the grid shows; jsPDF loads on first use.
-import { monthLabel, today, weekdayLetter } from '../../../api/calendar';
-import type { PlanningStatus } from '../../../api/domain';
-import { type AgentCounters, inContract } from '../../../api/rules/model';
+import { monthLabel, today, weekdayLetter } from '../../../shared/calendar';
+import type { PlanningStatus } from '../../../shared/domain';
+import { type AgentCounters, inContract } from '../../../shared/rules/model';
 import { cellKey, type GridCell } from './cells';
 import {
   agentName,

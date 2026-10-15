@@ -24,7 +24,7 @@ import {
   EMAIL_EVENT_KINDS,
   SOLVE_MODES,
   SOLVE_STATUSES,
-} from '../domain';
+} from '../shared/domain';
 
 // Aurora DSQL: random UUID primary keys, timestamps in UTC, no SERIAL, no
 // enum types (text columns typed through `enum`, values validated by the API).
@@ -302,7 +302,7 @@ export const ruleSettings = pgTable('rule_settings', {
   updatedAt: timestamps.updatedAt,
 });
 
-/** Bounces and complaints of the emails Cognito sends through SES (api/email-events.ts). */
+/** Bounces and complaints of the emails Cognito sends through SES (email-events/index.ts). */
 export const emailEvents = pgTable(
   'email_events',
   {

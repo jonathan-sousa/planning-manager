@@ -15,7 +15,7 @@ const db = drizzle({
 
 /** Prints the progress; true once nothing is pending. */
 async function report(): Promise<boolean> {
-  const status = await getMigrationStatus(db, { migrationsFolder: 'api/db/migrations' });
+  const status = await getMigrationStatus(db, { migrationsFolder: 'db/migrations' });
   const { rows: jobs } = await db.execute<{ job_id: string; status: string; details: string }>(
     sql`SELECT job_id, status, details FROM sys.jobs WHERE status NOT IN ('completed', 'failed', 'cancelled')`
   );

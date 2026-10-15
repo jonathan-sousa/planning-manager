@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetDb } from './test/db';
 import { body, caller, send } from './test/http';
 
-vi.mock('./db/client', () => import('./test/db'));
+vi.mock('../db/client', () => import('./test/db'));
 const checkSolverHealth = vi.hoisted(() => vi.fn());
 vi.mock('./solver-client', () => ({ checkSolverHealth, startSolve: vi.fn() }));
 

@@ -5,7 +5,7 @@ import type {
   PlanningStatus,
   RequestKind,
   ShiftKind,
-} from '../../api/domain';
+} from '../../shared/domain';
 
 export const nightModeLabels: Record<NightMode, string> = {
   DAY_ONLY: 'Jour uniquement',

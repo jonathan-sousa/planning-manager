@@ -17,7 +17,7 @@
     "infra:watch": "cdk watch 'PlanningManager-*' --exclusively",
     "infra:destroy": "cdk destroy 'PlanningManager-*'",
     "env:write": "tsx scripts/write-env.ts",
-    "db:generate": "aurora-dsql-drizzle generate --out ./api/db/migrations -- --config drizzle.config.ts",
+    "db:generate": "aurora-dsql-drizzle generate --out ./db/migrations -- --config drizzle.config.ts",
     "db:migrate": "tsx scripts/db-migrate.ts",
     "db:status": "tsx scripts/db-status.ts",
     "infra:size": "tsx scripts/asset-sizes.ts",

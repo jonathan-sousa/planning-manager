@@ -11,7 +11,7 @@ import {
   gradeInput,
   shiftTypeInput,
   skillInput,
-} from '../../api/schemas';
+} from '../../shared/schemas';
 import * as data from './data';
 
 function index<T>(rows: T[], key: (row: T) => string): (name: string) => string {

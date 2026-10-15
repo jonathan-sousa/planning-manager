@@ -1,6 +1,6 @@
 """CP-SAT model of a monthly planning.
 
-The hard rules mirror api/rules/validate.ts (docs/scheduling-rules.md). Each
+The hard rules mirror shared/rules/validate.ts (docs/scheduling-rules.md). Each
 hard rule instance gets a violation indicator instead of being imposed, and
 the objective is lexicographic:
 
@@ -662,7 +662,7 @@ def absences_of(requests: list[dict]) -> dict[tuple[str, str], str]:
 
 
 def in_contract(agent: dict, day: str) -> bool:
-    """Mirror of inContract (api/rules/model.ts)."""
+    """Mirror of inContract (shared/rules/model.ts)."""
     return day >= agent["startDate"] and (
         not agent.get("endDate") or day <= agent["endDate"]
     )

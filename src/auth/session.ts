@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { fetchAuthSession, signInWithRedirect } from 'aws-amplify/auth';
-import { ADMIN_GROUP } from '../../api/domain';
+import { ADMIN_GROUP } from '../../shared/domain';
 
 export interface Session {
   /** Cognito username (a UUID). */

@@ -18,7 +18,7 @@ import type { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { ARecord, type IHostedZone, RecordTarget } from 'aws-cdk-lib/aws-route53';
 import { UserPoolDomainTarget } from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
-import { ADMIN_GROUP, MANAGER_GROUP } from '../../api/domain';
+import { ADMIN_GROUP, MANAGER_GROUP } from '../../shared/domain';
 import { bootstrapManager } from './bootstrap-manager';
 import { MAIL_DOMAIN, MAIL_FROM } from './mail';
 

@@ -11,7 +11,7 @@ import type {
   GradeInput,
   ShiftTypeInput,
   SkillInput,
-} from '../../api/schemas';
+} from '../../shared/schemas';
 
 type Ref<T, K extends keyof T, R> = Omit<T, K> & R;
 

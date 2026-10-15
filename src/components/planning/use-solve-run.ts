@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { type SolveMode, UNFINISHED_SOLVE_STATUSES } from '../../../api/domain';
+import { type SolveMode, UNFINISHED_SOLVE_STATUSES } from '../../../shared/domain';
 import { cellKey, type GridCell, withChanges } from './cells';
 import { invalidatePlanning, plannings, type ShiftType } from '@/lib/resources';
 

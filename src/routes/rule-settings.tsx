@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
-import { ruleSettingsInput, type RuleSettingsInput } from '../../api/schemas';
+import { ruleSettingsInput, type RuleSettingsInput } from '../../shared/schemas';
 import { useIsAdmin } from '@/auth/session';
 import { FormShell } from '@/components/form-fields';
 import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';

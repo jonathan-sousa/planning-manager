@@ -6,7 +6,7 @@
  * Usage: npm run db:seed [-- --reset]
  */
 import { drizzle } from '@aws/aurora-dsql-drizzle';
-import * as schema from '../api/db/schema';
+import * as schema from '../db/schema';
 import { buildSeed } from './seed/build';
 import { PROD_STAGE } from '../infra/lib/stage';
 import { output, readStageOutputs } from './stage-outputs';

@@ -4,7 +4,7 @@ Les valeurs par défaut suivent la fonction publique hospitalière (décret 2002
 
 ## Contraintes dures
 
-Le validateur `api/rules/` les applique (violations « dures »). Il calcule avec 13 jours de contexte de part et d'autre du mois et ne signale que des jours du mois.
+Le validateur `shared/rules/` les applique (violations « dures »). Il calcule avec 13 jours de contexte de part et d'autre du mois et ne signale que des jours du mois.
 
 - **Un poste par jour** : garanti par la base (une case par agent et par jour). Les cellules verrouillées ne bougent pas.
 - **Absence validée** : chaque jour d'une absence validée porte son code d'absence.
@@ -42,9 +42,9 @@ Le décret laisse de la marge sur ces points ; le validateur retient une lecture
 
 ## Un seul validateur
 
-`api/rules/` (TypeScript, sans dépendance) est la seule définition de ce qu'est une violation : la grille l'exécute à chaque saisie, l'API avant la publication. Les scénarios `fixtures/rule-scenarios/*.json` (postes et paramètres communs dans `_shifts.json` et `_settings.json`) servent trois fois :
+`shared/rules/` (TypeScript, sans dépendance) est la seule définition de ce qu'est une violation : la grille l'exécute à chaque saisie, l'API avant la publication. Les scénarios `fixtures/rule-scenarios/*.json` (postes et paramètres communs dans `_shifts.json` et `_settings.json`) servent trois fois :
 
-- **Vitest** (`api/rules/validate.test.ts`) : le validateur produit exactement les violations attendues pour les règles que le scénario déclare.
+- **Vitest** (`shared/rules/validate.test.ts`) : le validateur produit exactement les violations attendues pour les règles que le scénario déclare.
 - **pytest** (`solver/tests/test_scenarios.py`) : le modèle CP-SAT, toutes les cases figées comme dans le scénario, trouve une violation dure exactement quand le validateur en trouve une (champ `hard` du scénario, vérifié par Vitest).
 - **Bout en bout** (`scripts/solver.e2e.test.ts`) : une proposition du solveur sur le service fictif repasse dans le validateur, qui ne trouve aucune violation dure.
 - **Mois aléatoires** (`scripts/solver.random.test.ts`) : de petits mois générés (changement d'heure, cases de contexte et verrouillées, absences, contrats partiels, poste finissant à minuit, deux modes) ; quand le solveur annonce zéro violation dure, le validateur doit être d'accord.

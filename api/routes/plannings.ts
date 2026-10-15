@@ -1,8 +1,8 @@
 import { and, between, eq, gte, inArray, lt, lte, max, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { type Bindings, callerName } from '../auth';
-import { addMonths, monthDates, monthOf } from '../calendar';
-import { db } from '../db/client';
+import { addMonths, monthDates, monthOf } from '../../shared/calendar';
+import { db } from '../../db/client';
 import {
   acceptedViolations,
   agentRequests,
@@ -16,10 +16,10 @@ import {
   ruleSettings,
   shiftTypes,
   solveRuns,
-} from '../db/schema';
-import { type AssignmentSource, UNFINISHED_SOLVE_STATUSES } from '../domain';
+} from '../../db/schema';
+import { type AssignmentSource, UNFINISHED_SOLVE_STATUSES } from '../../shared/domain';
 import { type ApiError, notFound, ValidationError } from '../errors';
-import { planningAgents, type RuleInput } from '../rules/model';
+import { planningAgents, type RuleInput } from '../../shared/rules/model';
 import {
   absenceCells,
   canTransition,
@@ -32,9 +32,9 @@ import {
   openingChangedSincePublication,
   openViolations,
   previousMonthOpen,
-} from '../rules/planning';
-import { countPlanning } from '../rules/counters';
-import { validatePlanning } from '../rules/validate';
+} from '../planning';
+import { countPlanning } from '../../shared/rules/counters';
+import { validatePlanning } from '../../shared/rules/validate';
 import {
   acceptViolationInput,
   cellsInput,
@@ -42,7 +42,7 @@ import {
   monthParam,
   solveInput,
   statusInput,
-} from '../schemas';
+} from '../../shared/schemas';
 import { startSolve } from '../solver-client';
 import { validate } from '../validate';
 
@@ -85,7 +85,7 @@ async function loadRuleInput(month: string): Promise<RuleInput> {
 }
 
 /**
- * The balances of a month (api/rules/planning.ts), from the hours recorded at
+ * The balances of a month (api/planning.ts), from the hours recorded at
  * each publication: a republished month thus updates the months after it.
  */
 async function loadBalances(month: string) {

@@ -2,10 +2,10 @@
 // then the TypeScript validator must find no hard violation in its proposal.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { countedOn } from '../api/calendar';
-import type { RuleInput } from '../api/rules/model';
-import { coverage } from '../api/rules/coverage';
-import { validatePlanning } from '../api/rules/validate';
+import { countedOn } from '../shared/calendar';
+import type { RuleInput } from '../shared/rules/model';
+import { coverage } from '../shared/rules/coverage';
+import { validatePlanning } from '../shared/rules/validate';
 import { buildSeed } from './seed/build';
 import { solve } from './solve';
 

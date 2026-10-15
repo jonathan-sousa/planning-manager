@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { agentSkills, skills } from '../db/schema';
+import { agentSkills, skills } from '../../db/schema';
 import { expectCrudLifecycle } from '../test/crud';
 import { db, resetDb } from '../test/db';
 import { agent, grade } from '../test/factories';
 import { body, send, uuid } from '../test/http';
 
-vi.mock('../db/client', () => import('../test/db'));
+vi.mock('../../db/client', () => import('../test/db'));
 
 beforeEach(async () => {
   await resetDb();

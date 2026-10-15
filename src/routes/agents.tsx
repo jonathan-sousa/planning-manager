@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { agentInput, type AgentInput } from '../../api/schemas';
+import { agentInput, type AgentInput } from '../../shared/schemas';
 import { CrudPage } from '@/components/crud-page';
 import { FormShell } from '@/components/form-fields';
 import { submitToApi, useAppForm, validationLogic } from '@/hooks/form';

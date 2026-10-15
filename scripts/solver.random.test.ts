@@ -3,9 +3,9 @@
 // reports no hard violation, the TypeScript validator must agree.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { addDays, countedOn, monthDates } from '../api/calendar';
-import type { RuleCell, RuleInput, RuleShift } from '../api/rules/model';
-import { validatePlanning } from '../api/rules/validate';
+import { addDays, countedOn, monthDates } from '../shared/calendar';
+import type { RuleCell, RuleInput, RuleShift } from '../shared/rules/model';
+import { validatePlanning } from '../shared/rules/validate';
 import { solve } from './solve';
 
 const settings = JSON.parse(readFileSync('fixtures/rule-scenarios/_settings.json', 'utf8'));

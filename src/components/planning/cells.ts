@@ -1,7 +1,7 @@
 // Cells of the planning grid, shared by the editor, the grid, the solver
 // review and the exports. Pure: safe to import anywhere.
-import { countedOn } from '../../../api/calendar';
-import type { RuleShift } from '../../../api/rules/model';
+import { countedOn } from '../../../shared/calendar';
+import type { RuleShift } from '../../../shared/rules/model';
 
 export interface GridCell {
   agentId: string;
