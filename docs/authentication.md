@@ -287,20 +287,20 @@ Réglages retenus :
 
 ## Glossaire
 
-| Terme                 | Sens                                                                                     |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| User pool             | L'annuaire des comptes dans Cognito                                                      |
-| App client            | Une application déclarée auprès du user pool, avec ses adresses de retour                |
-| Managed Login         | La page de connexion hébergée par Cognito                                                |
-| OAuth 2.0             | Standard d'autorisation : une application obtient un accès sans voir le mot de passe     |
-| OpenID                | Ancien standard d'identité (2005), abandonné ; sans lien technique avec OIDC             |
-| OpenID Connect (OIDC) | Couche d'OAuth 2.0 qui ajoute l'identité : scope `openid`, jeton d'identité, découverte  |
-| Scope                 | Ce que l'application demande : `openid` (l'identité), `email`, `profile`                 |
-| PKCE                  | Secret à usage unique qui prouve que celui qui échange le code l'a demandé               |
-| `code_verifier`       | Le secret de PKCE, gardé dans le navigateur                                              |
-| `code_challenge`      | L'empreinte SHA-256 du secret, envoyée à Cognito au départ                               |
-| `state`               | Valeur aléatoire renvoyée par Cognito, qui garantit que le retour répond à notre demande |
-| JWT                   | Jeton signé, lisible par tous, impossible à modifier sans casser la signature            |
-| Claim                 | Une information portée par un JWT (`email`, `cognito:groups`, `exp`…)                    |
-| XSS                   | Injection d'un script malveillant dans une page                                          |
-| CSP                   | Liste des sources qu'une page a le droit de charger ou de contacter                      |
+| Terme                 | Sens                                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------- |
+| User pool             | L'annuaire des comptes dans Cognito                                                       |
+| App client            | Une application déclarée auprès du user pool, avec ses adresses de retour                 |
+| Managed Login         | La page de connexion hébergée par Cognito                                                 |
+| OAuth 2.0             | Standard d'autorisation : une application obtient un accès sans voir le mot de passe      |
+| OpenID                | Ancien standard d'identité (2005), abandonné ; sans lien technique avec OIDC              |
+| OpenID Connect (OIDC) | Couche d'OAuth 2.0 qui ajoute l'identité : scope `openid`, jeton d'identité, découverte   |
+| Scope                 | Permission demandée à la connexion : `openid` (active OpenID Connect), `email`, `profile` |
+| PKCE                  | Secret à usage unique qui prouve que celui qui échange le code l'a demandé                |
+| `code_verifier`       | Le secret de PKCE, gardé dans le navigateur                                               |
+| `code_challenge`      | L'empreinte SHA-256 du secret, envoyée à Cognito au départ                                |
+| `state`               | Valeur aléatoire renvoyée par Cognito, qui garantit que le retour répond à notre demande  |
+| JWT                   | Jeton signé, lisible par tous, impossible à modifier sans casser la signature             |
+| Claim                 | Une information portée par un JWT (`sub`, `email`, `cognito:groups`, `exp`…)              |
+| XSS                   | Injection d'un script malveillant dans une page                                           |
+| CSP                   | Liste des sources qu'une page a le droit de charger ou de contacter                       |
