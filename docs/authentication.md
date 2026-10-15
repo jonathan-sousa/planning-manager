@@ -63,6 +63,20 @@ Trois noms proches, trois choses différentes. Cognito et Amplify parlent les de
 
 En pratique, quand un site propose « Se connecter avec Google », c'est OpenID Connect. Ici, **Cognito est le fournisseur OpenID Connect** et notre site est le client. C'est pourquoi l'app client demande les scopes `openid email profile`, et pourquoi on reçoit un jeton d'identité en plus du jeton d'accès.
 
+### Les scopes : ce que l'application demande
+
+`openid`, `email` et `profile` sont des **scopes** : des **permissions demandées** au moment de la connexion, pas des données. Chacun ouvre l'accès à un groupe d'informations (des **claims**).
+
+| Scope     | Ce qu'il demande                                                                | Claims concernés                                                                     |
+| --------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `openid`  | « Je fais de l'OpenID Connect » : obligatoire pour recevoir un jeton d'identité | `sub` : l'identifiant unique et permanent de l'utilisateur                           |
+| `email`   | L'adresse email                                                                 | `email`, `email_verified`                                                            |
+| `profile` | Les informations de profil standard                                             | `name`, `given_name` (prénom), `family_name` (nom), `nickname`, `picture`, `locale`… |
+
+- **`openid` n'est pas l'identifiant de l'utilisateur** : c'est l'interrupteur qui active OpenID Connect. Sans lui, on fait de l'OAuth 2.0 pur, avec un jeton d'accès mais sans jeton d'identité. L'identifiant, c'est le claim **`sub`** (_subject_).
+- **`profile` ne renvoie que ce que le compte contient.** Ici, le seul attribut de profil renseigné est `name`, saisi par l'admin à l'invitation.
+- **Une nuance propre à Cognito** : avec `openid`, le jeton d'identité contient déjà tous les attributs que l'app client a le droit de lire, email compris. `email` et `profile` règlent surtout ce que renvoie l'adresse `/oauth2/userInfo`, qu'une application peut interroger avec le jeton d'accès, et la liste des scopes inscrite dans ce jeton.
+
 ## 4. La connexion, vue d'ensemble
 
 La connexion suit **OpenID Connect**, donc OAuth 2.0, avec le flux **Authorization Code + PKCE**.
