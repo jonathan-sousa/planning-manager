@@ -15,10 +15,10 @@ Ce guide traite la première. Écrire soi-même un système de connexion est ris
 
 ```text
                  ┌──────────────────────────────┐
-                 │ Navigateur de l'utilisateur   │
+                 │ Navigateur de l'utilisateur  │
                  └──────┬────────────────┬──────┘
           télécharge le │                │ se connecte sur
-          site          ▼                ▼
+          site          v                v
      ┌───────────────────────┐   ┌──────────────────────────────┐
      │ S3 + CloudFront       │   │ Cognito                      │
      │ fichiers du site :    │   │ user pool : les comptes      │
@@ -68,17 +68,17 @@ En pratique, quand un site propose « Se connecter avec Google », c'est OpenID 
 La connexion suit **OpenID Connect**, donc OAuth 2.0, avec le flux **Authorization Code + PKCE**.
 
 ```text
-Navigateur / site (Amplify)                                   Cognito
+Navigateur / site (Amplify)                                 Cognito
     │                                                             │
     │ 1. pas de session : prépare un secret de connexion          │
-    │ 2. redirige vers la page de connexion ─────────────────────▶│
+    │ 2. redirige vers la page de connexion ─────────────────────>│
     │                                                             │
-    │ 3. l'utilisateur saisit email et mot de passe ─────────────▶│ vérifie
+    │ 3. l'utilisateur saisit email et mot de passe ─────────────>│ vérifie
     │                                                             │
-    │ 4. Cognito renvoie vers le site avec ?code=… ◀──────────────│
+    │ 4. Cognito renvoie vers le site avec ?code=... <────────────│
     │                                                             │
-    │ 5. le site échange le code (+ son secret) ─────────────────▶│ contrôle
-    │ 6. Cognito remet les trois jetons ◀─────────────────────────│
+    │ 5. le site échange le code (+ son secret) ─────────────────>│ contrôle
+    │ 6. Cognito remet les trois jetons <─────────────────────────│
     │ 7. Amplify les garde, l'application s'affiche               │
 ```
 
@@ -164,8 +164,8 @@ Ces durées se règlent dans l'app client : de 5 minutes à 1 jour pour les deux
 **Le format JWT.** Les jetons d'identité et d'accès sont des **JWT** (_JSON Web Tokens_), en trois morceaux séparés par des points :
 
 ```text
-eyJraWQiOi…  .  eyJzdWIiOiI0…  .  kXq3vA…
-   en-tête         contenu           signature
+eyJraWQiOi...  .  eyJzdWIiOiI0...  .  kXq3vA...
+   en-tête          contenu            signature
 ```
 
 - **Le contenu** porte des **claims** : `sub` (l'identifiant unique), `email`, `cognito:groups`, `exp` (la date d'expiration), `token_use` (`id` ou `access`)…
