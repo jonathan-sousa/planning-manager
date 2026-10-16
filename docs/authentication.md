@@ -1,6 +1,8 @@
 # L'authentification, pas à pas
 
-Guide explicatif du système de connexion, réduit à l'essentiel : un **site statique** (S3 + CloudFront), **Cognito** et la bibliothèque **Amplify**. Il suit le fonctionnement réel du projet, sans le MFA ni l'API.
+Guide explicatif du système de connexion, qui ajoute la complexité par niveaux et suit le fonctionnement réel du projet.
+
+**Niveau 1, ce guide : Cognito et un site sans serveur.** Un **site statique** (S3 + CloudFront), **Cognito** et la bibliothèque **Amplify**, rien d'autre. Le MFA et l'API viendront dans les niveaux suivants.
 
 ## 1. Le problème
 
@@ -190,52 +192,121 @@ Deux conséquences à retenir :
 - **Un JWT est signé, pas chiffré.** N'importe qui peut lire son contenu (essayer sur [jwt.io](https://jwt.io)). On n'y met rien de secret.
 - **Un JWT ne peut pas être modifié.** S'ajouter le groupe `ADMINS` casserait la signature, que quiconque peut vérifier avec la **clé publique** de Cognito.
 
+**Vérifier une signature, sans demander à Cognito.** Cognito signe avec sa **clé privée**, qui ne le quitte jamais, et publie ses **clés publiques** à une adresse fixe (`https://cognito-idp.<région>.amazonaws.com/<user pool>/.well-known/jwks.json`). L'en-tête du jeton indique quelle clé a servi (`kid`). Celui qui vérifie prend la clé publique correspondante et contrôle que la signature correspond au contenu. C'est la cryptographie asymétrique : seul le détenteur de la clé privée peut signer, tout le monde peut vérifier. **Notre site, lui, ne fait pas cette vérification** (partie 7).
+
 ## 7. Comment le site sait si l'on est connecté
 
-Le site n'a pas de « session » côté serveur : **la session, ce sont les jetons rangés dans le navigateur.** Amplify les garde dans le `localStorage`, un stockage propre au domaine du site, qu'un autre site ne peut pas lire. Ils survivent à la fermeture de l'onglet.
+### Les jetons sont la session
 
-Le site se pose donc toujours la même question : « ai-je des jetons utilisables ? ». Elle revient à trois moments.
+Le site n'a pas de « session » côté serveur : **la session, ce sont les jetons rangés dans le navigateur.** Pour le site, « j'ai des jetons utilisables » veut dire « l'utilisateur s'est identifié » : seule une vraie connexion, terminée par l'échange PKCE, permet de les obtenir. Il n'existe pas d'autre trace de la connexion.
+
+Amplify les range dans le **`localStorage`**. Le navigateur propose deux stockages, réservés chacun au **seul domaine du site** (un autre site ne peut pas les lire) :
+
+| Stockage                      | Durée de vie                                       | Entre onglets          |
+| ----------------------------- | -------------------------------------------------- | ---------------------- |
+| **`localStorage`** (le nôtre) | Survit à la fermeture de l'onglet et du navigateur | Partagé                |
+| `sessionStorage`              | Effacé à la fermeture de l'onglet                  | Un stockage par onglet |
+
+Avec le `localStorage`, on reste connecté d'un jour à l'autre, jusqu'à 30 jours (la durée du jeton de rafraîchissement), et un nouvel onglet est déjà connecté.
+
+**Pour voir ses jetons** : outils de développement du navigateur, onglet _Application_, puis _Local Storage_ et le domaine du site. Les clés ressemblent à :
+
+```text
+CognitoIdentityServiceProvider.<app client>.<utilisateur>.idToken
+CognitoIdentityServiceProvider.<app client>.<utilisateur>.accessToken
+CognitoIdentityServiceProvider.<app client>.<utilisateur>.refreshToken
+CognitoIdentityServiceProvider.<app client>.LastAuthUser
+```
+
+Coller le jeton d'identité dans [jwt.io](https://jwt.io) montre son contenu : email, groupes, expiration.
+
+### Qui fait quoi : Amplify et notre code
+
+**Amplify fournit les outils, notre code décide quand s'en servir.** Amplify ne redirige jamais de lui-même vers la page de connexion.
+
+| Qui            | Fait quoi                                                                                                                    |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Amplify**    | Range et lit les jetons, les renouvelle, **construit et lance** la redirection vers Cognito, **traite le retour** (`?code=`) |
+| **Notre code** | **Décide** : au chargement et quand la session est finie, il demande à Amplify de lancer la redirection                      |
+
+L'application ne lit jamais le `localStorage` elle-même : elle passe toujours par deux fonctions d'Amplify.
+
+| Fonction             | Renvoie                                                            | Si personne n'est connecté      |
+| -------------------- | ------------------------------------------------------------------ | ------------------------------- |
+| `getCurrentUser()`   | Un résumé : identifiant (`userId`), nom d'utilisateur              | Lève une erreur                 |
+| `fetchAuthSession()` | Les **jetons** eux-mêmes, avec tous leurs claims (email, groupes…) | Renvoie une session sans jetons |
+
+Les deux lisent **les mêmes jetons**, et peuvent servir l'une après l'autre : à l'ouverture, `getCurrentUser()` dit s'il faut afficher l'application, puis `fetchAuthSession()` fournit l'email affiché dans la barre latérale. Tant que les jetons sont valables, elles ne font aucun appel réseau. On pourrait n'utiliser que `fetchAuthSession()` (« pas de jetons » veut dire « pas connecté ») : `getCurrentUser()` est un raccourci lisible pour la seule question « quelqu'un est-il connecté ? ».
+
+### Quand le contrôle a lieu
+
+Le site est une **application à page unique** (_SPA_) : le navigateur télécharge les fichiers une seule fois, au premier chargement. Passer d'une page à l'autre ne recharge rien : c'est le JavaScript qui change l'affichage. Les fichiers eux-mêmes (HTML, JS, CSS) sont servis par CloudFront **à tout le monde, sans vérification** : ils sont publics.
+
+Le contrôle des jetons a donc lieu à deux moments seulement :
+
+- **au chargement de la page** (ouverture du site, rechargement) : `src/auth/auth-gate.tsx` ;
+- **quand l'application a besoin des jetons** (l'email, les groupes) : `fetchAuthSession()`, dans `src/auth/session.ts`.
+
+Dans un site classique, où chaque page est une requête HTTP vers un serveur, le principe serait le même, mais le contrôle reviendrait à chaque chargement de page.
 
 ### Au chargement de la page
 
-C'est le rôle de `src/auth/auth-gate.tsx`, qui enveloppe toute l'application :
+`src/auth/auth-gate.tsx` enveloppe toute l'application :
 
 ```text
 Page chargée
  │
- ├─ L'URL contient ?code=… (retour de la page de connexion)
- │    → Amplify fait l'échange PKCE et range les jetons
- │    → il émet l'événement « signInWithRedirect » sur son bus d'événements (le Hub)
- │    → l'application s'affiche
+ ├─ L'URL contient ?code=... (retour de la page de connexion)
+ │    -> Amplify fait l'échange PKCE et range les jetons
+ │    -> il émet l'événement « signInWithRedirect » sur son bus d'événements (le Hub)
+ │    -> auth-gate.tsx, qui l'écoute, affiche l'application
  │
  └─ Sinon : getCurrentUser()
-      ├─ des jetons sont rangés      → l'application s'affiche
-      └─ aucun jeton                 → signInWithRedirect() : page de connexion
+      ├─ des jetons sont rangés  -> l'application s'affiche
+      └─ aucun jeton             -> signInWithRedirect() : Amplify prépare PKCE et state,
+                                    puis envoie vers la page de connexion
 ```
 
 Un cas particulier : un `?code=` déjà utilisé, par un marque-page ou le bouton Précédent, ne mène à aucun échange valide. Le site affiche alors « Connexion impossible » avec un bouton « Réessayer », au lieu de boucler.
 
-### Pendant l'utilisation : le rafraîchissement
+### La règle complète
 
-Chaque fois que l'application a besoin des jetons, elle appelle `fetchAuthSession()` (dans `src/auth/session.ts`). Amplify lit la date d'expiration (`exp`) du jeton d'accès :
+Un jeton d'accès expiré ne renvoie **pas** directement à la page de connexion : Amplify essaie d'abord de le renouveler.
 
-- **encore valable** : il le renvoie tel quel ;
-- **expiré** : il envoie **le jeton de rafraîchissement** à Cognito et reçoit de nouveaux jetons d'identité et d'accès, sans que l'utilisateur voie rien.
+```text
+Des jetons rangés dans le localStorage ?
+ │
+ ├─ non -> page de connexion Cognito
+ │
+ └─ oui -> le jeton d'accès est-il expiré ?
+            ├─ non -> on continue
+            └─ oui -> Amplify envoie le jeton de rafraîchissement à Cognito
+                       ├─ accepté (moins de 30 jours, non révoqué)
+                       │    -> nouveaux jetons d'identité et d'accès, on continue sans rien voir
+                       └─ refusé (plus de 30 jours, ou révoqué)
+                            -> page de connexion Cognito
+```
 
-Ainsi, l'utilisateur reste connecté jour après jour, tant que le jeton de rafraîchissement est valable.
+Le jeton d'accès expire toutes les heures, mais on ne se reconnecte qu'une fois tous les 30 jours au plus, ou après une déconnexion.
 
 ### Quand la session est finie
 
-Le rafraîchissement échoue quand le jeton de rafraîchissement n'est plus accepté :
+Le jeton de rafraîchissement n'est plus accepté quand :
 
 - **il a expiré** : 30 jours après la connexion ;
 - **il a été révoqué** : déconnexion, compte désactivé par un admin.
 
-`fetchAuthSession()` ne renvoie alors plus de jetons, et `src/auth/session.ts` relance `signInWithRedirect()` : retour à la page de connexion.
+`fetchAuthSession()` ne renvoie alors plus de jetons, et `src/auth/session.ts` appelle `signInWithRedirect()` : retour à la page de connexion.
 
-**Point important** : le site n'est **pas prévenu en direct** d'une révocation. Il la découvre au rafraîchissement suivant, donc au plus tard quand le jeton d'accès en cours expire (une heure). Les jetons ne sont jamais « rappelés » : révoquer, c'est empêcher d'en obtenir de nouveaux.
+**Le site n'est pas prévenu en direct** d'une révocation. Il la découvre au rafraîchissement suivant, donc au plus tard quand le jeton d'accès en cours expire (une heure). Les jetons ne sont jamais « rappelés » : révoquer, c'est empêcher d'en obtenir de nouveaux.
 
 **Le cookie de la page de connexion.** Cognito pose aussi, sur **son propre domaine**, un cookie de session valable une heure. Revenir sur la page de connexion dans l'heure reconnecte sans ressaisir le mot de passe.
+
+### Ce que le site ne vérifie pas
+
+Le site **ne vérifie pas la signature** des jetons. Il fait confiance à ceux qu'il a reçus de Cognito, en HTTPS, et ne regarde que leur date d'expiration (`exp`), pour savoir quand les renouveler.
+
+Quelqu'un pourrait donc écrire de faux jetons dans son propre `localStorage` : le site afficherait l'interface comme s'il était connecté. Ce n'est pas grave à ce niveau : il ne verrait rien de plus que ce que les fichiers publics contiennent déjà (partie 9).
 
 ## 8. La déconnexion
 
@@ -287,20 +358,24 @@ Réglages retenus :
 
 ## Glossaire
 
-| Terme                 | Sens                                                                                      |
-| --------------------- | ----------------------------------------------------------------------------------------- |
-| User pool             | L'annuaire des comptes dans Cognito                                                       |
-| App client            | Une application déclarée auprès du user pool, avec ses adresses de retour                 |
-| Managed Login         | La page de connexion hébergée par Cognito                                                 |
-| OAuth 2.0             | Standard d'autorisation : une application obtient un accès sans voir le mot de passe      |
-| OpenID                | Ancien standard d'identité (2005), abandonné ; sans lien technique avec OIDC              |
-| OpenID Connect (OIDC) | Couche d'OAuth 2.0 qui ajoute l'identité : scope `openid`, jeton d'identité, découverte   |
-| Scope                 | Permission demandée à la connexion : `openid` (active OpenID Connect), `email`, `profile` |
-| PKCE                  | Secret à usage unique qui prouve que celui qui échange le code l'a demandé                |
-| `code_verifier`       | Le secret de PKCE, gardé dans le navigateur                                               |
-| `code_challenge`      | L'empreinte SHA-256 du secret, envoyée à Cognito au départ                                |
-| `state`               | Valeur aléatoire renvoyée par Cognito, qui garantit que le retour répond à notre demande  |
-| JWT                   | Jeton signé, lisible par tous, impossible à modifier sans casser la signature             |
-| Claim                 | Une information portée par un JWT (`sub`, `email`, `cognito:groups`, `exp`…)              |
-| XSS                   | Injection d'un script malveillant dans une page                                           |
-| CSP                   | Liste des sources qu'une page a le droit de charger ou de contacter                       |
+| Terme                 | Sens                                                                                            |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| User pool             | L'annuaire des comptes dans Cognito                                                             |
+| App client            | Une application déclarée auprès du user pool, avec ses adresses de retour                       |
+| Managed Login         | La page de connexion hébergée par Cognito                                                       |
+| OAuth 2.0             | Standard d'autorisation : une application obtient un accès sans voir le mot de passe            |
+| OpenID                | Ancien standard d'identité (2005), abandonné ; sans lien technique avec OIDC                    |
+| OpenID Connect (OIDC) | Couche d'OAuth 2.0 qui ajoute l'identité : scope `openid`, jeton d'identité, découverte         |
+| Scope                 | Permission demandée à la connexion : `openid` (active OpenID Connect), `email`, `profile`       |
+| PKCE                  | Secret à usage unique qui prouve que celui qui échange le code l'a demandé                      |
+| `code_verifier`       | Le secret de PKCE, gardé dans le navigateur                                                     |
+| `code_challenge`      | L'empreinte SHA-256 du secret, envoyée à Cognito au départ                                      |
+| `state`               | Valeur aléatoire renvoyée par Cognito, qui garantit que le retour répond à notre demande        |
+| JWT                   | Jeton signé, lisible par tous, impossible à modifier sans casser la signature                   |
+| Claim                 | Une information portée par un JWT (`sub`, `email`, `cognito:groups`, `exp`…)                    |
+| `localStorage`        | Stockage du navigateur propre à un domaine, qui survit à la fermeture : là où vivent les jetons |
+| `sessionStorage`      | Stockage du navigateur propre à un domaine et à un onglet, effacé à sa fermeture                |
+| SPA                   | Application à page unique : chargée une fois, elle change l'affichage sans recharger de page    |
+| Hub                   | Le bus d'événements d'Amplify (connexion réussie, échouée…), que notre code écoute              |
+| XSS                   | Injection d'un script malveillant dans une page                                                 |
+| CSP                   | Liste des sources qu'une page a le droit de charger ou de contacter                             |
